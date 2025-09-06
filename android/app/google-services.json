@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "502955749842",
+    "project_id": "luna-iot-5993f",
+    "storage_bucket": "luna-iot-5993f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:502955749842:android:5fb3070a513e60bf93180b",
+        "android_client_info": {
+          "package_name": "com.luna.luna_iot"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDB5UtIBMPa7mMiZ755r4wR1Imxasb9SLg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
