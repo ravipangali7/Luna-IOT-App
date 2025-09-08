@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:luna_iot/bindings/auth_binding.dart';
+import 'package:luna_iot/bindings/blood_donation_binding.dart';
 import 'package:luna_iot/bindings/device_binding.dart';
 import 'package:luna_iot/bindings/device_monitoring_binding.dart';
 import 'package:luna_iot/bindings/geofence_binding.dart';
@@ -37,6 +38,8 @@ import 'package:luna_iot/views/vehicle/live_tracking/vehicle_live_tracking_index
 import 'package:luna_iot/views/vehicle/live_tracking/vehicle_live_tracking_show_screen.dart';
 import 'package:luna_iot/views/auth/login_screen.dart';
 import 'package:luna_iot/views/auth/register_screen.dart';
+import 'package:luna_iot/views/blood_donation/blood_donation_screen.dart';
+import 'package:luna_iot/views/blood_donation/blood_donation_form_screen.dart';
 import 'package:luna_iot/views/home_screen.dart';
 import 'package:luna_iot/views/vehicle/report/vehicle_report_index_screen.dart';
 import 'package:luna_iot/views/vehicle/report/vehicle_report_show_screen.dart';
@@ -53,6 +56,10 @@ class AppRoutes {
   static const String forgotPassword = '/forgot-password';
   static const String verifyForgotPasswordOTP = '/verify-forgot-password-otp';
   static const String resetPassword = '/reset-password';
+
+  // Blood Donation Routes
+  static const String bloodDonation = '/blood-donation';
+  static const String bloodDonationApplication = '/blood-donation-application';
 
   // Device Routes
   static const String deviceMonitoring = '/device/monitoring';
@@ -140,6 +147,18 @@ class AppRoutes {
       page: () => ResetPasswordScreen(),
       binding: AuthBinding(),
       middlewares: [GuestMiddleware()],
+    ),
+
+    // ---- Blood Donation Routes ----
+    GetPage(
+      name: bloodDonation,
+      page: () => const BloodDonationScreen(),
+      binding: BloodDonationBinding(),
+    ),
+    GetPage(
+      name: bloodDonationApplication,
+      page: () => const BloodDonationFormScreen(),
+      binding: BloodDonationBinding(),
     ),
 
     // ---- Device Monitoring Routes ----

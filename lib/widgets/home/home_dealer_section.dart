@@ -108,6 +108,26 @@ class HomeDealerSection extends StatelessWidget {
               ),
             ],
           ),
+
+          const SizedBox(height: 10),
+
+          // Section Title
+          HomeFeatureSectionTitle(title: 'Blood Donation'),
+          GridView.count(
+            crossAxisCount: 3,
+            crossAxisSpacing: 7,
+            mainAxisSpacing: 7,
+            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            children: [
+              HomeFeatureCard(
+                title: 'Blood Donation',
+                subtitle: 'Manage Blood Donations',
+                icon: Icons.bloodtype,
+                route: AppRoutes.bloodDonation,
+              ),
+            ],
+          ),
         ],
       ),
     );

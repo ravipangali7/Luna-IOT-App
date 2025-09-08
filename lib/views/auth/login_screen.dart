@@ -290,6 +290,78 @@ class LoginScreenState extends State<LoginScreen> {
                                 ),
                               ],
                             ),
+                            const SizedBox(height: 2),
+
+                            // Blood Donation Application - Free Access
+                            Container(
+                              margin: const EdgeInsets.symmetric(vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 18,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(
+                                  color: Colors.red.shade100,
+                                  width: 1.2,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.red.withOpacity(0.08),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    "Blood Donation ",
+                                    style: TextStyle(
+                                      color: AppTheme.subTitleColor,
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  Text("🩸", style: TextStyle(fontSize: 18)),
+                                  const SizedBox(width: 6),
+                                  TextButton(
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 6,
+                                      ),
+                                      backgroundColor: Colors.red.shade100,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(18),
+                                      ),
+                                    ),
+                                    onPressed: () => Get.toNamed(
+                                      '/blood-donation-application',
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Text(
+                                          'Need/Donate',
+                                          style: TextStyle(
+                                            color: Colors.red.shade700,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          "🩸",
+                                          style: TextStyle(fontSize: 16),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),

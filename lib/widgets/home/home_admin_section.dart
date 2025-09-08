@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:luna_iot/app/app_routes.dart';
 import 'package:luna_iot/widgets/home/home_feature_card.dart';
 import 'package:luna_iot/widgets/home/home_feature_section_title.dart';
+import 'package:luna_iot/widgets/role_based_widget.dart';
 
 class HomeAdminSection extends StatelessWidget {
   const HomeAdminSection({super.key});
@@ -81,6 +82,16 @@ class HomeAdminSection extends StatelessWidget {
                 subtitle: 'Manage Geofence',
                 icon: Icons.map,
                 route: AppRoutes.geofence,
+              ),
+              // Blood Donation - Only for SUPER Admin
+              RoleBasedWidget(
+                allowedRoles: ['super admin'],
+                child: HomeFeatureCard(
+                  title: 'Blood Donation',
+                  subtitle: 'Manage Blood Donations',
+                  icon: Icons.bloodtype,
+                  route: AppRoutes.bloodDonation,
+                ),
               ),
             ],
           ),
