@@ -113,6 +113,7 @@ class Vehicle {
       'device': device?.toJson(),
       'latestStatus': latestStatus?.toJson(),
       'latestLocation': latestLocation?.toJson(),
+      'todayKm': todayKm,
       'ownershipType': ownershipType,
       'userVehicle': userVehicle,
     };
@@ -132,6 +133,7 @@ class Vehicle {
     Device? device,
     Status? latestStatus,
     Location? latestLocation,
+    double? todayKm,
     String? ownershipType,
     Map<String, dynamic>? userVehicle,
   }) {
@@ -149,6 +151,7 @@ class Vehicle {
       device: device ?? this.device,
       latestStatus: latestStatus ?? this.latestStatus,
       latestLocation: latestLocation ?? this.latestLocation,
+      todayKm: todayKm ?? this.todayKm,
       ownershipType: ownershipType ?? this.ownershipType,
       userVehicle: userVehicle ?? this.userVehicle,
     );

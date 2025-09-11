@@ -19,7 +19,8 @@
         <!-- Google Maps API Key -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyC4oO2oBMNzhEhLCmD2i9Ts9ljplYpsCVg"/>
+            android:value="AIzaSyDakyL49GU8gPjnK0jihVQuRDxh6lTx-O8"/>
+            <!-- android:value="AIzaSyC4oO2oBMNzhEhLCmD2i9Ts9ljplYpsCVg"/> -->
 
              <!-- Firebase Configuration -->
         <!-- Default notification icon -->

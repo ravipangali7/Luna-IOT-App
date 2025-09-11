@@ -67,7 +67,7 @@ class _BloodDonationFormScreenState extends State<BloodDonationFormScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Donate Blood, Save Lives',
+                      'Donate Blood, Save Life',
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.red.shade600,
