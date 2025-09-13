@@ -13,8 +13,8 @@ import GoogleMaps
   ) -> Bool {
     
     // Initialize Google Maps API Key FIRST
-    GMSServices.provideAPIKey("AIzaSyC4oO2oBMNzhEhLCmD2i9Ts9ljplYpsCVg")
-    print("Google Maps SDK initialized with key: AIzaSyC4oO2oBMNzhEhLCmD2i9Ts9ljplYpsCVg")
+    GMSServices.provideAPIKey("AIzaSyDakyL49GU8gPjnK0jihVQuRDxh6lTx-O8")
+    print("Google Maps SDK initialized with key: AIzaSyDakyL49GU8gPjnK0jihVQuRDxh6lTx-O8")
     
     // Configure Firebase
     FirebaseApp.configure()
