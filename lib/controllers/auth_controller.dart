@@ -426,8 +426,6 @@ class AuthController extends GetxController {
 
   Future<void> _updateFcmTokenAfterLogin() async {
     try {
-      print('Updating FCM token after login...');
-
       // Get current user phone
       final userPhone = currentUser.value?.phone;
       if (userPhone == null) {
@@ -438,11 +436,8 @@ class AuthController extends GetxController {
       // Get FCM token from Firebase
       final fcmToken = await FirebaseService.getCurrentToken();
       if (fcmToken != null) {
-        print('FCM Token obtained: $fcmToken');
-        print('User phone: $userPhone');
         // Update FCM token in backend with phone number
         await _authApiService.updateFcmToken(fcmToken, userPhone);
-        print('FCM token updated successfully in backend');
       } else {
         print('Failed to get FCM token');
       }
@@ -456,13 +451,10 @@ class AuthController extends GetxController {
   Future<void> updateFcmToken(String fcmToken) async {
     try {
       if (isLoggedIn.value && currentUser.value?.phone != null) {
-        print('Updating FCM token in backend: $fcmToken');
-        print('User phone: ${currentUser.value?.phone}');
         await _authApiService.updateFcmToken(
           fcmToken,
           currentUser.value!.phone,
         );
-        print('FCM token updated successfully');
       } else {
         print(
           'User not logged in or phone not available, skipping FCM token update',
@@ -486,33 +478,52 @@ class AuthController extends GetxController {
   bool get isDealer => currentUser.value?.role.isDealer ?? false;
   bool get isCustomer => currentUser.value?.role.isCustomer ?? false;
 
-  // Permission-based access helper methods
+  // Permission-based access helper methods (now checks combined permissions)
   bool canAccessDevices() =>
-      currentUser.value?.role.canAccessDevices() ?? false;
+      currentUser.value?.hasPermission('DEVICE_READ') ?? false;
   bool canCreateDevices() =>
-      currentUser.value?.role.canCreateDevices() ?? false;
+      currentUser.value?.hasPermission('DEVICE_CREATE') ?? false;
   bool canUpdateDevices() =>
-      currentUser.value?.role.canUpdateDevices() ?? false;
+      currentUser.value?.hasPermission('DEVICE_UPDATE') ?? false;
   bool canDeleteDevices() =>
-      currentUser.value?.role.canDeleteDevices() ?? false;
+      currentUser.value?.hasPermission('DEVICE_DELETE') ?? false;
 
   bool canAccessVehicles() =>
-      currentUser.value?.role.canAccessVehicles() ?? false;
+      currentUser.value?.hasPermission('VEHICLE_READ') ?? false;
   bool canCreateVehicles() =>
-      currentUser.value?.role.canCreateVehicles() ?? false;
+      currentUser.value?.hasPermission('VEHICLE_CREATE') ?? false;
   bool canUpdateVehicles() =>
-      currentUser.value?.role.canUpdateVehicles() ?? false;
+      currentUser.value?.hasPermission('VEHICLE_UPDATE') ?? false;
   bool canDeleteVehicles() =>
-      currentUser.value?.role.canDeleteVehicles() ?? false;
+      currentUser.value?.hasPermission('VEHICLE_DELETE') ?? false;
 
-  bool canAccessUsers() => currentUser.value?.role.canAccessUsers() ?? false;
-  bool canCreateUsers() => currentUser.value?.role.canCreateUsers() ?? false;
-  bool canUpdateUsers() => currentUser.value?.role.canUpdateUsers() ?? false;
-  bool canDeleteUsers() => currentUser.value?.role.canDeleteUsers() ?? false;
+  bool canAccessUsers() =>
+      currentUser.value?.hasPermission('USER_READ') ?? false;
+  bool canCreateUsers() =>
+      currentUser.value?.hasPermission('USER_CREATE') ?? false;
+  bool canUpdateUsers() =>
+      currentUser.value?.hasPermission('USER_UPDATE') ?? false;
+  bool canDeleteUsers() =>
+      currentUser.value?.hasPermission('USER_DELETE') ?? false;
 
-  bool canAccessRoles() => currentUser.value?.role.canAccessRoles() ?? false;
+  bool canAccessRoles() =>
+      currentUser.value?.hasPermission('ROLE_READ') ?? false;
   bool canAccessDeviceMonitoring() =>
-      currentUser.value?.role.canAccessDeviceMonitoring() ?? false;
+      currentUser.value?.hasPermission('DEVICE_MONITORING') ?? false;
   bool canAccessLiveTracking() =>
-      currentUser.value?.role.canAccessLiveTracking() ?? false;
+      currentUser.value?.hasPermission('LIVE_TRACKING') ?? false;
+
+  // Generic permission checking methods
+  bool hasPermission(String permissionName) =>
+      currentUser.value?.hasPermission(permissionName) ?? false;
+
+  bool hasAnyPermission(List<String> permissionNames) =>
+      currentUser.value?.hasAnyPermission(permissionNames) ?? false;
+
+  bool hasAllPermissions(List<String> permissionNames) =>
+      currentUser.value?.hasAllPermissions(permissionNames) ?? false;
+
+  // Get all user permissions (role + direct)
+  List<String> getAllUserPermissions() =>
+      currentUser.value?.getAllPermissions() ?? [];
 }

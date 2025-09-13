@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:luna_iot/app/app_routes.dart';
 import 'package:luna_iot/widgets/home/home_feature_card.dart';
 import 'package:luna_iot/widgets/home/home_feature_section_title.dart';
+import 'package:luna_iot/widgets/role_based_widget.dart';
 
 class HomeDealerSection extends StatelessWidget {
   const HomeDealerSection({super.key});
@@ -112,7 +113,7 @@ class HomeDealerSection extends StatelessWidget {
           const SizedBox(height: 10),
 
           // Section Title
-          HomeFeatureSectionTitle(title: 'Blood Donation'),
+          HomeFeatureSectionTitle(title: 'Health'),
           GridView.count(
             crossAxisCount: 3,
             crossAxisSpacing: 7,
@@ -121,10 +122,20 @@ class HomeDealerSection extends StatelessWidget {
             shrinkWrap: true,
             children: [
               HomeFeatureCard(
-                title: 'Blood Donation',
-                subtitle: 'Manage Blood Donations',
+                title: 'Blood Donation Form',
+                subtitle: 'Need/Donate Blood',
                 icon: Icons.bloodtype,
-                route: AppRoutes.bloodDonation,
+                route: AppRoutes.bloodDonationApplication,
+              ),
+              RoleBasedWidget(
+                allowedRoles: ['super admin'],
+                allowedPermissions: ['BLOOD_DONATION'],
+                child: HomeFeatureCard(
+                  title: 'Blood Management',
+                  subtitle: 'Manage Blood Donations',
+                  icon: Icons.local_hospital,
+                  route: AppRoutes.bloodDonation,
+                ),
               ),
             ],
           ),

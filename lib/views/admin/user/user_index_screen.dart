@@ -7,6 +7,8 @@ import 'package:luna_iot/models/search_filter_model.dart';
 import 'package:luna_iot/widgets/confirm_dialouge.dart';
 import 'package:luna_iot/widgets/loading_widget.dart';
 import 'package:luna_iot/widgets/search_filter_bottom_sheet.dart';
+import 'user_permission_screen.dart';
+import '../../../app/app_routes.dart';
 
 class UserIndexScreen extends GetView<UserController> {
   const UserIndexScreen({super.key});
@@ -178,12 +180,17 @@ class UserIndexScreen extends GetView<UserController> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
+                          width: 32,
+                          height: 32,
                           decoration: BoxDecoration(
                             color: AppTheme.primaryColor.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(6),
                           ),
                           child: IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: BoxConstraints(),
                             tooltip: 'Edit User',
+                            iconSize: 16,
                             onPressed: () {
                               Get.toNamed(
                                 AppRoutes.userEdit.replaceAll(
@@ -196,17 +203,52 @@ class UserIndexScreen extends GetView<UserController> {
                             icon: Icon(
                               Icons.edit,
                               color: AppTheme.primaryColor,
+                              size: 16,
                             ),
                           ),
                         ),
-                        SizedBox(width: 8),
+                        SizedBox(width: 4),
                         Container(
+                          width: 32,
+                          height: 32,
                           decoration: BoxDecoration(
-                            color: AppTheme.errorColor.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.purple.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(6),
                           ),
                           child: IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: BoxConstraints(),
+                            tooltip: 'Manage Permissions',
+                            iconSize: 16,
+                            onPressed: () {
+                              Get.toNamed(
+                                AppRoutes.userPermission,
+                                arguments: {
+                                  'userId': user['id'],
+                                  'userName': user['name'],
+                                },
+                              );
+                            },
+                            icon: Icon(
+                              Icons.security,
+                              color: Colors.purple[600],
+                              size: 16,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 4),
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: AppTheme.errorColor.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: BoxConstraints(),
                             tooltip: 'Delete User',
+                            iconSize: 16,
                             onPressed: () {
                               showDialog(
                                 context: context,
@@ -223,6 +265,7 @@ class UserIndexScreen extends GetView<UserController> {
                             icon: Icon(
                               Icons.delete,
                               color: AppTheme.errorColor,
+                              size: 16,
                             ),
                           ),
                         ),

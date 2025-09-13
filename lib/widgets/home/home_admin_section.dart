@@ -30,6 +30,12 @@ class HomeAdminSection extends StatelessWidget {
                 route: AppRoutes.role,
               ),
               HomeFeatureCard(
+                title: 'Permission',
+                subtitle: 'Manage Permissions',
+                icon: Icons.security,
+                route: AppRoutes.permission,
+              ),
+              HomeFeatureCard(
                 title: 'User',
                 subtitle: 'Manage Users',
                 icon: Icons.person,
@@ -86,6 +92,7 @@ class HomeAdminSection extends StatelessWidget {
               // Blood Donation - Only for SUPER Admin
               RoleBasedWidget(
                 allowedRoles: ['super admin'],
+                allowedPermissions: ['BLOOD_DONATION'],
                 child: HomeFeatureCard(
                   title: 'Blood Donation',
                   subtitle: 'Manage Blood Donations',

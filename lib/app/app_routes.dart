@@ -25,6 +25,8 @@ import 'package:luna_iot/views/admin/role/role_index_screen.dart';
 import 'package:luna_iot/views/admin/user/user_create_screen.dart';
 import 'package:luna_iot/views/admin/user/user_edit_screen.dart';
 import 'package:luna_iot/views/admin/user/user_index_screen.dart';
+import 'package:luna_iot/views/admin/user/user_permission_screen.dart';
+import 'package:luna_iot/views/admin/permission/permission_management_screen.dart';
 import 'package:luna_iot/views/auth/forgot_password_screen.dart';
 import 'package:luna_iot/views/auth/reset_password_screen.dart';
 import 'package:luna_iot/views/auth/verify_forgot_password_otp_screen.dart';
@@ -89,6 +91,10 @@ class AppRoutes {
   // Role Routes
   static const String role = '/role';
   static const String roleEdit = '/role/edit/:id';
+
+  // Permission Routes
+  static const String permission = '/permission';
+  static const String userPermission = '/user/permission/:userId';
 
   // Notification Routes
   static const String notification = '/notification';
@@ -284,6 +290,21 @@ class AppRoutes {
       page: () => RoleEditScreen(role: Get.arguments),
       middlewares: [AuthMiddleware()],
       binding: RoleBinding(),
+    ),
+
+    // ---- Permission Routes ----
+    GetPage(
+      name: permission,
+      page: () => const PermissionManagementScreen(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: userPermission,
+      page: () => UserPermissionScreen(
+        userId: Get.arguments['userId'],
+        userName: Get.arguments['userName'],
+      ),
+      middlewares: [AuthMiddleware()],
     ),
 
     // ------ Notificaiton ------

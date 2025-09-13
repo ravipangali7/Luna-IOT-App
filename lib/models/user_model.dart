@@ -4,6 +4,7 @@ class User {
   final String phone;
   final String status;
   final Role role;
+  final List<String> permissions; // Direct user permissions
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -13,6 +14,7 @@ class User {
     required this.phone,
     required this.status,
     required this.role,
+    this.permissions = const [],
     this.createdAt,
     this.updatedAt,
   });
@@ -36,12 +38,19 @@ class User {
       role = Role.defaultRole();
     }
 
+    // Handle permissions - can be array of strings or null
+    List<String> permissions = [];
+    if (json['permissions'] != null && json['permissions'] is List) {
+      permissions = List<String>.from(json['permissions']);
+    }
+
     return User(
       id: json['id'] ?? 0,
       name: json['name'] ?? '',
       phone: json['phone'] ?? '',
       status: json['status'] ?? 'ACTIVE',
       role: role,
+      permissions: permissions,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : null,
@@ -58,9 +67,39 @@ class User {
       'phone': phone,
       'status': status,
       'role': role.toJson(),
+      'permissions': permissions,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
     };
+  }
+
+  // Get only direct user permissions (ignore role permissions as requested)
+  List<String> getAllPermissions() {
+    // Only return direct user permissions, ignore role permissions
+    final result = permissions.toList();
+
+    return result;
+  }
+
+  // Check if user has specific permission (role or direct)
+  bool hasPermission(String permissionName) {
+    return getAllPermissions().contains(permissionName);
+  }
+
+  // Check if user has any of the specified permissions
+  bool hasAnyPermission(List<String> permissionNames) {
+    List<String> userPermissions = getAllPermissions();
+    return permissionNames.any(
+      (permission) => userPermissions.contains(permission),
+    );
+  }
+
+  // Check if user has all of the specified permissions
+  bool hasAllPermissions(List<String> permissionNames) {
+    List<String> userPermissions = getAllPermissions();
+    return permissionNames.every(
+      (permission) => userPermissions.contains(permission),
+    );
   }
 }
 

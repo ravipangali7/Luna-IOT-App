@@ -55,7 +55,8 @@ class _BloodDonationScreenState extends State<BloodDonationScreen>
     final user = _authController.currentUser.value;
     if (user == null) return false;
     return user.role.name.toLowerCase() == 'super admin' ||
-        user.role.name.toLowerCase() == 'dealer';
+        user.role.name.toLowerCase() == 'dealer' ||
+        user.hasPermission('BLOOD_DONATION');
   }
 
   bool get canDeleteBloodDonation {
