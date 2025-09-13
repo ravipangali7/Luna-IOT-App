@@ -1,5 +1,5 @@
 import Foundation
 
 class GoogleMapsApiKey {
-    static let apiKey = "AIzaSyC4oO2oBMNzhEhLCmD2i9Ts9ljplYpsCVg"
+    static let apiKey = "AIzaSyDakyL49GU8gPjnK0jihVQuRDxh6lTx-O8"
 }
