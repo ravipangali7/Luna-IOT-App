@@ -62,12 +62,14 @@ import GoogleMaps
     // Set the APNS token for Firebase
     Messaging.messaging().apnsToken = deviceToken
     
-    // Also try to get the FCM token immediately after APNS token is set
-    Messaging.messaging().token { token, error in
-      if let error = error {
-        print("Error getting FCM token: \(error)")
-      } else if let token = token {
-        print("FCM token obtained: \(token)")
+    // Get FCM token after APNS token is set (with a small delay)
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+      Messaging.messaging().token { token, error in
+        if let error = error {
+          print("Error getting FCM token: \(error)")
+        } else if let token = token {
+          print("FCM token obtained after APNS setup: \(token)")
+        }
       }
     }
   }
