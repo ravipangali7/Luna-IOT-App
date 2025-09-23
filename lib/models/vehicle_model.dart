@@ -65,8 +65,8 @@ class Vehicle {
           ? Location.fromJson(json['latestLocation'])
           : null,
       todayKm: _parseDouble(json['todayKm']),
-      ownershipType: json['ownershipType'],
-      userVehicle: json['userVehicle'],
+      ownershipType: _determineOwnershipType(json),
+      userVehicle: _getUserVehicleData(json),
     );
   }
 
@@ -95,6 +95,59 @@ class Vehicle {
         return null;
       }
     }
+    return null;
+  }
+
+  // Determine ownership type from userVehicles data
+  static String? _determineOwnershipType(Map<String, dynamic> json) {
+    // First check if ownershipType is directly provided
+    if (json['ownershipType'] != null) {
+      return json['ownershipType'];
+    }
+
+    // Check userVehicles array to determine ownership
+    final userVehicles = json['userVehicles'];
+    if (userVehicles is List && userVehicles.isNotEmpty) {
+      final userVehicle = userVehicles.first as Map<String, dynamic>;
+      final isMain = userVehicle['isMain'] == true;
+
+      if (isMain) {
+        return 'Own';
+      } else {
+        return 'Shared';
+      }
+    }
+
+    // Check single userVehicle object
+    final userVehicle = json['userVehicle'];
+    if (userVehicle is Map<String, dynamic>) {
+      final isMain = userVehicle['isMain'] == true;
+
+      if (isMain) {
+        return 'Own';
+      } else {
+        return 'Shared';
+      }
+    }
+
+    return null;
+  }
+
+  // Get user vehicle data from either userVehicle or userVehicles
+  static Map<String, dynamic>? _getUserVehicleData(Map<String, dynamic> json) {
+    // First check single userVehicle object
+    if (json['userVehicle'] != null) {
+      return Map<String, dynamic>.from(json['userVehicle']);
+    }
+
+    // Check userVehicles array and get the first one (main user)
+    final userVehicles = json['userVehicles'];
+    if (userVehicles is List && userVehicles.isNotEmpty) {
+      return Map<String, dynamic>.from(
+        userVehicles.first as Map<String, dynamic>,
+      );
+    }
+
     return null;
   }
 
@@ -162,5 +215,25 @@ class Vehicle {
         latestLocation?.longitude != null &&
         latestLocation!.latitude != 0.0 &&
         latestLocation!.longitude != 0.0;
+  }
+
+  // Permission checking methods
+  bool get isMainUser => userVehicle?['isMain'] == true;
+  bool get hasAllAccess => userVehicle?['allAccess'] == true;
+  bool get canLiveTracking =>
+      hasAllAccess || userVehicle?['liveTracking'] == true;
+  bool get canViewHistory => hasAllAccess || userVehicle?['history'] == true;
+  bool get canViewReport => hasAllAccess || userVehicle?['report'] == true;
+  bool get canEditVehicle => hasAllAccess || userVehicle?['edit'] == true;
+  bool get canManageGeofence =>
+      hasAllAccess || userVehicle?['geofence'] == true;
+  bool get canShareTracking =>
+      hasAllAccess || userVehicle?['shareTracking'] == true;
+  bool get canReceiveNotifications => userVehicle?['notification'] == true;
+
+  // Check if user has specific permission
+  bool hasPermission(String permission) {
+    if (hasAllAccess) return true;
+    return userVehicle?[permission] == true;
   }
 }

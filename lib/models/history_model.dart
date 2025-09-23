@@ -33,7 +33,7 @@ class History {
     return History(
       imei: json['imei'] ?? '',
       type: json['type'] ?? '',
-      dataType: json['dataType'] ?? '',
+      dataType: json['type'] ?? '', // Use type as dataType for Django response
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : null,

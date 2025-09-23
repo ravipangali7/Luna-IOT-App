@@ -18,11 +18,22 @@ class _RoleEditScreenState extends State<RoleEditScreen> {
   void initState() {
     super.initState();
     if (widget.role['permissions'] != null) {
-      selectedPermissions.assignAll(
-        List<int>.from(
-          widget.role['permissions'].map((p) => p['permission']['id']),
-        ),
-      );
+      // Handle permissions as either strings or objects
+      List<int> permissionIds = [];
+      for (var p in widget.role['permissions']) {
+        if (p is String) {
+          // If permission is a string, we need to find the matching permission ID
+          // For now, we'll skip string permissions as we need the permission list
+          continue;
+        } else if (p is Map &&
+            p['permission'] != null &&
+            p['permission']['id'] != null) {
+          permissionIds.add(p['permission']['id']);
+        } else if (p is Map && p['id'] != null) {
+          permissionIds.add(p['id']);
+        }
+      }
+      selectedPermissions.assignAll(permissionIds);
     }
   }
 

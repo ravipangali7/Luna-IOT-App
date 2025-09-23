@@ -22,13 +22,13 @@ class ReportStats {
   factory ReportStats.fromJson(Map<String, dynamic> json) {
     return ReportStats(
       totalKm: (json['totalKm'] ?? 0).toDouble(),
-      totalTime: json['totalTime'] ?? 0,
+      totalTime: (json['totalTime'] ?? 0).toInt(),
       averageSpeed: (json['averageSpeed'] ?? 0).toDouble(),
       maxSpeed: (json['maxSpeed'] ?? 0).toDouble(),
-      totalIdleTime: json['totalIdleTime'] ?? 0,
-      totalRunningTime: json['totalRunningTime'] ?? 0,
-      totalOverspeedTime: json['totalOverspeedTime'] ?? 0,
-      totalStopTime: json['totalStopTime'] ?? 0,
+      totalIdleTime: (json['totalIdleTime'] ?? 0).toInt(),
+      totalRunningTime: (json['totalRunningTime'] ?? 0).toInt(),
+      totalOverspeedTime: (json['totalOverspeedTime'] ?? 0).toInt(),
+      totalStopTime: (json['totalStopTime'] ?? 0).toInt(),
     );
   }
 }

@@ -14,7 +14,7 @@ class VehicleAccessApiService {
     String? imei,
   }) async {
     try {
-      String url = '$_baseUrl/api/vehicle-access';
+      String url = '$_baseUrl/api/fleet/vehicle-access';
       List<String> queryParams = [];
 
       if (search != null) queryParams.add('search=$search');
@@ -30,7 +30,14 @@ class VehicleAccessApiService {
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
-        return VehicleAccessResponse.fromJson(jsonData);
+        // Django response format: {success: true, message: '...', data: {...}}
+        if (jsonData['success'] == true) {
+          return VehicleAccessResponse.fromJson(jsonData);
+        } else {
+          throw Exception(
+            'Failed to load vehicle access: ${jsonData['message'] ?? 'Unknown error'}',
+          );
+        }
       } else {
         throw Exception(
           'Failed to load vehicle access: ${response.statusCode}',
@@ -45,7 +52,7 @@ class VehicleAccessApiService {
   static Future<VehicleAccess> getVehicleAccessById(int id) async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/api/vehicle-access/$id'),
+        Uri.parse('$_baseUrl/api/fleet/vehicle-access/$id'),
       );
 
       if (response.statusCode == 200) {
@@ -66,15 +73,24 @@ class VehicleAccessApiService {
   }
 
   // Get vehicle access by vehicle IMEI
-  static Future<VehicleAccessResponse> getVehicleAccessByVehicle(String imei) async {
+  static Future<VehicleAccessResponse> getVehicleAccessByVehicle(
+    String imei,
+  ) async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/api/vehicle/$imei/access'),
+        Uri.parse('$_baseUrl/api/fleet/vehicle/$imei/access'),
       );
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
-        return VehicleAccessResponse.fromJson(jsonData);
+        // Django response format: {success: true, message: '...', data: {...}}
+        if (jsonData['success'] == true) {
+          return VehicleAccessResponse.fromJson(jsonData);
+        } else {
+          throw Exception(
+            'Failed to load vehicle access by vehicle: ${jsonData['message'] ?? 'Unknown error'}',
+          );
+        }
       } else {
         throw Exception(
           'Failed to load vehicle access by vehicle: ${response.statusCode}',
@@ -91,7 +107,7 @@ class VehicleAccessApiService {
   ) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/api/vehicle-access/create'),
+        Uri.parse('$_baseUrl/api/fleet/vehicle-access/create'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(formData.toJson()),
       );
@@ -121,7 +137,7 @@ class VehicleAccessApiService {
   ) async {
     try {
       final response = await http.put(
-        Uri.parse('$_baseUrl/api/vehicle-access/update/$id'),
+        Uri.parse('$_baseUrl/api/fleet/vehicle-access/update/$id'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(formData.toJson()),
       );
@@ -148,7 +164,7 @@ class VehicleAccessApiService {
   static Future<bool> deleteVehicleAccess(int id) async {
     try {
       final response = await http.delete(
-        Uri.parse('$_baseUrl/api/vehicle-access/delete/$id'),
+        Uri.parse('$_baseUrl/api/fleet/vehicle-access/delete/$id'),
       );
 
       if (response.statusCode == 200) {
@@ -168,12 +184,19 @@ class VehicleAccessApiService {
   static Future<VehicleAccessResponse> getAvailableUsers() async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/api/users'),
+        Uri.parse('$_baseUrl/api/core/user/users'),
       );
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
-        return VehicleAccessResponse.fromJson(jsonData);
+        // Django response format: {success: true, message: '...', data: [...]}
+        if (jsonData['success'] == true) {
+          return VehicleAccessResponse.fromJson(jsonData);
+        } else {
+          throw Exception(
+            'Failed to load available users: ${jsonData['message'] ?? 'Unknown error'}',
+          );
+        }
       } else {
         throw Exception(
           'Failed to load available users: ${response.statusCode}',
@@ -187,13 +210,18 @@ class VehicleAccessApiService {
   // Get available vehicles for vehicle access assignment
   static Future<VehicleAccessResponse> getAvailableVehicles() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/api/vehicle'),
-      );
+      final response = await http.get(Uri.parse('$_baseUrl/api/fleet/vehicle'));
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
-        return VehicleAccessResponse.fromJson(jsonData);
+        // Django response format: {success: true, message: '...', data: [...]}
+        if (jsonData['success'] == true) {
+          return VehicleAccessResponse.fromJson(jsonData);
+        } else {
+          throw Exception(
+            'Failed to load available vehicles: ${jsonData['message'] ?? 'Unknown error'}',
+          );
+        }
       } else {
         throw Exception(
           'Failed to load available vehicles: ${response.statusCode}',
@@ -212,7 +240,7 @@ class VehicleAccessApiService {
   ) async {
     try {
       final response = await http.put(
-        Uri.parse('$_baseUrl/api/vehicle/access'),
+        Uri.parse('$_baseUrl/api/fleet/vehicle/access'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'imei': imei,
@@ -243,12 +271,9 @@ class VehicleAccessApiService {
   static Future<bool> removeVehicleAccess(String imei, int userId) async {
     try {
       final response = await http.delete(
-        Uri.parse('$_baseUrl/api/vehicle/access'),
+        Uri.parse('$_baseUrl/api/fleet/vehicle/access'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'imei': imei,
-          'userId': userId,
-        }),
+        body: json.encode({'imei': imei, 'userId': userId}),
       );
 
       if (response.statusCode == 200) {

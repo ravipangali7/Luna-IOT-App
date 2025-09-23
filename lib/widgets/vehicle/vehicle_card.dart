@@ -43,6 +43,7 @@ class VehicleCard extends StatelessWidget {
       vehicle.minimumFuel = givenVehicle.minimumFuel;
       vehicle.todayKm = givenVehicle.todayKm;
       vehicle.ownershipType = givenVehicle.ownershipType;
+      vehicle.userVehicle = givenVehicle.userVehicle;
 
       // Vehicle Status Data
       vehicle.latestStatus = Status(
@@ -175,6 +176,7 @@ class VehicleCard extends StatelessWidget {
                     // Main Design Part
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      // crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // First Data Column
                         Column(
@@ -198,8 +200,9 @@ class VehicleCard extends StatelessWidget {
                               width: 100,
                               child: Text(
                                 vehicle.vehicleNo ?? '',
-                                overflow: TextOverflow.clip,
+                                overflow: TextOverflow.ellipsis,
                                 textAlign: TextAlign.center,
+                                maxLines: 1,
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: AppTheme.titleColor,
@@ -216,8 +219,9 @@ class VehicleCard extends StatelessWidget {
                               width: 100,
                               child: Text(
                                 vehicle.name ?? '',
-                                overflow: TextOverflow.clip,
+                                overflow: TextOverflow.ellipsis,
                                 textAlign: TextAlign.center,
+                                maxLines: 1,
                                 style: TextStyle(
                                   fontSize: 10,
                                   color: AppTheme.subTitleColor,
@@ -460,8 +464,6 @@ class VehicleCard extends StatelessWidget {
     String imei,
     Map<String, dynamic>? statusData,
   ) {
-    final now = DateTime.now();
-
     // Check if we have new socket data
     if (statusData?['createdAt'] != null) {
       try {

@@ -45,7 +45,9 @@ class _GeofenceCreateScreenState extends State<GeofenceCreateScreen> {
     try {
       print('Loading available vehicles for geofence assignment...');
       await vehicleController.getAvailableVehicles();
-      print('Loaded ${vehicleController.vehicles.length} available vehicles');
+      print(
+        'Loaded ${vehicleController.availableVehicles.length} available vehicles',
+      );
     } catch (e) {
       print('Error loading vehicles: $e');
       Get.snackbar(
@@ -237,7 +239,7 @@ class _GeofenceCreateScreenState extends State<GeofenceCreateScreen> {
                             height: 50,
                             child: Center(child: LoadingWidget(size: 30)),
                           )
-                        else if (vehicleController.vehicles.isEmpty)
+                        else if (vehicleController.availableVehicles.isEmpty)
                           const Text('No vehicles available')
                         else ...[
                           const SizedBox(height: 8),
@@ -249,10 +251,11 @@ class _GeofenceCreateScreenState extends State<GeofenceCreateScreen> {
                           Container(
                             height: 200,
                             child: ListView.builder(
-                              itemCount: vehicleController.vehicles.length,
+                              itemCount:
+                                  vehicleController.availableVehicles.length,
                               itemBuilder: (context, index) {
                                 final vehicle =
-                                    vehicleController.vehicles[index];
+                                    vehicleController.availableVehicles[index];
                                 final isSelected = selectedVehicles.contains(
                                   vehicle,
                                 );

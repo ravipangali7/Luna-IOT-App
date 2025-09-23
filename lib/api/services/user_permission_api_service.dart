@@ -8,9 +8,15 @@ class UserPermissionApiService {
   static Future<Map<String, dynamic>> getUserPermissions(int userId) async {
     try {
       final response = await _apiClient.dio.get(
-        '/api/user/$userId/permissions',
+        '/api/core/user/user/$userId/permissions',
       );
-      return response.data;
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true) {
+        return response.data;
+      }
+      throw Exception(
+        'Failed to get user permissions: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } on DioException catch (e) {
       if (e.response?.statusCode == 400) {
         final errorData = e.response?.data;
@@ -35,9 +41,15 @@ class UserPermissionApiService {
   ) async {
     try {
       final response = await _apiClient.dio.get(
-        '/api/user/$userId/combined-permissions',
+        '/api/core/user/user/$userId/combined-permissions',
       );
-      return response.data;
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true) {
+        return response.data;
+      }
+      throw Exception(
+        'Failed to get combined user permissions: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } on DioException catch (e) {
       if (e.response?.statusCode == 400) {
         final errorData = e.response?.data;
@@ -65,10 +77,16 @@ class UserPermissionApiService {
   }) async {
     try {
       final response = await _apiClient.dio.post(
-        '/api/user/assign-permission',
+        '/api/core/user/assign-permission',
         data: {'userId': userId, 'permissionId': permissionId},
       );
-      return response.data;
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true) {
+        return response.data;
+      }
+      throw Exception(
+        'Failed to assign permission: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } on DioException catch (e) {
       if (e.response?.statusCode == 400) {
         final errorData = e.response?.data;
@@ -94,10 +112,16 @@ class UserPermissionApiService {
   }) async {
     try {
       final response = await _apiClient.dio.delete(
-        '/api/user/remove-permission',
+        '/api/core/user/remove-permission',
         data: {'userId': userId, 'permissionId': permissionId},
       );
-      return response.data;
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true) {
+        return response.data;
+      }
+      throw Exception(
+        'Failed to remove permission: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } on DioException catch (e) {
       if (e.response?.statusCode == 400) {
         final errorData = e.response?.data;
@@ -123,10 +147,16 @@ class UserPermissionApiService {
   }) async {
     try {
       final response = await _apiClient.dio.post(
-        '/api/user/assign-multiple-permissions',
+        '/api/core/user/assign-multiple-permissions',
         data: {'userId': userId, 'permissionIds': permissionIds},
       );
-      return response.data;
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true) {
+        return response.data;
+      }
+      throw Exception(
+        'Failed to assign multiple permissions: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } on DioException catch (e) {
       if (e.response?.statusCode == 400) {
         final errorData = e.response?.data;
@@ -153,9 +183,15 @@ class UserPermissionApiService {
   ) async {
     try {
       final response = await _apiClient.dio.delete(
-        '/api/user/$userId/permissions',
+        '/api/core/user/user/$userId/permissions',
       );
-      return response.data;
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true) {
+        return response.data;
+      }
+      throw Exception(
+        'Failed to remove all permissions: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } on DioException catch (e) {
       if (e.response?.statusCode == 400) {
         final errorData = e.response?.data;
@@ -183,9 +219,15 @@ class UserPermissionApiService {
   }) async {
     try {
       final response = await _apiClient.dio.get(
-        '/api/user/$userId/has-permission/$permissionName',
+        '/api/core/user/user/$userId/has-permission/$permissionName',
       );
-      return response.data;
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true) {
+        return response.data;
+      }
+      throw Exception(
+        'Failed to check user permission: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } on DioException catch (e) {
       if (e.response?.statusCode == 400) {
         final errorData = e.response?.data;
@@ -207,8 +249,16 @@ class UserPermissionApiService {
   // Get all available permissions
   static Future<Map<String, dynamic>> getAllPermissions() async {
     try {
-      final response = await _apiClient.dio.get('/api/permissions');
-      return response.data;
+      final response = await _apiClient.dio.get(
+        '/api/core/permission/permissions',
+      );
+      // Django response format: {success: true, message: '...', data: [...]}
+      if (response.data['success'] == true) {
+        return response.data;
+      }
+      throw Exception(
+        'Failed to get all permissions: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } on DioException catch (e) {
       if (e.response?.statusCode == 400) {
         final errorData = e.response?.data;
@@ -233,9 +283,15 @@ class UserPermissionApiService {
   ) async {
     try {
       final response = await _apiClient.dio.get(
-        '/api/permission/$permissionId/users',
+        '/api/core/permission/permission/$permissionId/users',
       );
-      return response.data;
+      // Django response format: {success: true, message: '...', data: [...]}
+      if (response.data['success'] == true) {
+        return response.data;
+      }
+      throw Exception(
+        'Failed to get users with permission: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } on DioException catch (e) {
       if (e.response?.statusCode == 400) {
         final errorData = e.response?.data;
@@ -263,10 +319,16 @@ class UserPermissionApiService {
   }) async {
     try {
       final response = await _apiClient.dio.post(
-        '/api/permissions',
+        '/api/core/permission/permissions',
         data: {'name': name, 'description': description},
       );
-      return response.data;
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true) {
+        return response.data;
+      }
+      throw Exception(
+        'Failed to create permission: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } on DioException catch (e) {
       if (e.response?.statusCode == 400) {
         final errorData = e.response?.data;
@@ -300,10 +362,16 @@ class UserPermissionApiService {
   }) async {
     try {
       final response = await _apiClient.dio.put(
-        '/api/permissions/$permissionId',
+        '/api/core/permission/permissions/$permissionId',
         data: {'name': name, 'description': description},
       );
-      return response.data;
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true) {
+        return response.data;
+      }
+      throw Exception(
+        'Failed to update permission: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } on DioException catch (e) {
       if (e.response?.statusCode == 400) {
         final errorData = e.response?.data;
@@ -335,9 +403,15 @@ class UserPermissionApiService {
   static Future<Map<String, dynamic>> deletePermission(int permissionId) async {
     try {
       final response = await _apiClient.dio.delete(
-        '/api/permissions/$permissionId',
+        '/api/core/permission/permissions/$permissionId',
       );
-      return response.data;
+      // Django response format: {success: true, message: '...'}
+      if (response.data['success'] == true) {
+        return response.data;
+      }
+      throw Exception(
+        'Failed to delete permission: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
         throw Exception('Permission not found');
@@ -357,9 +431,15 @@ class UserPermissionApiService {
   ) async {
     try {
       final response = await _apiClient.dio.get(
-        '/api/permissions/$permissionId',
+        '/api/core/permission/permissions/$permissionId',
       );
-      return response.data;
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true) {
+        return response.data;
+      }
+      throw Exception(
+        'Failed to get permission: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
         throw Exception('Permission not found');

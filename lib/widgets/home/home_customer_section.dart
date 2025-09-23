@@ -131,7 +131,7 @@ class HomeCustomerSection extends StatelessWidget {
               ),
               RoleBasedWidget(
                 allowedRoles: ['super admin'],
-                allowedPermissions: ['BLOOD_DONATION'],
+                allowedPermissions: ['Can view blood donation'],
                 child: HomeFeatureCard(
                   title: 'Blood Management',
                   subtitle: 'Manage Blood Donations',

@@ -85,11 +85,19 @@ class VehicleService {
     required String vehicleState,
     required String imageState,
   }) {
+    // Ensure we have valid vehicle type and state with fallbacks
+    final validVehicleType = vehicleType.isNotEmpty
+        ? vehicleType.toLowerCase()
+        : 'car';
+    final validVehicleState = vehicleState.isNotEmpty
+        ? vehicleState.toLowerCase()
+        : 'nodata';
+
     if (VehicleImageState.status == imageState) {
-      return 'assets/icon/$imageState/${vehicleType.toLowerCase()}_${vehicleState.toLowerCase()}.png';
+      return 'assets/icon/$imageState/${validVehicleType}_${validVehicleState}.png';
     }
     // return 'assets/icon/$imageState/${imageState.toLowerCase()}_arrow_${vehicleState.toLowerCase()}.png';
-    return 'assets/icon/$imageState/${imageState.toLowerCase()}_${vehicleType.toLowerCase()}_${vehicleState.toLowerCase()}.png';
+    return 'assets/icon/$imageState/${imageState.toLowerCase()}_${validVehicleType}_${validVehicleState}.png';
   }
 
   // Get Battery

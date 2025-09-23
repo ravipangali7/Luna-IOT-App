@@ -22,7 +22,11 @@ class ReportApiService {
           'endDate': endDate.toIso8601String(),
         },
       );
-      return ReportData.fromJson(response.data['data']);
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true && response.data['data'] != null) {
+        return ReportData.fromJson(response.data['data']);
+      }
+      throw Exception('Failed to generate report: ${response.data['message'] ?? 'Unknown error'}');
     } on DioException catch (e) {
       throw Exception('Network error: ${e.message}');
     }

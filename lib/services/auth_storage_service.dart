@@ -39,9 +39,13 @@ class AuthStorageService {
     try {
       if (kIsWeb) {
         final prefs = await SharedPreferences.getInstance();
+        await prefs.remove(_phoneKey);
         await prefs.remove(_tokenKey);
       } else {
-        await _storage.delete(key: _tokenKey);
+        await Future.wait([
+          _storage.delete(key: _phoneKey),
+          _storage.delete(key: _tokenKey),
+        ]);
       }
     } catch (e) {
       debugPrint('Error removing auth: $e');

@@ -9,7 +9,13 @@ class RoleApiService {
   Future<List<dynamic>> getAllRoles() async {
     try {
       final response = await _apiClient.dio.get(ApiEndpoints.getAllRoles);
-      return response.data['data'];
+      // Django response format: {success: true, message: '...', data: [...]}
+      if (response.data['success'] == true && response.data['data'] != null) {
+        return response.data['data'];
+      }
+      throw Exception(
+        'Failed to get roles: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } on DioException catch (e) {
       throw Exception('Network error: ${e.message}');
     }
@@ -20,7 +26,13 @@ class RoleApiService {
       final response = await _apiClient.dio.get(
         ApiEndpoints.getRoleById.replaceAll(':id', id.toString()),
       );
-      return response.data['data'];
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true && response.data['data'] != null) {
+        return response.data['data'];
+      }
+      throw Exception(
+        'Failed to get role: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } on DioException catch (e) {
       throw Exception('Failed to get role by ID: ${e.message}');
     }
@@ -28,8 +40,16 @@ class RoleApiService {
 
   Future<List<dynamic>> getAllPermissions() async {
     try {
-      final response = await _apiClient.dio.get('/api/permissions');
-      return response.data['data'];
+      final response = await _apiClient.dio.get(
+        '/api/core/permission/permissions',
+      );
+      // Django response format: {success: true, message: '...', data: [...]}
+      if (response.data['success'] == true && response.data['data'] != null) {
+        return response.data['data'];
+      }
+      throw Exception(
+        'Failed to get permissions: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } on DioException catch (e) {
       throw Exception('Network error: ${e.message}');
     }
@@ -44,7 +64,13 @@ class RoleApiService {
         ApiEndpoints.updateRolePermissions.replaceAll(':id', id.toString()),
         data: {'permissionIds': permissionIds},
       );
-      return response.data['data'];
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true) {
+        return response.data['data'] ?? {};
+      }
+      throw Exception(
+        'Failed to update role permissions: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } on DioException catch (e) {
       throw Exception('Failed to update role permissions: ${e.message}');
     }

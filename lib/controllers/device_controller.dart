@@ -12,6 +12,15 @@ class DeviceController extends GetxController {
   var devices = <Device>[].obs;
   var loading = false.obs;
 
+  // Pagination variables
+  var currentPage = 1.obs;
+  var pageSize = 10.obs;
+  var totalPages = 1.obs;
+  var totalCount = 0.obs;
+  var hasNextPage = false.obs;
+  var hasPreviousPage = false.obs;
+  var paginationLoading = false.obs;
+
   DeviceController(this._deviceApiService, this._userApiService);
 
   // Device assignment variables
@@ -33,7 +42,7 @@ class DeviceController extends GetxController {
     super.onInit();
     phoneController = TextEditingController();
     imeiController = TextEditingController();
-    loadDevices();
+    loadDevicesPaginated(); // Use paginated loading by default
   }
 
   @override
@@ -51,9 +60,39 @@ class DeviceController extends GetxController {
     );
   }
 
-  void updateSearchQuery(String query) {
+  void updateSearchQuery(String query) async {
     searchQuery.value = query;
-    applySearchAndFilter();
+    currentPage.value = 1; // Reset to first page when searching
+
+    if (query.trim().isEmpty) {
+      // If search is empty, load all devices with pagination
+      await loadDevicesPaginated();
+    } else {
+      // Use dedicated search API
+      await _searchDevices(query);
+    }
+  }
+
+  // Search devices using dedicated search API
+  Future<void> _searchDevices(String query) async {
+    try {
+      paginationLoading.value = true;
+
+      final searchResults = await _deviceApiService.searchDevices(query);
+
+      // Show search results without pagination
+      devices.value = searchResults;
+      filteredDevices.value = searchResults; // Update filteredDevices for UI
+      totalCount.value = searchResults.length;
+      totalPages.value = 1; // No pagination for search results
+      hasNextPage.value = false;
+      hasPreviousPage.value = false;
+    } catch (e) {
+      debugPrint('Error searching devices: ${e.toString()}');
+      Get.snackbar('Error', 'Failed to search devices');
+    } finally {
+      paginationLoading.value = false;
+    }
   }
 
   void updateFilter(String key, String? value) {
@@ -62,13 +101,15 @@ class DeviceController extends GetxController {
     } else {
       currentFilters[key] = value;
     }
-    applySearchAndFilter();
+    currentPage.value = 1; // Reset to first page when filtering
+    loadDevicesPaginated();
   }
 
   void clearAllFilters() {
     searchQuery.value = '';
     currentFilters.clear();
-    applySearchAndFilter();
+    currentPage.value = 1; // Reset to first page when clearing filters
+    loadDevicesPaginated();
   }
 
   Future<void> loadDevices() async {
@@ -81,6 +122,90 @@ class DeviceController extends GetxController {
     } finally {
       loading.value = false;
     }
+  }
+
+  // Load devices with pagination
+  Future<void> loadDevicesPaginated({
+    int? page,
+    int? pageSize,
+    String? search,
+    String? filter,
+  }) async {
+    try {
+      paginationLoading.value = true;
+
+      // Try paginated endpoint first
+      try {
+        final paginatedResponse = await _deviceApiService.getDevicesPaginated(
+          page: page ?? currentPage.value,
+          pageSize: pageSize ?? this.pageSize.value,
+          search: search ?? searchQuery.value,
+          filter: filter,
+        );
+
+        devices.value = paginatedResponse.data;
+        currentPage.value = paginatedResponse.pagination.currentPage;
+        totalPages.value = paginatedResponse.pagination.totalPages;
+        totalCount.value = paginatedResponse.pagination.count;
+        hasNextPage.value = paginatedResponse.pagination.hasNext;
+        hasPreviousPage.value = paginatedResponse.pagination.hasPrevious;
+
+        // Debug: Print device data to see what we're getting
+        debugPrint('Loaded devices count: ${devices.value.length}');
+        if (devices.value.isNotEmpty) {
+          debugPrint('First device: ${devices.value.first.toJson()}');
+        }
+      } catch (e) {
+        // Fallback to regular endpoint if pagination is not available
+        debugPrint(
+          'Pagination not available, falling back to regular endpoint: $e',
+        );
+        final allDevices = await _deviceApiService.getAllDevices();
+        devices.value = allDevices;
+
+        // Set pagination info for single page
+        currentPage.value = 1;
+        totalPages.value = 1;
+        totalCount.value = allDevices.length;
+        hasNextPage.value = false;
+        hasPreviousPage.value = false;
+      }
+
+      applySearchAndFilter(); // Apply current filter after loading
+    } catch (e) {
+      debugPrint('Error loading devices: ${e.toString()}');
+      Get.snackbar('Error', 'Failed to load devices');
+    } finally {
+      paginationLoading.value = false;
+    }
+  }
+
+  // Go to next page
+  Future<void> nextPage() async {
+    if (hasNextPage.value) {
+      await loadDevicesPaginated(page: currentPage.value + 1);
+    }
+  }
+
+  // Go to previous page
+  Future<void> previousPage() async {
+    if (hasPreviousPage.value) {
+      await loadDevicesPaginated(page: currentPage.value - 1);
+    }
+  }
+
+  // Go to specific page
+  Future<void> goToPage(int page) async {
+    if (page >= 1 && page <= totalPages.value) {
+      await loadDevicesPaginated(page: page);
+    }
+  }
+
+  // Change page size
+  Future<void> changePageSize(int newPageSize) async {
+    pageSize.value = newPageSize;
+    currentPage.value = 1; // Reset to first page
+    await loadDevicesPaginated();
   }
 
   Future<void> createDevice(
@@ -178,7 +303,8 @@ class DeviceController extends GetxController {
     try {
       isSearching.value = true;
       final user = await _userApiService.getUserByPhone(phone);
-      if (user['role']['name'] == 'Dealer') {
+      String userRole = user['role']?.toString() ?? '';
+      if (userRole == 'Dealer') {
         searchResults.value = [user];
       } else {
         searchResults.clear();

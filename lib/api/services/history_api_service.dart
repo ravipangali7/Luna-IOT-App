@@ -28,9 +28,15 @@ class HistoryApiService {
         ApiEndpoints.getCombinedHistoryByDateRange.replaceAll(':imei', imei),
         queryParameters: {'startDate': startDateStr, 'endDate': endDateStr},
       );
-      return (response.data['data'] as List)
-          .map((json) => History.fromJson(json))
-          .toList();
+      // Django response format: {success: true, message: '...', data: [...]}
+      if (response.data['success'] == true && response.data['data'] != null) {
+        return (response.data['data'] as List)
+            .map((json) => History.fromJson(json))
+            .toList();
+      }
+      throw Exception(
+        'Failed to get history: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } on DioException catch (e) {
       throw Exception('Network error: ${e.message}');
     }

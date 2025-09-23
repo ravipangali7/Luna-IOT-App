@@ -13,7 +13,7 @@ class BloodDonationApiService {
     String? search,
   }) async {
     try {
-      String url = '$_baseUrl/api/blood-donation';
+      String url = '$_baseUrl/api/health/blood-donation';
       List<String> queryParams = [];
 
       if (applyType != null) queryParams.add('applyType=$applyType');
@@ -28,7 +28,14 @@ class BloodDonationApiService {
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
-        return BloodDonationResponse.fromJson(jsonData);
+        // Django response format: {success: true, message: '...', data: {...}}
+        if (jsonData['success'] == true) {
+          return BloodDonationResponse.fromJson(jsonData);
+        } else {
+          throw Exception(
+            'Failed to load blood donations: ${jsonData['message'] ?? 'Unknown error'}',
+          );
+        }
       } else {
         throw Exception(
           'Failed to load blood donations: ${response.statusCode}',
@@ -43,7 +50,7 @@ class BloodDonationApiService {
   static Future<BloodDonation> getBloodDonationById(int id) async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/api/blood-donation/$id'),
+        Uri.parse('$_baseUrl/api/health/blood-donation/$id'),
       );
 
       if (response.statusCode == 200) {
@@ -69,7 +76,7 @@ class BloodDonationApiService {
   ) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/api/blood-donation/create'),
+        Uri.parse('$_baseUrl/api/health/blood-donation/create'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(bloodDonation.toJson()),
       );
@@ -99,7 +106,7 @@ class BloodDonationApiService {
   ) async {
     try {
       final response = await http.put(
-        Uri.parse('$_baseUrl/api/blood-donation/update/$id'),
+        Uri.parse('$_baseUrl/api/health/blood-donation/update/$id'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(bloodDonation.toJson()),
       );
@@ -126,7 +133,7 @@ class BloodDonationApiService {
   static Future<bool> deleteBloodDonation(int id) async {
     try {
       final response = await http.delete(
-        Uri.parse('$_baseUrl/api/blood-donation/delete/$id'),
+        Uri.parse('$_baseUrl/api/health/blood-donation/delete/$id'),
       );
 
       if (response.statusCode == 200) {
@@ -148,7 +155,7 @@ class BloodDonationApiService {
   ) async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/api/blood-donation/type/$type'),
+        Uri.parse('$_baseUrl/api/health/blood-donation/type/$type'),
       );
 
       if (response.statusCode == 200) {
@@ -170,7 +177,9 @@ class BloodDonationApiService {
   ) async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/api/blood-donation/blood-group/$bloodGroup'),
+        Uri.parse(
+          '$_baseUrl/api/health/blood-donation/blood-group/$bloodGroup',
+        ),
       );
 
       if (response.statusCode == 200) {

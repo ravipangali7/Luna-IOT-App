@@ -2,6 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:luna_iot/api/api_client.dart';
 import 'package:luna_iot/api/api_endpoints.dart';
 import 'package:luna_iot/models/vehicle_model.dart';
+import 'package:luna_iot/models/pagination_model.dart';
+import 'package:flutter/material.dart';
 
 class VehicleApiService {
   final ApiClient _apiClient;
@@ -12,9 +14,91 @@ class VehicleApiService {
   Future<List<Vehicle>> getAllVehicles() async {
     try {
       final response = await _apiClient.dio.get(ApiEndpoints.getAllVehicles);
-      return (response.data['data'] as List)
-          .map((json) => Vehicle.fromJson(json))
-          .toList();
+
+      // Django response format: {success: true, message: '...', data: [...]}
+      if (response.data['success'] == true && response.data['data'] != null) {
+        final List<dynamic> vehiclesJson = response.data['data'] as List;
+        return vehiclesJson.map((json) => Vehicle.fromJson(json)).toList();
+      }
+      throw Exception(
+        'Failed to get vehicles: ${response.data['message'] ?? 'Unknown error'}',
+      );
+    } on DioException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    }
+  }
+
+  // Get vehicles with pagination
+  Future<PaginatedResponse<Vehicle>> getVehiclesPaginated({
+    int page = 1,
+    int pageSize = 25,
+    String? search,
+    String? filter,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{'page': page};
+
+      final response = await _apiClient.dio.get(
+        ApiEndpoints.getVehiclesPaginated,
+        queryParameters: queryParams,
+      );
+
+      // Django response format: {success: true, message: '...', data: [...], pagination: {...}}
+      if (response.data['success'] == true) {
+        return PaginatedResponse.fromJson(
+          response.data,
+          (json) => Vehicle.fromJson(json),
+        );
+      }
+      throw Exception(
+        'Failed to get vehicles: ${response.data['message'] ?? 'Unknown error'}',
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        throw Exception('Pagination endpoint not available');
+      }
+      throw Exception('Network error: ${e.message}');
+    }
+  }
+
+  // Search vehicles using dedicated search API
+  Future<List<Vehicle>> searchVehicles(String query) async {
+    try {
+      final response = await _apiClient.dio.get(
+        ApiEndpoints.searchVehicles,
+        queryParameters: {'q': query},
+      );
+
+      // Debug: Print raw response
+      debugPrint('Search API response: ${response.data}');
+
+      // Django response format: {success: true, message: '...', data: {vehicles: [...]} or [...]}
+      if (response.data['success'] == true && response.data['data'] != null) {
+        final data = response.data['data'];
+        List<dynamic> vehiclesJson;
+
+        if (data is List) {
+          // Direct array format
+          vehiclesJson = data;
+        } else if (data is Map<String, dynamic>) {
+          // Check if data contains a 'vehicles' key (nested structure)
+          if (data.containsKey('vehicles') && data['vehicles'] is List) {
+            vehiclesJson = data['vehicles'] as List<dynamic>;
+          } else {
+            // If single object, wrap it in a list
+            vehiclesJson = [data];
+          }
+        } else {
+          vehiclesJson = [];
+        }
+
+        debugPrint('Processed vehicles JSON: $vehiclesJson');
+
+        return vehiclesJson.map((json) => Vehicle.fromJson(json)).toList();
+      }
+      throw Exception(
+        'Failed to search vehicles: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } on DioException catch (e) {
       throw Exception('Network error: ${e.message}');
     }
@@ -26,7 +110,13 @@ class VehicleApiService {
       final response = await _apiClient.dio.get(
         ApiEndpoints.getVehicleByImei.replaceAll(':imei', imei),
       );
-      return Vehicle.fromJson(response.data['data']);
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true && response.data['data'] != null) {
+        return Vehicle.fromJson(response.data['data']);
+      }
+      throw Exception(
+        'Failed to get vehicle: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } catch (e) {
       throw Exception('Failed to get vehicle by IMEI');
     }
@@ -39,7 +129,13 @@ class VehicleApiService {
         ApiEndpoints.createVehicle,
         data: data,
       );
-      return Vehicle.fromJson(response.data['data']);
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true && response.data['data'] != null) {
+        return Vehicle.fromJson(response.data['data']);
+      }
+      throw Exception(
+        'Failed to create vehicle: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } catch (e) {
       throw Exception('Failed to create vehicle ${e}');
     }
@@ -52,7 +148,13 @@ class VehicleApiService {
         ApiEndpoints.updateVehicle.replaceAll(':imei', imei),
         data: data,
       );
-      return Vehicle.fromJson(response.data['data']);
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true && response.data['data'] != null) {
+        return Vehicle.fromJson(response.data['data']);
+      }
+      throw Exception(
+        'Failed to update vehicle: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } on DioException catch (e) {
       if (e.response?.statusCode == 400) {
         final errorMessage = e.response?.data['message'] ?? 'Bad Request';
@@ -66,10 +168,11 @@ class VehicleApiService {
   // Delete vehicle
   Future<bool> deleteVehicle(String imei) async {
     try {
-      await _apiClient.dio.delete(
+      final response = await _apiClient.dio.delete(
         ApiEndpoints.deleteVehicle.replaceAll(':imei', imei),
       );
-      return true;
+      // Django response format: {success: true, message: '...'}
+      return response.data['success'] == true;
     } catch (e) {
       return false;
     }
@@ -91,7 +194,13 @@ class VehicleApiService {
           'permissions': permissions,
         },
       );
-      return response.data['data'];
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true) {
+        return response.data['data'] ?? {};
+      }
+      throw Exception(
+        'Failed to assign vehicle access: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } on DioException catch (e) {
       if (e.response?.statusCode == 400) {
         final errorMessage = e.response?.data['message'] ?? 'Bad Request';
@@ -110,9 +219,15 @@ class VehicleApiService {
       final response = await _apiClient.dio.get(
         ApiEndpoints.getVehiclesForAccessAssignment,
       );
-      return (response.data['data'] as List)
-          .map((json) => Vehicle.fromJson(json))
-          .toList();
+      // Django response format: {success: true, message: '...', data: [...]}
+      if (response.data['success'] == true && response.data['data'] != null) {
+        return (response.data['data'] as List)
+            .map((json) => Vehicle.fromJson(json))
+            .toList();
+      }
+      throw Exception(
+        'Failed to get vehicles: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } on DioException catch (e) {
       throw Exception('Network error: ${e.message}');
     }
@@ -130,7 +245,13 @@ class VehicleApiService {
         ApiEndpoints.getVehicleAccessAssignments.replaceAll(':imei', imei),
       );
       print('API Response: ${response.data}');
-      return (response.data['data'] as List).cast<Map<String, dynamic>>();
+      // Django response format: {success: true, message: '...', data: [...]}
+      if (response.data['success'] == true && response.data['data'] != null) {
+        return (response.data['data'] as List).cast<Map<String, dynamic>>();
+      }
+      throw Exception(
+        'Failed to get vehicle access assignments: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } on DioException catch (e) {
       print('API Error: ${e.response?.data}');
       if (e.response?.statusCode == 403) {
@@ -152,7 +273,13 @@ class VehicleApiService {
         ApiEndpoints.updateVehicleAccess,
         data: {'imei': imei, 'userId': userId, 'permissions': permissions},
       );
-      return response.data['data'];
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true) {
+        return response.data['data'] ?? {};
+      }
+      throw Exception(
+        'Failed to update vehicle access: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } on DioException catch (e) {
       if (e.response?.statusCode == 400) {
         final errorMessage = e.response?.data['message'] ?? 'Bad Request';
@@ -168,11 +295,12 @@ class VehicleApiService {
   // NEW: Remove vehicle access
   Future<bool> removeVehicleAccess(String imei, int userId) async {
     try {
-      await _apiClient.dio.delete(
+      final response = await _apiClient.dio.delete(
         ApiEndpoints.removeVehicleAccess,
         data: {'imei': imei, 'userId': userId},
       );
-      return true;
+      // Django response format: {success: true, message: '...'}
+      return response.data['success'] == true;
     } on DioException catch (e) {
       if (e.response?.statusCode == 403) {
         final errorMessage = e.response?.data['message'] ?? 'Access Denied';

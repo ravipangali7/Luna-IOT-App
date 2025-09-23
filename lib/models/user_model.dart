@@ -73,12 +73,10 @@ class User {
     };
   }
 
-  // Get only direct user permissions (ignore role permissions as requested)
+  // Get all user permissions (role + direct)
   List<String> getAllPermissions() {
-    // Only return direct user permissions, ignore role permissions
-    final result = permissions.toList();
-
-    return result;
+    // Return all permissions (role + direct) as sent by Django
+    return permissions.toList();
   }
 
   // Check if user has specific permission (role or direct)

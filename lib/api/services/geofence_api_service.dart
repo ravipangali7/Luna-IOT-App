@@ -32,9 +32,9 @@ class GeofenceApiService {
       print('Response status: ${response.statusCode}');
       print('Response data: ${response.data}');
 
-      // Accept both 200 and 201 status codes
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return GeofenceModel.fromJson(response.data['data'] ?? response.data);
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true && response.data['data'] != null) {
+        return GeofenceModel.fromJson(response.data['data']);
       } else {
         throw Exception(
           response.data['message'] ?? 'Failed to create geofence',
@@ -51,27 +51,12 @@ class GeofenceApiService {
     try {
       final response = await _apiClient.dio.get(ApiEndpoints.getAllGeofences);
 
-      if (response.statusCode == 200) {
-        // Fix: Access the 'data' field from the response
-        final responseData = response.data;
-
-        if (responseData is Map<String, dynamic> &&
-            responseData.containsKey('data')) {
-          // Handle the wrapped response format
-          final geofencesList = responseData['data'] as List;
-          return geofencesList
-              .map((json) => GeofenceModel.fromJson(json))
-              .toList();
-        } else if (responseData is List) {
-          // Handle direct array response (fallback)
-          return responseData
-              .map((json) => GeofenceModel.fromJson(json))
-              .toList();
-        } else {
-          throw Exception(
-            'Unexpected response format: ${responseData.runtimeType}',
-          );
-        }
+      // Django response format: {success: true, message: '...', data: [...]}
+      if (response.data['success'] == true && response.data['data'] != null) {
+        final geofencesList = response.data['data'] as List;
+        return geofencesList
+            .map((json) => GeofenceModel.fromJson(json))
+            .toList();
       } else {
         throw Exception(response.data['message'] ?? 'Failed to get geofences');
       }
@@ -87,19 +72,9 @@ class GeofenceApiService {
         '${ApiEndpoints.getGeofenceById}/$id',
       );
 
-      if (response.statusCode == 200) {
-        final responseData = response.data;
-
-        if (responseData is Map<String, dynamic> &&
-            responseData.containsKey('data')) {
-          return GeofenceModel.fromJson(responseData['data']);
-        } else if (responseData is Map<String, dynamic>) {
-          return GeofenceModel.fromJson(responseData);
-        } else {
-          throw Exception(
-            'Unexpected response format: ${responseData.runtimeType}',
-          );
-        }
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true && response.data['data'] != null) {
+        return GeofenceModel.fromJson(response.data['data']);
       } else {
         throw Exception(response.data['message'] ?? 'Failed to get geofence');
       }
@@ -115,24 +90,12 @@ class GeofenceApiService {
         '${ApiEndpoints.getGeofencesByImei}/$imei',
       );
 
-      if (response.statusCode == 200) {
-        final responseData = response.data;
-
-        if (responseData is Map<String, dynamic> &&
-            responseData.containsKey('data')) {
-          final geofencesList = responseData['data'] as List;
-          return geofencesList
-              .map((json) => GeofenceModel.fromJson(json))
-              .toList();
-        } else if (responseData is List) {
-          return responseData
-              .map((json) => GeofenceModel.fromJson(json))
-              .toList();
-        } else {
-          throw Exception(
-            'Unexpected response format: ${responseData.runtimeType}',
-          );
-        }
+      // Django response format: {success: true, message: '...', data: [...]}
+      if (response.data['success'] == true && response.data['data'] != null) {
+        final geofencesList = response.data['data'] as List;
+        return geofencesList
+            .map((json) => GeofenceModel.fromJson(json))
+            .toList();
       } else {
         throw Exception(response.data['message'] ?? 'Failed to get geofences');
       }
@@ -162,19 +125,9 @@ class GeofenceApiService {
         },
       );
 
-      if (response.statusCode == 200) {
-        final responseData = response.data;
-
-        if (responseData is Map<String, dynamic> &&
-            responseData.containsKey('data')) {
-          return GeofenceModel.fromJson(responseData['data']);
-        } else if (responseData is Map<String, dynamic>) {
-          return GeofenceModel.fromJson(responseData);
-        } else {
-          throw Exception(
-            'Unexpected response format: ${responseData.runtimeType}',
-          );
-        }
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true && response.data['data'] != null) {
+        return GeofenceModel.fromJson(response.data['data']);
       } else {
         throw Exception(
           response.data['message'] ?? 'Failed to update geofence',
@@ -192,7 +145,8 @@ class GeofenceApiService {
         '${ApiEndpoints.deleteGeofence}/$id',
       );
 
-      if (response.statusCode != 200) {
+      // Django response format: {success: true, message: '...'}
+      if (response.data['success'] != true) {
         throw Exception(
           response.data['message'] ?? 'Failed to delete geofence',
         );

@@ -9,10 +9,14 @@ class RelayApiService {
   Future<Map<String, dynamic>> turnRelayOn(String imei) async {
     try {
       final response = await _apiClient.dio.post(
-        '/api/relay/on',
+        '/api/device/relay/on',
         data: {'imei': imei},
       );
-      return response.data;
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true) {
+        return response.data;
+      }
+      throw Exception('Failed to turn relay ON: ${response.data['message'] ?? 'Unknown error'}');
     } catch (e) {
       print(e);
       print('Error turning relay ON: $e');
@@ -24,10 +28,14 @@ class RelayApiService {
   Future<Map<String, dynamic>> turnRelayOff(String imei) async {
     try {
       final response = await _apiClient.dio.post(
-        '/api/relay/off',
+        '/api/device/relay/off',
         data: {'imei': imei},
       );
-      return response.data;
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true) {
+        return response.data;
+      }
+      throw Exception('Failed to turn relay OFF: ${response.data['message'] ?? 'Unknown error'}');
     } catch (e) {
       print('Error turning relay OFF: $e');
       rethrow;
@@ -37,8 +45,12 @@ class RelayApiService {
   // Get relay status
   Future<Map<String, dynamic>> getRelayStatus(String imei) async {
     try {
-      final response = await _apiClient.dio.get('/api/relay/status/$imei');
-      return response.data;
+      final response = await _apiClient.dio.get('/api/device/relay/status/$imei');
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true) {
+        return response.data;
+      }
+      throw Exception('Failed to get relay status: ${response.data['message'] ?? 'Unknown error'}');
     } catch (e) {
       print('Error getting relay status: $e');
       rethrow;

@@ -7,11 +7,10 @@ class AuthApiService {
   AuthApiService(this._apiClient);
 
   // Send OTP for registration
-  // Send OTP for registration
   Future<Map<String, dynamic>> sendRegistrationOTP(String phone) async {
     try {
       final response = await _apiClient.dio.post(
-        '/api/auth/register/send-otp',
+        '/api/core/auth/register/send-otp',
         data: {'phone': phone},
       );
       return response.data;
@@ -44,7 +43,7 @@ class AuthApiService {
   }) async {
     try {
       final response = await _apiClient.dio.post(
-        '/api/auth/register/verify-otp',
+        '/api/core/auth/register/verify-otp',
         data: {'name': name, 'phone': phone, 'password': password, 'otp': otp},
       );
 
@@ -79,7 +78,7 @@ class AuthApiService {
   Future<Map<String, dynamic>> resendOTP(String phone) async {
     try {
       final response = await _apiClient.dio.post(
-        '/api/auth/register/resend-otp',
+        '/api/core/auth/register/resend-otp',
         data: {'phone': phone},
       );
       return response.data;
@@ -92,25 +91,15 @@ class AuthApiService {
   Future<Map<String, dynamic>> login(String phone, String password) async {
     try {
       final response = await _apiClient.dio.post(
-        '/api/auth/login/',
+        '/api/core/auth/login',
         data: {'phone': phone, 'password': password},
       );
 
       if (response.data is Map<String, dynamic>) {
         final data = response.data as Map<String, dynamic>;
 
-        // Check if the response has the expected structure
-        if (data.containsKey('success') && data['success'] == true) {
-          if (data.containsKey('message') &&
-              data['message'] is Map<String, dynamic>) {
-            // Extract user data from the 'message' field
-            return data['message'] as Map<String, dynamic>;
-          } else if (data.containsKey('data')) {
-            return data['data'] as Map<String, dynamic>;
-          }
-        }
-
-        // Fallback: return the whole response
+        // Django response format: {success: true, message: '...', data: {...}}
+        // Return the full response so AuthController can parse it properly
         return data;
       }
 
@@ -139,8 +128,10 @@ class AuthApiService {
   Future<void> logout(String phone, String token) async {
     try {
       await _apiClient.dio.post(
-        '/api/auth/logout',
-        options: Options(headers: {'x-phone': phone, 'x-token': token}),
+        '/api/core/auth/logout',
+        options: Options(
+          headers: {'X-Phone': phone, 'Authorization': 'Bearer $token'},
+        ),
       );
     } catch (e) {
       throw Exception('Logout failed: ${e.toString()}');
@@ -150,17 +141,15 @@ class AuthApiService {
   // Get Current User
   Future<Map<String, dynamic>> getCurrentUser() async {
     try {
-      final response = await _apiClient.dio.get('/api/auth/me');
+      final response = await _apiClient.dio.get('/api/core/auth/me');
 
       if (response.data is Map<String, dynamic>) {
         final data = response.data as Map<String, dynamic>;
 
-        // Check if the response has the expected structure
+        // Django response format: {success: true, message: '...', data: {...}}
         if (data.containsKey('success') && data['success'] == true) {
-          if (data.containsKey('message') &&
-              data['message'] is Map<String, dynamic>) {
-            return data['message'] as Map<String, dynamic>;
-          } else if (data.containsKey('data')) {
+          if (data.containsKey('data') &&
+              data['data'] is Map<String, dynamic>) {
             return data['data'] as Map<String, dynamic>;
           }
         }
@@ -182,7 +171,7 @@ class AuthApiService {
   Future<Map<String, dynamic>> sendForgotPasswordOTP(String phone) async {
     try {
       final response = await _apiClient.dio.post(
-        '/api/auth/forgot-password/send-otp',
+        '/api/core/auth/forgot-password/send-otp',
         data: {'phone': phone},
       );
       return response.data;
@@ -214,7 +203,7 @@ class AuthApiService {
   ) async {
     try {
       final response = await _apiClient.dio.post(
-        '/api/auth/forgot-password/verify-otp',
+        '/api/core/auth/forgot-password/verify-otp',
         data: {'phone': phone, 'otp': otp},
       );
       return response.data;
@@ -245,7 +234,7 @@ class AuthApiService {
   ) async {
     try {
       final response = await _apiClient.dio.post(
-        '/api/auth/forgot-password/reset-password',
+        '/api/core/auth/forgot-password/reset-password',
         data: {
           'phone': phone,
           'resetToken': resetToken,
@@ -273,7 +262,7 @@ class AuthApiService {
   Future<void> updateFcmToken(String fcmToken, String userPhone) async {
     try {
       await _apiClient.dio.put(
-        '/api/fcm-token', // Fix: Use correct endpoint
+        '/api/core/user/fcm-token',
         data: {
           'fcmToken': fcmToken,
           'phone': userPhone, // Include phone number

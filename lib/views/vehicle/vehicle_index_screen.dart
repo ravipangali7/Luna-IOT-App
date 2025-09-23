@@ -9,6 +9,7 @@ import 'package:luna_iot/controllers/vehicle_controller.dart';
 import 'package:luna_iot/models/search_filter_model.dart';
 import 'package:luna_iot/models/vehicle_model.dart';
 import 'package:luna_iot/widgets/loading_widget.dart';
+import 'package:luna_iot/widgets/pagination_widget.dart';
 import 'package:luna_iot/widgets/search_filter_bottom_sheet.dart';
 import 'package:luna_iot/widgets/vehicle/vehicle_card.dart';
 
@@ -120,7 +121,6 @@ class VehicleIndexScreen extends GetView<VehicleController> {
             child: Obx(() {
               // Ensure we're observing the observable variables
               final selectedFilter = controller.selectedFilter.value;
-              final vehiclesList = controller.vehicles;
 
               return ListView.builder(
                 scrollDirection: Axis.horizontal,
@@ -235,18 +235,40 @@ class VehicleIndexScreen extends GetView<VehicleController> {
                 );
               }
 
-              return RefreshIndicator(
-                onRefresh: () => controller.refreshVehicles(),
-                child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: ListView.builder(
-                    itemCount: controller.filteredVehicles.length,
-                    itemBuilder: (context, index) {
-                      final vehicle = controller.filteredVehicles[index];
-                      return VehicleCard(givenVehicle: vehicle);
-                    },
+              return Column(
+                children: [
+                  Expanded(
+                    child: RefreshIndicator(
+                      onRefresh: () => controller.loadVehiclesPaginated(),
+                      child: Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: ListView.builder(
+                          itemCount: controller.filteredVehicles.length,
+                          itemBuilder: (context, index) {
+                            final vehicle = controller.filteredVehicles[index];
+                            return VehicleCard(givenVehicle: vehicle);
+                          },
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  // Pagination widget
+                  Obx(
+                    () => PaginationWidget(
+                      currentPage: controller.currentPage.value,
+                      totalPages: controller.totalPages.value,
+                      totalCount: controller.totalCount.value,
+                      pageSize: controller.pageSize.value,
+                      hasNextPage: controller.hasNextPage.value,
+                      hasPreviousPage: controller.hasPreviousPage.value,
+                      isLoading: controller.paginationLoading.value,
+                      onPrevious: controller.previousPage,
+                      onNext: controller.nextPage,
+                      onPageChanged: controller.goToPage,
+                      onPageSizeChanged: controller.changePageSize,
+                    ),
+                  ),
+                ],
               );
             }),
           ),

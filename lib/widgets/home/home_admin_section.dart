@@ -91,8 +91,8 @@ class HomeAdminSection extends StatelessWidget {
               ),
               // Blood Donation - Only for SUPER Admin
               RoleBasedWidget(
-                allowedRoles: ['super admin'],
-                allowedPermissions: ['BLOOD_DONATION'],
+                allowedRoles: ['Super Admin'],
+                allowedPermissions: ['Can view blood donation'],
                 child: HomeFeatureCard(
                   title: 'Blood Donation',
                   subtitle: 'Manage Blood Donations',

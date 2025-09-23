@@ -233,7 +233,7 @@ class VehicleAccessScreen extends GetView<VehicleController> {
                             ),
                           ),
                           Text(
-                            user.phone ?? '',
+                            user.phone,
                             style: TextStyle(color: AppTheme.subTitleColor),
                           ),
                         ],
@@ -596,6 +596,7 @@ class VehicleAccessScreen extends GetView<VehicleController> {
 
   Widget _buildVehicleDropdown() {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -617,25 +618,53 @@ class VehicleAccessScreen extends GetView<VehicleController> {
           'Selected vehicle: ${controller.manageAccessSelectedVehicle.value?.name}',
         );
 
-        return DropdownButtonFormField<Vehicle>(
-          decoration: const InputDecoration(
-            labelText: 'Select Vehicle',
-            border: OutlineInputBorder(),
+        return SizedBox(
+          width: double.infinity,
+          child: DropdownButtonFormField<Vehicle>(
+            decoration: const InputDecoration(
+              labelText: 'Select Vehicle',
+              border: OutlineInputBorder(),
+            ),
+            value: controller.manageAccessSelectedVehicle.value,
+            isExpanded: true,
+            selectedItemBuilder: (BuildContext context) {
+              return controller.availableVehicles.map<Widget>((
+                Vehicle vehicle,
+              ) {
+                return Container(
+                  width: double.infinity,
+                  child: Tooltip(
+                    message: '${vehicle.name} (${vehicle.imei})',
+                    child: Text(
+                      '${vehicle.name} (${vehicle.imei.substring(vehicle.imei.length - 4)})',
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
+                );
+              }).toList();
+            },
+            items: controller.availableVehicles.map((vehicle) {
+              return DropdownMenuItem(
+                value: vehicle,
+                child: Tooltip(
+                  message: '${vehicle.name} (${vehicle.imei})',
+                  child: Text(
+                    '${vehicle.name} (${vehicle.imei.substring(vehicle.imei.length - 4)})',
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ),
+              );
+            }).toList(),
+            onChanged: (Vehicle? vehicle) {
+              print('Vehicle selected: ${vehicle?.name}');
+              if (vehicle != null) {
+                controller.manageAccessSelectedVehicle.value = vehicle;
+                controller.getVehicleAccessAssignments(vehicle.imei);
+              }
+            },
           ),
-          value: controller.manageAccessSelectedVehicle.value,
-          items: controller.availableVehicles.map((vehicle) {
-            return DropdownMenuItem(
-              value: vehicle,
-              child: Text('${vehicle.name} (${vehicle.imei})'),
-            );
-          }).toList(),
-          onChanged: (Vehicle? vehicle) {
-            print('Vehicle selected: ${vehicle?.name}');
-            if (vehicle != null) {
-              controller.manageAccessSelectedVehicle.value = vehicle;
-              controller.getVehicleAccessAssignments(vehicle.imei);
-            }
-          },
         );
       }),
     );
@@ -649,7 +678,9 @@ class VehicleAccessScreen extends GetView<VehicleController> {
         itemCount: controller.vehicleAccessAssignments.length,
         itemBuilder: (context, index) {
           final assignment = controller.vehicleAccessAssignments[index];
-          final user = assignment['user'] as Map<String, dynamic>;
+          // The API returns userName and userPhone directly, not nested in user object
+          final userName = assignment['userName'] ?? 'Unknown User';
+          final userPhone = assignment['userPhone'] ?? 'N/A';
 
           return Container(
             margin: const EdgeInsets.only(bottom: 8),
@@ -681,18 +712,14 @@ class VehicleAccessScreen extends GetView<VehicleController> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            user['name'] ?? 'Unknown User',
+                            userName,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               color: AppTheme.titleColor,
                             ),
                           ),
                           Text(
-                            'Phone: ${user['phone']}',
-                            style: TextStyle(color: AppTheme.subTitleColor),
-                          ),
-                          Text(
-                            'Role: ${user['role']?['name'] ?? 'N/A'}',
+                            'Phone: $userPhone',
                             style: TextStyle(color: AppTheme.subTitleColor),
                           ),
                         ],
@@ -707,9 +734,7 @@ class VehicleAccessScreen extends GetView<VehicleController> {
                         ),
                       ],
                       onSelected: (value) {
-                        if (value == 'edit') {
-                          _showEditPermissionsDialog(assignment);
-                        } else if (value == 'delete') {
+                        if (value == 'delete') {
                           _showDeleteConfirmationDialog(assignment);
                         }
                       },
@@ -877,190 +902,27 @@ class VehicleAccessScreen extends GetView<VehicleController> {
     );
   }
 
-  void _showEditPermissionsDialog(Map<String, dynamic> assignment) {
-    // Create temporary permission variables for editing
-    bool editAllAccess = assignment['allAccess'] ?? false;
-    bool editLiveTracking = assignment['liveTracking'] ?? false;
-    bool editHistory = assignment['history'] ?? false;
-    bool editReport = assignment['report'] ?? false;
-    bool editVehicleProfile = assignment['vehicleProfile'] ?? false;
-    bool editEvents = assignment['events'] ?? false;
-    bool editGeofence = assignment['geofence'] ?? false;
-    bool editEdit = assignment['edit'] ?? false;
-    bool editShareTracking = assignment['shareTracking'] ?? false;
-    bool editNotification = assignment['notification'] ?? false;
-    Get.dialog(
-      AlertDialog(
-        title: Text('Edit Permissions for ${assignment['user']['name']}'),
-        content: StatefulBuilder(
-          builder: (context, setState) {
-            return SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CheckboxListTile(
-                    title: const Text('All Access'),
-                    value: editAllAccess,
-                    onChanged: (bool? value) {
-                      setState(() {
-                        editAllAccess = value ?? false;
-                        if (editAllAccess) {
-                          // If all access is enabled, enable all other permissions
-                          editLiveTracking = true;
-                          editHistory = true;
-                          editReport = true;
-                          editVehicleProfile = true;
-                          editEvents = true;
-                          editGeofence = true;
-                          editEdit = true;
-                          editShareTracking = true;
-                          editNotification = true;
-                        }
-                      });
-                    },
-                  ),
-                  const Divider(),
-                  CheckboxListTile(
-                    title: const Text('Live Tracking'),
-                    value: editLiveTracking,
-                    onChanged: editAllAccess
-                        ? null
-                        : (bool? value) {
-                            setState(() {
-                              editLiveTracking = value ?? false;
-                            });
-                          },
-                  ),
-                  CheckboxListTile(
-                    title: const Text('History'),
-                    value: editHistory,
-                    onChanged: editAllAccess
-                        ? null
-                        : (bool? value) {
-                            setState(() {
-                              editHistory = value ?? false;
-                            });
-                          },
-                  ),
-                  CheckboxListTile(
-                    title: const Text('Report'),
-                    value: editReport,
-                    onChanged: editAllAccess
-                        ? null
-                        : (bool? value) {
-                            setState(() {
-                              editReport = value ?? false;
-                            });
-                          },
-                  ),
-                  CheckboxListTile(
-                    title: const Text('Vehicle Profile'),
-                    value: editVehicleProfile,
-                    onChanged: editAllAccess
-                        ? null
-                        : (bool? value) {
-                            setState(() {
-                              editVehicleProfile = value ?? false;
-                            });
-                          },
-                  ),
-                  CheckboxListTile(
-                    title: const Text('Events'),
-                    value: editEvents,
-                    onChanged: editAllAccess
-                        ? null
-                        : (bool? value) {
-                            setState(() {
-                              editEvents = value ?? false;
-                            });
-                          },
-                  ),
-                  CheckboxListTile(
-                    title: const Text('Geofence'),
-                    value: editGeofence,
-                    onChanged: editAllAccess
-                        ? null
-                        : (bool? value) {
-                            setState(() {
-                              editGeofence = value ?? false;
-                            });
-                          },
-                  ),
-                  CheckboxListTile(
-                    title: const Text('Edit'),
-                    value: editEdit,
-                    onChanged: editAllAccess
-                        ? null
-                        : (bool? value) {
-                            setState(() {
-                              editEdit = value ?? false;
-                            });
-                          },
-                  ),
-                  CheckboxListTile(
-                    title: const Text('Share Tracking'),
-                    value: editShareTracking,
-                    onChanged: editAllAccess
-                        ? null
-                        : (bool? value) {
-                            setState(() {
-                              editShareTracking = value ?? false;
-                            });
-                          },
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-        actions: [
-          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () {
-              Get.back();
-              final permissions = {
-                'allAccess': editAllAccess,
-                'liveTracking': editLiveTracking,
-                'history': editHistory,
-                'report': editReport,
-                'vehicleProfile': editVehicleProfile,
-                'events': editEvents,
-                'geofence': editGeofence,
-                'edit': editEdit,
-                'shareTracking': editShareTracking,
-                'notification': editNotification,
-              };
-
-              final imei = assignment['vehicle']['imei'];
-              final userId = assignment['userId'];
-
-              print('Updating permissions for user $userId: $permissions');
-              controller.updateVehicleAccess(imei, userId, permissions);
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showDeleteConfirmationDialog(Map<String, dynamic> assignment) {
     Get.dialog(
       AlertDialog(
         title: const Text('Delete Access'),
         content: Text(
-          'Are you sure you want to remove access for ${assignment['user']['name']}?',
+          'Are you sure you want to remove access for ${assignment['userName'] ?? 'Unknown User'}?',
         ),
         actions: [
           TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
           TextButton(
             onPressed: () {
               Get.back();
-              final imei = assignment['vehicle']['imei'];
+              final imei = controller.manageAccessSelectedVehicle.value?.imei;
               final userId = assignment['userId'];
 
-              print('Removing access for user $userId');
-              controller.removeVehicleAccess(imei, userId);
+              if (imei != null) {
+                print('Removing access for user $userId');
+                controller.removeVehicleAccess(imei, userId);
+              } else {
+                Get.snackbar('Error', 'No vehicle selected');
+              }
             },
             child: const Text('Delete'),
           ),

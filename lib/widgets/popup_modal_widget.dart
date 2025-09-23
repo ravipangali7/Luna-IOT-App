@@ -150,6 +150,32 @@ class PopupModalWidget extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                 ),
+
+              // Close button
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: onClose,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Close',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

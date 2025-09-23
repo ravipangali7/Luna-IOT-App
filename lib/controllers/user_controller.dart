@@ -67,7 +67,7 @@ class UserController extends GetxController {
         // Apply role filter
         if (currentFilters.containsKey('role') &&
             currentFilters['role'] != null) {
-          final userRole = user['role']?['name'] ?? '';
+          String userRole = user['role']?.toString() ?? '';
           if (userRole != currentFilters['role']) {
             return false;
           }

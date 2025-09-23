@@ -25,15 +25,16 @@ class ApiClient {
       'Accept': 'application/json',
     };
 
-    // Add interceptor to inject phone and token
+    // Add interceptor to inject phone and token for Django backend
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          // Skip adding auth headers for auth endpoints
+          // Skip adding auth headers for auth endpoints only
           if (options.path.contains('/auth/login') ||
               options.path.contains('/auth/register') ||
-              options.path.contains('/api/auth/login') ||
-              options.path.contains('/api/auth/register')) {
+              options.path.contains('/api/core/auth/login') ||
+              options.path.contains('/api/core/auth/register') ||
+              options.path.contains('/api/core/auth/forgot-password')) {
             handler.next(options);
             return;
           }
@@ -42,8 +43,9 @@ class ApiClient {
           final phone = await AuthStorageService.getPhone();
           final token = await AuthStorageService.getToken();
           if (phone != null && token != null) {
-            options.headers['x-phone'] = phone;
-            options.headers['x-token'] = token;
+            // Django middleware expects X-Phone and X-Token headers
+            options.headers['X-Phone'] = phone;
+            options.headers['X-Token'] = token;
           }
           handler.next(options);
         },
@@ -76,8 +78,8 @@ class ApiClient {
     return {
       'Content-Type': 'multipart/form-data',
       'Accept': 'application/json',
-      if (phone != null) 'x-phone': phone,
-      if (token != null) 'x-token': token,
+      if (phone != null) 'X-Phone': phone,
+      if (token != null) 'X-Token': token,
     };
   }
 

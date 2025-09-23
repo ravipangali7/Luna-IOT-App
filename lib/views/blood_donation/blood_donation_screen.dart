@@ -56,7 +56,7 @@ class _BloodDonationScreenState extends State<BloodDonationScreen>
     if (user == null) return false;
     return user.role.name.toLowerCase() == 'super admin' ||
         user.role.name.toLowerCase() == 'dealer' ||
-        user.hasPermission('BLOOD_DONATION');
+        user.hasPermission('Can view blood donation');
   }
 
   bool get canDeleteBloodDonation {
@@ -264,17 +264,62 @@ class _BloodDonationScreenState extends State<BloodDonationScreen>
     );
   }
 
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required MaterialColor color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.shade100,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.2),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: color.shade700),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: color.shade700,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildBloodDonationCard(BloodDonation donation) {
     final isNeed = donation.applyType == ApplyTypeOptions.need;
     final bloodGroupColor = _getBloodGroupColor(donation.bloodGroup);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: bloodGroupColor.withOpacity(0.1),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -282,14 +327,22 @@ class _BloodDonationScreenState extends State<BloodDonationScreen>
       ),
       child: Card(
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Colors.white, Colors.grey.shade50],
+              colors: [
+                Colors.white,
+                bloodGroupColor.withOpacity(0.02),
+                Colors.grey.shade50,
+              ],
+            ),
+            border: Border.all(
+              color: bloodGroupColor.withOpacity(0.1),
+              width: 1,
             ),
           ),
           child: Padding(
@@ -304,22 +357,25 @@ class _BloodDonationScreenState extends State<BloodDonationScreen>
                     // Blood Group Badge
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
+                        horizontal: 14,
+                        vertical: 8,
                       ),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                           colors: [
                             bloodGroupColor,
                             bloodGroupColor.withOpacity(0.8),
+                            bloodGroupColor.withOpacity(0.9),
                           ],
                         ),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: bloodGroupColor.withOpacity(0.2),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1),
+                            color: bloodGroupColor.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
@@ -329,16 +385,16 @@ class _BloodDonationScreenState extends State<BloodDonationScreen>
                           const Icon(
                             Icons.water_drop,
                             color: Colors.white,
-                            size: 16,
+                            size: 18,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 6),
                           Text(
                             donation.bloodGroup,
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              letterSpacing: 0.3,
+                              fontSize: 15,
+                              letterSpacing: 0.5,
                             ),
                           ),
                         ],
@@ -662,11 +718,11 @@ class _BloodDonationScreenState extends State<BloodDonationScreen>
 
                 // Created Date - compact footer
                 const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Date info
                     Row(
-                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           Icons.access_time_outlined,
@@ -674,155 +730,50 @@ class _BloodDonationScreenState extends State<BloodDonationScreen>
                           color: Colors.grey.shade500,
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          'Posted ${_formatDate(donation.createdAt ?? DateTime.now())}',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey.shade600,
-                            fontWeight: FontWeight.w500,
+                        Flexible(
+                          child: Text(
+                            'Posted ${_formatDate(donation.createdAt ?? DateTime.now())}',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
-                    // Action buttons
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
+                    const SizedBox(height: 6),
+                    // Action buttons - wrapped
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
                       children: [
                         // Call button
-                        GestureDetector(
+                        _buildActionButton(
+                          icon: Icons.call,
+                          label: isNeed ? 'Help Now' : 'Contact',
+                          color: isNeed ? Colors.orange : Colors.green,
                           onTap: () => _makePhoneCall(donation.phone),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isNeed
-                                  ? Colors.orange.shade100
-                                  : Colors.green.shade100,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: (isNeed ? Colors.orange : Colors.green)
-                                      .withOpacity(0.2),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 1),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.call,
-                                  size: 12,
-                                  color: isNeed
-                                      ? Colors.orange.shade700
-                                      : Colors.green.shade700,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  isNeed ? 'Help Now' : 'Contact',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: isNeed
-                                        ? Colors.orange.shade700
-                                        : Colors.green.shade700,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
                         ),
 
                         // Edit button (if user has permission)
-                        if (canEditBloodDonation) ...[
-                          const SizedBox(width: 6),
-                          GestureDetector(
+                        if (canEditBloodDonation)
+                          _buildActionButton(
+                            icon: Icons.edit,
+                            label: 'Edit',
+                            color: Colors.blue,
                             onTap: () => _editBloodDonation(donation),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.shade100,
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.blue.withOpacity(0.2),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 1),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.edit,
-                                    size: 12,
-                                    color: Colors.blue.shade700,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'Edit',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.blue.shade700,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
                           ),
-                        ],
 
                         // Delete button (if user has permission)
-                        if (canDeleteBloodDonation) ...[
-                          const SizedBox(width: 6),
-                          GestureDetector(
+                        if (canDeleteBloodDonation)
+                          _buildActionButton(
+                            icon: Icons.delete,
+                            label: 'Delete',
+                            color: Colors.red,
                             onTap: () => _deleteBloodDonation(donation),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.red.shade100,
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.red.withOpacity(0.2),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 1),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.delete,
-                                    size: 12,
-                                    color: Colors.red.shade700,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'Delete',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.red.shade700,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
                           ),
-                        ],
                       ],
                     ),
                   ],

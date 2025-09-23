@@ -21,6 +21,18 @@ class VehicleController extends GetxController {
   var vehicles = <Vehicle>[].obs;
   var loading = false.obs;
 
+  // Pagination variables
+  final RxInt currentPage = 1.obs;
+  final RxInt pageSize = 25.obs; // Changed to 25 to match API default
+  final RxInt totalPages = 1.obs;
+  final RxInt totalCount = 0.obs;
+  final RxBool hasNextPage = false.obs;
+  final RxBool hasPreviousPage = false.obs;
+  final RxBool paginationLoading = false.obs;
+
+  // Client-side pagination data
+  final RxList<Vehicle> _allVehicles = <Vehicle>[].obs;
+
   // NEW: Vehicle Access Assignment
   final RxList<Vehicle> availableVehicles = <Vehicle>[].obs;
   final RxList<Vehicle> selectedVehicles = <Vehicle>[].obs;
@@ -55,7 +67,6 @@ class VehicleController extends GetxController {
   // Vehicle state filtering
   var selectedFilter = 'All'.obs;
   var filteredVehicles = <Vehicle>[].obs;
-  Timer? _realTimeTimer;
   late SocketService _socketService;
 
   // Filter options
@@ -89,7 +100,7 @@ class VehicleController extends GetxController {
       _socketService = Get.put(SocketService());
     }
 
-    loadVehicles();
+    loadVehiclesPaginated(); // Use paginated loading by default
     getAvailableVehicles();
     _startRealTimeUpdates();
     _setupSocketListeners();
@@ -109,10 +120,115 @@ class VehicleController extends GetxController {
     }
   }
 
+  // Load vehicles with pagination
+  Future<void> loadVehiclesPaginated({
+    int? page,
+    int? pageSize,
+    String? search,
+    String? filter,
+  }) async {
+    try {
+      paginationLoading.value = true;
+
+      // Try paginated endpoint first
+      try {
+        final paginatedResponse = await _vehicleApiService.getVehiclesPaginated(
+          page: page ?? currentPage.value,
+          pageSize: pageSize ?? 25,
+          search: search ?? searchQuery.value,
+          filter: filter ?? selectedFilter.value,
+        );
+
+        // Always use server-side pagination
+        vehicles.value = paginatedResponse.data;
+        currentPage.value = paginatedResponse.pagination.currentPage;
+        totalPages.value = paginatedResponse.pagination.totalPages;
+        totalCount.value = paginatedResponse.pagination.count;
+        hasNextPage.value = paginatedResponse.pagination.hasNext;
+        hasPreviousPage.value = paginatedResponse.pagination.hasPrevious;
+
+        // If backend doesn't provide proper pagination, create it
+        if (totalPages.value <= 1 && totalCount.value > 25) {
+          totalPages.value = (totalCount.value / 25).ceil();
+          hasNextPage.value = currentPage.value < totalPages.value;
+          hasPreviousPage.value = currentPage.value > 1;
+        }
+      } catch (e) {
+        // Fallback to regular endpoint if pagination is not available
+        final allVehicles = await _vehicleApiService.getAllVehicles();
+
+        // Use client-side pagination for fallback
+        _applyClientSidePagination(allVehicles);
+      }
+
+      _applyFilter(); // Apply current filter after loading
+    } catch (e) {
+      debugPrint('Error loading vehicles: ${e.toString()}');
+      Get.snackbar('Error', 'Failed to load vehicles');
+    } finally {
+      paginationLoading.value = false;
+    }
+  }
+
+  // Go to next page
+  Future<void> nextPage() async {
+    if (hasNextPage.value) {
+      if (_allVehicles.isNotEmpty) {
+        // Client-side pagination
+        currentPage.value++;
+        _applyClientSidePagination(_allVehicles);
+      } else {
+        // Server-side pagination
+        await loadVehiclesPaginated(page: currentPage.value + 1);
+      }
+    }
+  }
+
+  // Go to previous page
+  Future<void> previousPage() async {
+    if (hasPreviousPage.value) {
+      if (_allVehicles.isNotEmpty) {
+        // Client-side pagination
+        currentPage.value--;
+        _applyClientSidePagination(_allVehicles);
+      } else {
+        // Server-side pagination
+        await loadVehiclesPaginated(page: currentPage.value - 1);
+      }
+    }
+  }
+
+  // Go to specific page
+  Future<void> goToPage(int page) async {
+    if (page >= 1 && page <= totalPages.value) {
+      if (_allVehicles.isNotEmpty) {
+        // Client-side pagination
+        currentPage.value = page;
+        _applyClientSidePagination(_allVehicles);
+      } else {
+        // Server-side pagination
+        await loadVehiclesPaginated(page: page);
+      }
+    }
+  }
+
+  // Change page size (disabled - using fixed page size)
+  Future<void> changePageSize(int newPageSize) async {
+    // Page size is now fixed at 25, no changes allowed
+    return;
+  }
+
   // Filter vehicles by state
   void setFilter(String filter) {
     selectedFilter.value = filter;
-    _applyFilter();
+    currentPage.value = 1; // Reset to first page when filtering
+
+    if (_allVehicles.isNotEmpty) {
+      // Client-side pagination - reload all vehicles
+      loadVehiclesPaginated();
+    } else {
+      loadVehiclesPaginated();
+    }
   }
 
   void _applyFilter() {
@@ -159,9 +275,45 @@ class VehicleController extends GetxController {
     );
   }
 
-  void updateSearchQuery(String query) {
+  void updateSearchQuery(String query) async {
     searchQuery.value = query;
-    _applyFilter();
+    currentPage.value = 1; // Reset to first page when searching
+
+    if (query.trim().isEmpty) {
+      // If search is empty, load all vehicles with pagination
+      await loadVehiclesPaginated();
+    } else {
+      // Use dedicated search API
+      await _searchVehicles(query);
+    }
+  }
+
+  // Search vehicles using dedicated search API
+  Future<void> _searchVehicles(String query) async {
+    try {
+      paginationLoading.value = true;
+
+      final searchResults = await _vehicleApiService.searchVehicles(query);
+
+      // Debug: Print search results to see what we're getting
+      debugPrint('Search results count: ${searchResults.length}');
+      if (searchResults.isNotEmpty) {
+        debugPrint('First search result: ${searchResults.first.toJson()}');
+      }
+
+      // Show search results without pagination
+      vehicles.value = searchResults;
+      filteredVehicles.value = searchResults; // Update filteredVehicles for UI
+      totalCount.value = searchResults.length;
+      totalPages.value = 1; // No pagination for search results
+      hasNextPage.value = false;
+      hasPreviousPage.value = false;
+    } catch (e) {
+      debugPrint('Error searching vehicles: ${e.toString()}');
+      Get.snackbar('Error', 'Failed to search vehicles');
+    } finally {
+      paginationLoading.value = false;
+    }
   }
 
   void updateFilter(String key, String? value) {
@@ -176,12 +328,19 @@ class VehicleController extends GetxController {
   void clearAllFilters() {
     searchQuery.value = '';
     currentFilters.clear();
-    _applyFilter();
+    currentPage.value = 1; // Reset to first page when clearing filters
+
+    if (_allVehicles.isNotEmpty) {
+      // Client-side pagination - reload all vehicles
+      loadVehiclesPaginated();
+    } else {
+      loadVehiclesPaginated();
+    }
   }
 
   // Start real-time updates
   void _startRealTimeUpdates() {
-    _realTimeTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+    Timer.periodic(const Duration(seconds: 10), (timer) {
       _updateVehicleStatesFromSocket();
     });
   }
@@ -451,7 +610,7 @@ class VehicleController extends GetxController {
         'id': user['id'],
         'name': user['name'],
         'phone': user['phone'],
-        'role': user['role']['name'],
+        'role': user['role']?.toString() ?? 'Unknown Role',
       });
     } catch (e) {
       print('ERROR: $e');
@@ -638,5 +797,18 @@ class VehicleController extends GetxController {
     phoneController.dispose();
     imeiController.dispose();
     super.onClose();
+  }
+
+  // Client-side pagination method
+  void _applyClientSidePagination(List<Vehicle> allVehicles) {
+    _allVehicles.assignAll(allVehicles);
+
+    final startIndex = (currentPage.value - 1) * 25;
+    vehicles.value = allVehicles.skip(startIndex).take(25).toList();
+
+    totalCount.value = allVehicles.length;
+    totalPages.value = (allVehicles.length / 25).ceil();
+    hasNextPage.value = currentPage.value < totalPages.value;
+    hasPreviousPage.value = currentPage.value > 1;
   }
 }

@@ -11,37 +11,25 @@ class NotificationApiService {
   NotificationApiService(this._apiClient);
 
   // Get notifications (role-based)
-  // Get notifications (role-based)
   Future<List<NotificationModel.Notification>> getNotifications() async {
     try {
       final response = await _apiClient.dio.get(ApiEndpoints.getNotifications);
       print('API Response: ${response.data}'); // Debug log
 
-      final raw = response.data;
-      List<dynamic> list;
-      if (raw is List) {
-        list = raw;
-      } else if (raw is Map && raw['data'] is List) {
-        list = raw['data'] as List;
-      } else if (raw is String) {
-        final parsed = jsonDecode(raw);
-        if (parsed is List) {
-          list = parsed;
-        } else if (parsed is Map && parsed['data'] is List) {
-          list = parsed['data'] as List;
-        } else {
-          return [];
-        }
-      } else {
-        return [];
+      // Django response format: {success: true, message: '...', data: [...]}
+      if (response.data['success'] == true && response.data['data'] != null) {
+        final list = response.data['data'] as List;
+        return list
+            .map(
+              (j) => NotificationModel.Notification.fromJson(
+                j as Map<String, dynamic>,
+              ),
+            )
+            .toList();
       }
-      return list
-          .map(
-            (j) => NotificationModel.Notification.fromJson(
-              j as Map<String, dynamic>,
-            ),
-          )
-          .toList();
+      throw Exception(
+        'Failed to get notifications: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } catch (e) {
       print('Error in getNotifications: $e');
       throw Exception('Failed to fetch notifications: $e');
@@ -67,7 +55,13 @@ class NotificationApiService {
           'targetRoleIds': targetRoleIds,
         },
       );
-      return NotificationModel.Notification.fromJson(response.data['data']);
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true && response.data['data'] != null) {
+        return NotificationModel.Notification.fromJson(response.data['data']);
+      }
+      throw Exception(
+        'Failed to create notification: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } catch (e) {
       throw Exception('Failed to create notification: $e');
     }
@@ -76,9 +70,15 @@ class NotificationApiService {
   // Delete notification (Super Admin only)
   Future<void> deleteNotification(int id) async {
     try {
-      await _apiClient.dio.delete(
+      final response = await _apiClient.dio.delete(
         ApiEndpoints.deleteNotification.replaceAll(':id', id.toString()),
       );
+      // Django response format: {success: true, message: '...'}
+      if (response.data['success'] != true) {
+        throw Exception(
+          'Failed to delete notification: ${response.data['message'] ?? 'Unknown error'}',
+        );
+      }
     } catch (e) {
       throw Exception('Failed to delete notification: $e');
     }
@@ -87,12 +87,18 @@ class NotificationApiService {
   // Mark notification as read
   Future<void> markNotificationAsRead(int notificationId) async {
     try {
-      await _apiClient.dio.put(
+      final response = await _apiClient.dio.put(
         ApiEndpoints.markNotificationAsRead.replaceAll(
           ':notificationId',
           notificationId.toString(),
         ),
       );
+      // Django response format: {success: true, message: '...'}
+      if (response.data['success'] != true) {
+        throw Exception(
+          'Failed to mark notification as read: ${response.data['message'] ?? 'Unknown error'}',
+        );
+      }
     } catch (e) {
       throw Exception('Failed to mark notification as read: $e');
     }
@@ -104,7 +110,13 @@ class NotificationApiService {
       final response = await _apiClient.dio.get(
         ApiEndpoints.getUnreadNotificationCount,
       );
-      return response.data['data']['count'];
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true && response.data['data'] != null) {
+        return response.data['data']['count'];
+      }
+      throw Exception(
+        'Failed to get unread count: ${response.data['message'] ?? 'Unknown error'}',
+      );
     } catch (e) {
       throw Exception('Failed to fetch unread notification count: $e');
     }

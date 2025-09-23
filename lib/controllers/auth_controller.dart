@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:luna_iot/api/api_client.dart';
 import 'package:luna_iot/api/services/auth_api_service.dart';
+import 'package:luna_iot/api/services/popup_api_service.dart';
 import 'package:luna_iot/models/user_model.dart';
 import 'package:luna_iot/services/auth_storage_service.dart';
-import 'package:luna_iot/services/firebase_service.dart';
+import 'package:luna_iot/services/popup_service.dart';
 
 class AuthController extends GetxController {
   final AuthApiService _authApiService;
@@ -50,9 +52,37 @@ class AuthController extends GetxController {
 
         // Fetch complete user data including role
         try {
-          final userData = await _authApiService.getCurrentUser();
-          currentUser.value = User.fromJson(userData);
-          await _updateFcmTokenAfterLogin();
+          final response = await _authApiService.getCurrentUser();
+          // Django response format: {success: true, message: '...', data: {...}}
+          if (response.containsKey('success') &&
+              response['success'] == true &&
+              response.containsKey('data')) {
+            final userData = response['data'] as Map<String, dynamic>;
+            currentUser.value = User.fromJson(userData);
+            await _updateFcmTokenAfterLogin();
+
+            // Show active popups after auto-login
+            try {
+              await Future.delayed(
+                Duration(milliseconds: 1000),
+              ); // Delay to ensure UI is ready
+
+              // Initialize popup dependencies
+              Get.lazyPut(() => PopupApiService(Get.find<ApiClient>()));
+
+              final context = Get.context;
+              if (context != null) {
+                PopupService().showActivePopups(context);
+              }
+            } catch (e) {
+              print('Failed to show active popups: $e');
+            }
+          } else {
+            // Invalid response, clear auth
+            await AuthStorageService.removeAuth();
+            isLoggedIn.value = false;
+            currentUser.value = null;
+          }
         } catch (e) {
           // If we can't fetch user data, clear auth and redirect to login
           await AuthStorageService.removeAuth();
@@ -79,32 +109,68 @@ class AuthController extends GetxController {
 
       final data = await _authApiService.login(phone, password);
 
-      // Check if we have the required fields
-      if (data.containsKey('phone') && data.containsKey('token')) {
-        final stopwatch = Stopwatch()..start();
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (data.containsKey('success') &&
+          data['success'] == true &&
+          data.containsKey('data')) {
+        final userData = data['data'] as Map<String, dynamic>;
 
-        await AuthStorageService.saveAuth(data['phone'], data['token']);
+        // Check if we have the required fields
+        if (userData.containsKey('phone') && userData.containsKey('token')) {
+          final stopwatch = Stopwatch()..start();
 
-        stopwatch.stop();
+          await AuthStorageService.saveAuth(
+            userData['phone'],
+            userData['token'],
+          );
 
-        // Parse user data including role
-        currentUser.value = User.fromJson(data);
-        isLoggedIn.value = true;
+          stopwatch.stop();
 
-        // Update FCM token after successful login
-        try {
-          final fcmToken = await FirebaseMessaging.instance.getToken();
-          if (fcmToken != null) {
-            // Update FCM token in backend\
-            await _updateFcmTokenAfterLogin();
+          // Parse user data including role
+          currentUser.value = User.fromJson(userData);
+          isLoggedIn.value = true;
+
+          // Update FCM token after successful login
+          try {
+            // Add a small delay to ensure storage is written
+            await Future.delayed(Duration(milliseconds: 100));
+
+            final fcmToken = await FirebaseMessaging.instance.getToken();
+            if (fcmToken != null) {
+              // Update FCM token in backend
+              await _updateFcmTokenAfterLogin();
+            }
+          } catch (e) {
+            print('Failed to update FCM token: $e');
           }
-        } catch (e) {
-          print('Failed to update FCM token: $e');
-        }
 
-        return true;
+          // Show active popups after successful login
+          try {
+            await Future.delayed(
+              Duration(milliseconds: 500),
+            ); // Small delay to ensure UI is ready
+
+            // Initialize popup dependencies
+            Get.lazyPut(() => PopupApiService(Get.find<ApiClient>()));
+
+            final context = Get.context;
+            if (context != null) {
+              PopupService().showActivePopups(context);
+            }
+          } catch (e) {
+            print('Failed to show active popups: $e');
+          }
+
+          return true;
+        } else {
+          Get.snackbar('Login Failed', 'Invalid user data from server');
+          return false;
+        }
       } else {
-        Get.snackbar('Login Failed', 'Invalid response from server');
+        Get.snackbar(
+          'Login Failed',
+          data['message'] ?? 'Invalid response from server',
+        );
         return false;
       }
     } catch (e) {
@@ -177,8 +243,19 @@ class AuthController extends GetxController {
       );
 
       if (response['success'] == true) {
-        // The user data is in response['message'], not response['data']
-        final userData = response['message'] as Map<String, dynamic>;
+        // Django response format: {success: true, message: '...', data: {...}}
+        Map<String, dynamic> userData;
+        if (response.containsKey('data') &&
+            response['data'] is Map<String, dynamic>) {
+          userData = response['data'] as Map<String, dynamic>;
+        } else if (response.containsKey('message') &&
+            response['message'] is Map<String, dynamic>) {
+          // Fallback for old format
+          userData = response['message'] as Map<String, dynamic>;
+        } else {
+          Get.snackbar('Error', 'Invalid response format from server');
+          return false;
+        }
 
         // Save auth data
         await AuthStorageService.saveAuth(userData['phone'], userData['token']);
@@ -186,6 +263,23 @@ class AuthController extends GetxController {
         // Set current user
         currentUser.value = User.fromJson(userData);
         isLoggedIn.value = true;
+
+        // Show active popups after successful registration
+        try {
+          await Future.delayed(
+            Duration(milliseconds: 500),
+          ); // Small delay to ensure UI is ready
+
+          // Initialize popup dependencies
+          Get.lazyPut(() => PopupApiService(Get.find<ApiClient>()));
+
+          final context = Get.context;
+          if (context != null) {
+            PopupService().showActivePopups(context);
+          }
+        } catch (e) {
+          print('Failed to show active popups: $e');
+        }
 
         Get.snackbar('Success', 'Registration successful');
         Get.offAllNamed('/'); // Navigate to home
@@ -356,14 +450,18 @@ class AuthController extends GetxController {
       );
 
       if (response['success']) {
-        // Save auth data - handle different response structures
+        // Django response format: {success: true, message: '...', data: {...}}
         Map<String, dynamic> userData;
-        if (response['data'] is Map<String, dynamic>) {
+        if (response.containsKey('data') &&
+            response['data'] is Map<String, dynamic>) {
           userData = response['data'] as Map<String, dynamic>;
-        } else if (response['message'] is Map<String, dynamic>) {
+        } else if (response.containsKey('message') &&
+            response['message'] is Map<String, dynamic>) {
+          // Fallback for old format
           userData = response['message'] as Map<String, dynamic>;
         } else {
-          userData = response as Map<String, dynamic>;
+          Get.snackbar('Error', 'Invalid response format from server');
+          return false;
         }
 
         await AuthStorageService.saveAuth(userData['phone'], userData['token']);
@@ -371,6 +469,23 @@ class AuthController extends GetxController {
         // Set current user
         currentUser.value = User.fromJson(userData);
         isLoggedIn.value = true;
+
+        // Show active popups after successful password reset
+        try {
+          await Future.delayed(
+            Duration(milliseconds: 500),
+          ); // Small delay to ensure UI is ready
+
+          // Initialize popup dependencies
+          Get.lazyPut(() => PopupApiService(Get.find<ApiClient>()));
+
+          final context = Get.context;
+          if (context != null) {
+            PopupService().showActivePopups(context);
+          }
+        } catch (e) {
+          print('Failed to show active popups: $e');
+        }
 
         Get.snackbar('Success', 'Password reset successfully');
         return true;
@@ -434,10 +549,11 @@ class AuthController extends GetxController {
       }
 
       // Get FCM token from Firebase
-      final fcmToken = await FirebaseService.getCurrentToken();
+      final fcmToken = await FirebaseMessaging.instance.getToken();
       if (fcmToken != null) {
         // Update FCM token in backend with phone number
         await _authApiService.updateFcmToken(fcmToken, userPhone);
+        print('FCM token updated successfully');
       } else {
         print('Failed to get FCM token');
       }

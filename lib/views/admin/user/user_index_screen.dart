@@ -7,8 +7,6 @@ import 'package:luna_iot/models/search_filter_model.dart';
 import 'package:luna_iot/widgets/confirm_dialouge.dart';
 import 'package:luna_iot/widgets/loading_widget.dart';
 import 'package:luna_iot/widgets/search_filter_bottom_sheet.dart';
-import 'user_permission_screen.dart';
-import '../../../app/app_routes.dart';
 
 class UserIndexScreen extends GetView<UserController> {
   const UserIndexScreen({super.key});
@@ -152,8 +150,7 @@ class UserIndexScreen extends GetView<UserController> {
                               ],
                             ),
                           ),
-                        if (user['role'] != null &&
-                            user['role']['name'] != null)
+                        if (user['role'] != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 2.0),
                             child: Row(
@@ -165,7 +162,7 @@ class UserIndexScreen extends GetView<UserController> {
                                 ),
                                 SizedBox(width: 4),
                                 Text(
-                                  user['role']['name'],
+                                  user['role'].toString(),
                                   style: TextStyle(
                                     color: AppTheme.subTitleColor,
                                     fontSize: 13,

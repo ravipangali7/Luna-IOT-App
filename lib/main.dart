@@ -4,12 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:luna_iot/api/api_client.dart';
 import 'package:luna_iot/api/services/auth_api_service.dart';
-import 'package:luna_iot/api/services/popup_api_service.dart';
 import 'package:luna_iot/app/app_routes.dart';
 import 'package:luna_iot/app/app_theme.dart';
 import 'package:luna_iot/controllers/auth_controller.dart';
 import 'package:luna_iot/services/firebase_service.dart';
-import 'package:luna_iot/services/popup_service.dart';
 import 'package:luna_iot/services/socket_service.dart';
 import 'package:luna_iot/views/splash_screen.dart';
 import 'package:upgrader/upgrader.dart';
@@ -46,7 +44,6 @@ class MyApp extends StatelessWidget {
         Get.lazyPut(() => SocketService());
         Get.lazyPut(() => ApiClient());
         Get.lazyPut(() => AuthApiService(Get.find<ApiClient>()));
-        Get.lazyPut(() => PopupApiService(Get.find<ApiClient>()));
         Get.lazyPut(() => AuthController(Get.find<AuthApiService>()));
 
         // Schedule FCM token update after auth check
@@ -78,10 +75,7 @@ class MyApp extends StatelessWidget {
           }
           await FirebaseService.updateFcmTokenForLoggedInUser();
 
-          // Show active popups after a short delay
-          Future.delayed(Duration(milliseconds: 1000), () {
-            _showActivePopups();
-          });
+          // Popup service is now called from auth controller after login
         } else {
           debugPrint('User not logged in, skipping FCM token update');
         }
@@ -91,15 +85,4 @@ class MyApp extends StatelessWidget {
     });
   }
 
-  void _showActivePopups() {
-    try {
-      // Get the current context from navigator
-      final context = Get.context;
-      if (context != null) {
-        PopupService().showActivePopups(context);
-      }
-    } catch (e) {
-      debugPrint('Error showing active popups: $e');
-    }
-  }
 }

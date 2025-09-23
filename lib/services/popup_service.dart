@@ -9,7 +9,7 @@ class PopupService {
   factory PopupService() => _instance;
   PopupService._internal();
 
-  final PopupApiService _popupApiService = Get.find<PopupApiService>();
+  PopupApiService get _popupApiService => Get.find<PopupApiService>();
 
   // Track shown popups to avoid showing them multiple times
   final Set<int> _shownPopups = <int>{};

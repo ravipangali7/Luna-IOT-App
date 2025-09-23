@@ -32,14 +32,10 @@ class GeofenceModel {
       ),
       boundary: List<String>.from(json['boundary'] ?? []),
       vehicles: json['vehicles'] != null
-          ? (json['vehicles'] as List)
-                .map((v) => Vehicle.fromJson(v['vehicle']))
-                .toList()
+          ? (json['vehicles'] as List).map((v) => Vehicle.fromJson(v)).toList()
           : [],
       users: json['users'] != null
-          ? (json['users'] as List)
-                .map((u) => User.fromJson(u['user']))
-                .toList()
+          ? (json['users'] as List).map((u) => User.fromJson(u)).toList()
           : [],
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])

@@ -38,6 +38,51 @@ class GeofenceIndexScreen extends GetView<GeofenceController> {
           return const LoadingWidget();
         }
 
+        // Show error message if there's an error
+        if (controller.errorMessage.value.isNotEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, color: AppTheme.errorColor, size: 48),
+                SizedBox(height: 16),
+                Text(
+                  'Error loading geofences',
+                  style: TextStyle(
+                    color: AppTheme.titleColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Text(
+                    controller.errorMessage.value,
+                    style: TextStyle(
+                      color: AppTheme.subTitleColor,
+                      fontSize: 14,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    controller.clearError();
+                    controller.getAllGeofences();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text('Retry'),
+                ),
+              ],
+            ),
+          );
+        }
+
         if (controller.geofences.isEmpty) {
           return Center(
             child: Text(
@@ -246,8 +291,58 @@ class GeofenceIndexScreen extends GetView<GeofenceController> {
                                   title: 'Confirm Delete Geofence',
                                   message:
                                       'Are you sure you want to delete "${geofence.title}"? This action cannot be undone.',
-                                  onConfirm: () {
-                                    controller.deleteGeofence(geofence.id!);
+                                  onConfirm: () async {
+                                    // Close the dialog first
+                                    Get.back();
+
+                                    // Show loading indicator
+                                    Get.dialog(
+                                      Center(
+                                        child: Container(
+                                          padding: EdgeInsets.all(20),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
+                                          ),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              CircularProgressIndicator(),
+                                              SizedBox(height: 16),
+                                              Text('Deleting geofence...'),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      barrierDismissible: false,
+                                    );
+
+                                    // Perform delete operation
+                                    final success = await controller
+                                        .deleteGeofence(geofence.id!);
+
+                                    // Close loading dialog
+                                    Get.back();
+
+                                    if (success) {
+                                      Get.snackbar(
+                                        'Success',
+                                        'Geofence deleted successfully',
+                                        backgroundColor: Colors.green,
+                                        colorText: Colors.white,
+                                        snackPosition: SnackPosition.TOP,
+                                      );
+                                    } else {
+                                      Get.snackbar(
+                                        'Error',
+                                        'Failed to delete geofence',
+                                        backgroundColor: Colors.red,
+                                        colorText: Colors.white,
+                                        snackPosition: SnackPosition.TOP,
+                                      );
+                                    }
                                   },
                                 ),
                               );

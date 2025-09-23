@@ -25,7 +25,23 @@ class _UserEditScreenState extends State<UserEditScreen> {
     super.initState();
     _nameController = TextEditingController(text: widget.user['name'] ?? '');
     _phoneController = TextEditingController(text: widget.user['phone'] ?? '');
-    selectedRoleId.value = widget.user['role']?['id'] ?? 0;
+
+    // Handle role as string - find matching role ID from controller
+    final controller = Get.find<UserController>();
+    final userRoleName = widget.user['role']?.toString();
+    if (userRoleName != null) {
+      try {
+        final matchingRole = controller.roles.firstWhere(
+          (role) => role['name'] == userRoleName,
+        );
+        selectedRoleId.value = matchingRole['id'] ?? 0;
+      } catch (e) {
+        selectedRoleId.value = 0;
+      }
+    } else {
+      selectedRoleId.value = 0;
+    }
+
     isActive.value = (widget.user['status'] == 'ACTIVE');
   }
 
