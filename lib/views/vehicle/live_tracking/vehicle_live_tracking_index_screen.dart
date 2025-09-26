@@ -43,10 +43,17 @@ class VehicleLiveTrackingIndexScreen extends GetView<VehicleController> {
               return VehicleCard(
                 givenVehicle: vehicle,
                 isManualCallback: true,
-                callback: () => Get.toNamed(
-                  AppRoutes.vehicleLiveTrackingShow,
-                  arguments: vehicle.imei,
-                ),
+                callback: () {
+                  final route = AppRoutes.vehicleLiveTrackingShow.replaceAll(
+                    ':imei',
+                    vehicle.imei,
+                  );
+                  print(
+                    'Navigating to live tracking for IMEI: ${vehicle.imei}',
+                  );
+                  print('Route: $route');
+                  Get.offNamed(route);
+                },
               );
             },
           ),

@@ -185,10 +185,17 @@ class VehicleCardBottomSheet extends StatelessWidget {
                 icon: Icons.location_on,
                 title: 'Live Tracking',
                 color: Colors.red.shade700,
-                callback: () => Get.toNamed(
-                  AppRoutes.vehicleLiveTrackingShow,
-                  arguments: vehicle.imei,
-                ),
+                callback: () {
+                  final route = AppRoutes.vehicleLiveTrackingShow.replaceAll(
+                    ':imei',
+                    vehicle.imei,
+                  );
+                  print(
+                    'Navigating to live tracking for IMEI: ${vehicle.imei}',
+                  );
+                  print('Route: $route');
+                  Get.offNamed(route);
+                },
               ),
               BottomSheetFeatureCard(
                 icon: Icons.history,

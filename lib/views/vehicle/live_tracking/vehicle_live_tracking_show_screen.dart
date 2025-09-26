@@ -72,17 +72,51 @@ class _VehicleLiveTrackingShowScreenState
   @override
   void initState() {
     super.initState();
-    _fetchVehicleData(); // Fetch vehicle data instead of using passed vehicle
-    _initializeVehicleData();
-    _initializeMap();
-    _startRealTimeTracking();
-    _startOfflineCheck();
-    _checkOfflineStatus();
+    _initializeScreen();
+  }
+
+  @override
+  void didUpdateWidget(VehicleLiveTrackingShowScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Check if IMEI has changed
+    if (oldWidget.imei != widget.imei) {
+      _resetAndReinitialize();
+    }
+  }
+
+  void _initializeScreen() {
+    print('Initializing screen for IMEI: ${widget.imei}');
+    _fetchVehicleData();
+  }
+
+  void _resetAndReinitialize() {
+    print('Resetting and reinitializing for new IMEI: ${widget.imei}');
+    // Stop current tracking
+    _isTracking = false;
+    _statusWorker?.dispose();
+    _locationWorker?.dispose();
+    _offlineCheckTimer?.cancel();
+
+    // Reset state
+    setState(() {
+      vehicle = Vehicle(imei: '');
+      _currentLocation = null;
+      _currentStatus = null;
+      _vehiclePosition = null;
+      _markers.clear();
+      _polylines.clear();
+      routePoints.clear();
+      isLoadingVehicle = true;
+    });
+
+    // Reinitialize with new IMEI
+    _initializeScreen();
   }
 
   // Add this method to fetch vehicle data
   Future<void> _fetchVehicleData() async {
     try {
+      print('Fetching vehicle data for IMEI: ${widget.imei}');
       setState(() {
         isLoadingVehicle = true;
       });
@@ -92,6 +126,9 @@ class _VehicleLiveTrackingShowScreenState
         widget.imei,
       );
 
+      print(
+        'Fetched vehicle data: ${vehicleData.vehicleNo} (${vehicleData.imei})',
+      );
       setState(() {
         vehicle = vehicleData;
         isLoadingVehicle = false;

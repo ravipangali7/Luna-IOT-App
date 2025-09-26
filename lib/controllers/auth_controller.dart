@@ -48,17 +48,32 @@ class AuthController extends GetxController {
       final token = await AuthStorageService.getToken();
 
       if (phone != null && token != null) {
-        isLoggedIn.value = true;
-
-        // Fetch complete user data including role
+        // Don't set isLoggedIn yet - wait for backend validation
         try {
           final response = await _authApiService.getCurrentUser();
+
           // Django response format: {success: true, message: '...', data: {...}}
+          // OR direct user data format: {id: 1, name: '...', phone: '...', ...}
           if (response.containsKey('success') &&
               response['success'] == true &&
               response.containsKey('data')) {
             final userData = response['data'] as Map<String, dynamic>;
             currentUser.value = User.fromJson(userData);
+            isLoggedIn.value = true; // ✅ Set only after successful validation
+          } else if (response.containsKey('id') &&
+              response.containsKey('phone')) {
+            // Direct user data format - no wrapper
+            currentUser.value = User.fromJson(response);
+            isLoggedIn.value = true; // ✅ Set only after successful validation
+          } else {
+            // Invalid response, clear auth
+            await AuthStorageService.removeAuth();
+            isLoggedIn.value = false;
+            currentUser.value = null;
+          }
+
+          // Common logic for successful validation (both formats)
+          if (isLoggedIn.value) {
             await _updateFcmTokenAfterLogin();
 
             // Show active popups after auto-login
@@ -77,17 +92,30 @@ class AuthController extends GetxController {
             } catch (e) {
               print('Failed to show active popups: $e');
             }
-          } else {
-            // Invalid response, clear auth
+          }
+        } catch (e) {
+          // Check if it's a 401 error (unauthorized - token invalid)
+          if (e.toString().contains('401') ||
+              e.toString().contains('Unauthorized')) {
             await AuthStorageService.removeAuth();
             isLoggedIn.value = false;
             currentUser.value = null;
+          } else {
+            // Network error or other server error - keep user logged in for offline mode
+            isLoggedIn.value = true;
+
+            // Create a basic user object for offline mode
+            currentUser.value = User(
+              id: 0, // Placeholder for offline mode
+              name: 'User', // Placeholder
+              phone: phone,
+              status: 'ACTIVE',
+              role: Role(id: 0, name: 'Customer', permissions: []),
+              permissions: [],
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            );
           }
-        } catch (e) {
-          // If we can't fetch user data, clear auth and redirect to login
-          await AuthStorageService.removeAuth();
-          isLoggedIn.value = false;
-          currentUser.value = null;
         }
       } else {
         isLoggedIn.value = false;

@@ -228,7 +228,11 @@ class AppRoutes {
     ),
     GetPage(
       name: vehicleLiveTrackingShow,
-      page: () => VehicleLiveTrackingShowScreen(imei: Get.arguments),
+      page: () {
+        final imei = Get.parameters['imei'] ?? '';
+        print('Route parameter IMEI: $imei');
+        return VehicleLiveTrackingShowScreen(imei: imei);
+      },
       middlewares: [AuthMiddleware()],
     ),
     GetPage(

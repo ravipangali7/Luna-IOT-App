@@ -20,7 +20,7 @@ class User {
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
-    // Handle role - it can be either a string or an object
+    // Handle role - it can be either a string, object, or array
     Role role;
     if (json['role'] is String) {
       // If role is a string, create a basic role object
@@ -33,6 +33,11 @@ class User {
     } else if (json['role'] is Map<String, dynamic>) {
       // If role is an object, parse it normally
       role = Role.fromJson(json['role'] as Map<String, dynamic>);
+    } else if (json['roles'] is List && (json['roles'] as List).isNotEmpty) {
+      // If roles is an array, take the first role (your backend uses this format)
+      final rolesList = json['roles'] as List;
+      final firstRole = rolesList.first as Map<String, dynamic>;
+      role = Role.fromJson(firstRole);
     } else {
       // Default role if role is null or invalid
       role = Role.defaultRole();
@@ -116,10 +121,20 @@ class Role {
 
   factory Role.fromJson(Map<String, dynamic> json) {
     List<Permission> permissions = [];
-    if (json['permissions'] != null) {
-      permissions = (json['permissions'] as List)
-          .map((p) => Permission.fromJson(p))
-          .toList();
+    if (json['permissions'] != null && json['permissions'] is List) {
+      final permissionsList = json['permissions'] as List;
+      permissions = permissionsList.map((p) {
+        if (p is String) {
+          // If permission is a string, create a basic Permission object
+          return Permission(id: 0, name: p);
+        } else if (p is Map<String, dynamic>) {
+          // If permission is an object, parse it normally
+          return Permission.fromJson(p);
+        } else {
+          // Fallback
+          return Permission(id: 0, name: p.toString());
+        }
+      }).toList();
     }
 
     return Role(
