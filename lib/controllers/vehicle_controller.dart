@@ -30,8 +30,14 @@ class VehicleController extends GetxController {
   final RxBool hasPreviousPage = false.obs;
   final RxBool paginationLoading = false.obs;
 
-  // Client-side pagination data
+  // Server-side filter counts
+  final RxMap<String, int> filterCounts = <String, int>{}.obs;
+
+  // Store all vehicles for client-side pagination fallback
   final RxList<Vehicle> _allVehicles = <Vehicle>[].obs;
+
+  // Store total count from initial load
+  final RxInt _totalVehicleCount = 0.obs;
 
   // NEW: Vehicle Access Assignment
   final RxList<Vehicle> availableVehicles = <Vehicle>[].obs;
@@ -130,41 +136,58 @@ class VehicleController extends GetxController {
     try {
       paginationLoading.value = true;
 
-      // Try paginated endpoint first
+      final targetPage = page ?? currentPage.value;
+      debugPrint(
+        'Loading vehicles - Page: $targetPage, PageSize: ${pageSize ?? 25}, Search: ${search ?? searchQuery.value}, Filter: ${filter ?? selectedFilter.value}',
+      );
+
+      // Always use server-side pagination
+      final paginatedResponse = await _vehicleApiService.getVehiclesPaginated(
+        page: targetPage,
+        pageSize: pageSize ?? 25,
+        search: search ?? searchQuery.value,
+        filter: filter ?? selectedFilter.value,
+      );
+
+      // Update vehicles and pagination data
+      vehicles.value = paginatedResponse.data;
+      currentPage.value = paginatedResponse.pagination.currentPage;
+      totalPages.value = paginatedResponse.pagination.totalPages;
+      totalCount.value = paginatedResponse.pagination.count;
+      hasNextPage.value = paginatedResponse.pagination.hasNext;
+      hasPreviousPage.value = paginatedResponse.pagination.hasPrevious;
+
+      debugPrint(
+        'Pagination updated - Current: ${currentPage.value}, Total: ${totalPages.value}, Count: ${totalCount.value}, HasNext: ${hasNextPage.value}, HasPrevious: ${hasPreviousPage.value}',
+      );
+
+      // Update filtered vehicles for UI
+      filteredVehicles.assignAll(vehicles);
+
+      // Load filter counts from server
+      await _loadFilterCounts();
+    } catch (e) {
+      debugPrint(
+        'Pagination endpoint failed, falling back to regular endpoint: $e',
+      );
+
       try {
-        final paginatedResponse = await _vehicleApiService.getVehiclesPaginated(
-          page: page ?? currentPage.value,
-          pageSize: pageSize ?? 25,
-          search: search ?? searchQuery.value,
-          filter: filter ?? selectedFilter.value,
-        );
-
-        // Always use server-side pagination
-        vehicles.value = paginatedResponse.data;
-        currentPage.value = paginatedResponse.pagination.currentPage;
-        totalPages.value = paginatedResponse.pagination.totalPages;
-        totalCount.value = paginatedResponse.pagination.count;
-        hasNextPage.value = paginatedResponse.pagination.hasNext;
-        hasPreviousPage.value = paginatedResponse.pagination.hasPrevious;
-
-        // If backend doesn't provide proper pagination, create it
-        if (totalPages.value <= 1 && totalCount.value > 25) {
-          totalPages.value = (totalCount.value / 25).ceil();
-          hasNextPage.value = currentPage.value < totalPages.value;
-          hasPreviousPage.value = currentPage.value > 1;
-        }
-      } catch (e) {
         // Fallback to regular endpoint if pagination is not available
         final allVehicles = await _vehicleApiService.getAllVehicles();
 
-        // Use client-side pagination for fallback
-        _applyClientSidePagination(allVehicles);
-      }
+        // Store all vehicles for client-side pagination
+        _allVehicles.assignAll(allVehicles);
+        _totalVehicleCount.value = allVehicles.length;
 
-      _applyFilter(); // Apply current filter after loading
-    } catch (e) {
-      debugPrint('Error loading vehicles: ${e.toString()}');
-      Get.snackbar('Error', 'Failed to load vehicles');
+        // Apply client-side pagination with proper total count
+        _applyClientSidePaginationWithTotalCount(
+          allVehicles,
+          page ?? currentPage.value,
+        );
+      } catch (fallbackError) {
+        debugPrint('Error loading vehicles: ${fallbackError.toString()}');
+        Get.snackbar('Error', 'Failed to load vehicles');
+      }
     } finally {
       paginationLoading.value = false;
     }
@@ -172,29 +195,43 @@ class VehicleController extends GetxController {
 
   // Go to next page
   Future<void> nextPage() async {
+    debugPrint(
+      'Next page clicked. Current page: ${currentPage.value}, Has next: ${hasNextPage.value}',
+    );
     if (hasNextPage.value) {
       if (_allVehicles.isNotEmpty) {
-        // Client-side pagination
-        currentPage.value++;
-        _applyClientSidePagination(_allVehicles);
+        // Use client-side pagination with total count
+        _applyClientSidePaginationWithTotalCount(
+          _allVehicles,
+          currentPage.value + 1,
+        );
       } else {
-        // Server-side pagination
+        // Use server-side pagination
         await loadVehiclesPaginated(page: currentPage.value + 1);
       }
+    } else {
+      debugPrint('Cannot go to next page - hasNextPage is false');
     }
   }
 
   // Go to previous page
   Future<void> previousPage() async {
+    debugPrint(
+      'Previous page clicked. Current page: ${currentPage.value}, Has previous: ${hasPreviousPage.value}',
+    );
     if (hasPreviousPage.value) {
       if (_allVehicles.isNotEmpty) {
-        // Client-side pagination
-        currentPage.value--;
-        _applyClientSidePagination(_allVehicles);
+        // Use client-side pagination with total count
+        _applyClientSidePaginationWithTotalCount(
+          _allVehicles,
+          currentPage.value - 1,
+        );
       } else {
-        // Server-side pagination
+        // Use server-side pagination
         await loadVehiclesPaginated(page: currentPage.value - 1);
       }
+    } else {
+      debugPrint('Cannot go to previous page - hasPreviousPage is false');
     }
   }
 
@@ -202,11 +239,10 @@ class VehicleController extends GetxController {
   Future<void> goToPage(int page) async {
     if (page >= 1 && page <= totalPages.value) {
       if (_allVehicles.isNotEmpty) {
-        // Client-side pagination
-        currentPage.value = page;
-        _applyClientSidePagination(_allVehicles);
+        // Use client-side pagination with total count
+        _applyClientSidePaginationWithTotalCount(_allVehicles, page);
       } else {
-        // Server-side pagination
+        // Use server-side pagination
         await loadVehiclesPaginated(page: page);
       }
     }
@@ -224,10 +260,11 @@ class VehicleController extends GetxController {
     currentPage.value = 1; // Reset to first page when filtering
 
     if (_allVehicles.isNotEmpty) {
-      // Client-side pagination - reload all vehicles
-      loadVehiclesPaginated();
+      // Use client-side filtering and pagination
+      _applyClientSideFilteringAndPagination();
     } else {
-      loadVehiclesPaginated();
+      // Use server-side filtering
+      loadVehiclesPaginated(); // Load with new filter
     }
   }
 
@@ -278,42 +315,7 @@ class VehicleController extends GetxController {
   void updateSearchQuery(String query) async {
     searchQuery.value = query;
     currentPage.value = 1; // Reset to first page when searching
-
-    if (query.trim().isEmpty) {
-      // If search is empty, load all vehicles with pagination
-      await loadVehiclesPaginated();
-    } else {
-      // Use dedicated search API
-      await _searchVehicles(query);
-    }
-  }
-
-  // Search vehicles using dedicated search API
-  Future<void> _searchVehicles(String query) async {
-    try {
-      paginationLoading.value = true;
-
-      final searchResults = await _vehicleApiService.searchVehicles(query);
-
-      // Debug: Print search results to see what we're getting
-      debugPrint('Search results count: ${searchResults.length}');
-      if (searchResults.isNotEmpty) {
-        debugPrint('First search result: ${searchResults.first.toJson()}');
-      }
-
-      // Show search results without pagination
-      vehicles.value = searchResults;
-      filteredVehicles.value = searchResults; // Update filteredVehicles for UI
-      totalCount.value = searchResults.length;
-      totalPages.value = 1; // No pagination for search results
-      hasNextPage.value = false;
-      hasPreviousPage.value = false;
-    } catch (e) {
-      debugPrint('Error searching vehicles: ${e.toString()}');
-      Get.snackbar('Error', 'Failed to search vehicles');
-    } finally {
-      paginationLoading.value = false;
-    }
+    await loadVehiclesPaginated(); // Load with search query
   }
 
   void updateFilter(String key, String? value) {
@@ -328,14 +330,9 @@ class VehicleController extends GetxController {
   void clearAllFilters() {
     searchQuery.value = '';
     currentFilters.clear();
+    selectedFilter.value = 'All';
     currentPage.value = 1; // Reset to first page when clearing filters
-
-    if (_allVehicles.isNotEmpty) {
-      // Client-side pagination - reload all vehicles
-      loadVehiclesPaginated();
-    } else {
-      loadVehiclesPaginated();
-    }
+    loadVehiclesPaginated(); // Load with cleared filters
   }
 
   // Start real-time updates
@@ -411,31 +408,54 @@ class VehicleController extends GetxController {
     }
   }
 
-  // Get vehicle count for each filter
-  int getVehicleCountForFilter(String filter) {
-    if (filter == 'All') {
-      return vehicles.length;
+  // Load filter counts from server
+  Future<void> _loadFilterCounts() async {
+    try {
+      final counts = await _vehicleApiService.getVehicleFilterCounts();
+      filterCounts.value = counts;
+    } catch (e) {
+      debugPrint('Error loading filter counts: $e');
+      // Fallback to client-side counts if server doesn't support it
+      _calculateClientSideFilterCounts();
+    }
+  }
+
+  // Calculate filter counts from current vehicles (fallback)
+  void _calculateClientSideFilterCounts() {
+    final counts = <String, int>{};
+
+    for (final filter in VehicleController.filterOptions) {
+      if (filter == 'All') {
+        counts[filter] = totalCount.value;
+      } else {
+        counts[filter] = vehicles.where((vehicle) {
+          final state = VehicleService.getState(vehicle);
+          switch (filter) {
+            case 'Inactive':
+              return state == VehicleService.inactive;
+            case 'Stopped':
+              return state == VehicleService.stopped;
+            case 'Idle':
+              return state == VehicleService.idle;
+            case 'Running':
+              return state == VehicleService.running;
+            case 'Overspeed':
+              return state == VehicleService.overspeed;
+            case 'No Data':
+              return state == VehicleService.noData;
+            default:
+              return false;
+          }
+        }).length;
+      }
     }
 
-    return vehicles.where((vehicle) {
-      final state = VehicleService.getState(vehicle);
-      switch (filter) {
-        case 'Inactive':
-          return state == VehicleService.inactive;
-        case 'Stopped':
-          return state == VehicleService.stopped;
-        case 'Idle':
-          return state == VehicleService.idle;
-        case 'Running':
-          return state == VehicleService.running;
-        case 'Overspeed':
-          return state == VehicleService.overspeed;
-        case 'No Data':
-          return state == VehicleService.noData;
-        default:
-          return false;
-      }
-    }).length;
+    filterCounts.value = counts;
+  }
+
+  // Get vehicle count for each filter
+  int getVehicleCountForFilter(String filter) {
+    return filterCounts[filter] ?? 0;
   }
 
   // Get color for filter button
@@ -792,23 +812,78 @@ class VehicleController extends GetxController {
     }
   }
 
+  // Client-side pagination with proper total count
+  void _applyClientSidePaginationWithTotalCount(
+    List<Vehicle> allVehicles,
+    int targetPage,
+  ) {
+    final pageSize = 25;
+    final startIndex = (targetPage - 1) * pageSize;
+    final endIndex = (startIndex + pageSize).clamp(0, allVehicles.length);
+
+    vehicles.value = allVehicles.sublist(startIndex, endIndex);
+    currentPage.value = targetPage;
+    totalCount.value =
+        _totalVehicleCount.value; // Use total count from initial load
+    totalPages.value = (_totalVehicleCount.value / pageSize).ceil();
+    hasNextPage.value = targetPage < totalPages.value;
+    hasPreviousPage.value = targetPage > 1;
+
+    // Update filtered vehicles for UI
+    filteredVehicles.assignAll(vehicles);
+
+    debugPrint(
+      'Client-side pagination with total count applied - Page: $targetPage, Total: $totalPages, Count: $totalCount, HasNext: $hasNextPage, HasPrevious: $hasPreviousPage',
+    );
+  }
+
+  // Client-side filtering and pagination
+  void _applyClientSideFilteringAndPagination() {
+    List<Vehicle> filteredVehicles = _allVehicles.where((vehicle) {
+      if (selectedFilter.value == 'All') return true;
+
+      final state = VehicleService.getState(vehicle);
+      switch (selectedFilter.value) {
+        case 'Inactive':
+          return state == VehicleService.inactive;
+        case 'Stopped':
+          return state == VehicleService.stopped;
+        case 'Idle':
+          return state == VehicleService.idle;
+        case 'Running':
+          return state == VehicleService.running;
+        case 'Overspeed':
+          return state == VehicleService.overspeed;
+        case 'No Data':
+          return state == VehicleService.noData;
+        default:
+          return true;
+      }
+    }).toList();
+
+    // Apply pagination to filtered results
+    final pageSize = 25;
+    final startIndex = (currentPage.value - 1) * pageSize;
+    final endIndex = (startIndex + pageSize).clamp(0, filteredVehicles.length);
+
+    vehicles.value = filteredVehicles.sublist(startIndex, endIndex);
+    totalCount.value = filteredVehicles.length;
+    totalPages.value = (filteredVehicles.length / pageSize).ceil();
+    hasNextPage.value = currentPage.value < totalPages.value;
+    hasPreviousPage.value = currentPage.value > 1;
+
+    // Update filtered vehicles for UI
+    this.filteredVehicles.assignAll(vehicles);
+
+    debugPrint(
+      'Client-side filtering applied - Filter: ${selectedFilter.value}, Page: ${currentPage.value}, Total: $totalPages, Count: $totalCount, HasNext: $hasNextPage, HasPrevious: $hasPreviousPage',
+    );
+  }
+
   @override
   void onClose() {
     phoneController.dispose();
     imeiController.dispose();
     super.onClose();
-  }
-
-  // Client-side pagination method
-  void _applyClientSidePagination(List<Vehicle> allVehicles) {
-    _allVehicles.assignAll(allVehicles);
-
-    final startIndex = (currentPage.value - 1) * 25;
-    vehicles.value = allVehicles.skip(startIndex).take(25).toList();
-
-    totalCount.value = allVehicles.length;
-    totalPages.value = (allVehicles.length / 25).ceil();
-    hasNextPage.value = currentPage.value < totalPages.value;
-    hasPreviousPage.value = currentPage.value > 1;
   }
 }

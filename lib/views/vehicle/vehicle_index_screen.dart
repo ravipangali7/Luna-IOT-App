@@ -102,13 +102,16 @@ class VehicleIndexScreen extends GetView<VehicleController> {
       ),
 
       // Add Button in Floating Action
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Get.toNamed(AppRoutes.vehicleCreate);
-        },
-        backgroundColor: AppTheme.primaryColor,
-        tooltip: 'Add Vehicle',
-        child: const Icon(Icons.add, color: Colors.white),
+      floatingActionButton: Container(
+        margin: EdgeInsets.only(bottom: 50),
+        child: FloatingActionButton(
+          onPressed: () {
+            Get.toNamed(AppRoutes.vehicleCreate);
+          },
+          backgroundColor: AppTheme.primaryColor,
+          tooltip: 'Add Vehicle',
+          child: const Icon(Icons.add, color: Colors.white),
+        ),
       ),
 
       // Main Body Start
@@ -196,7 +199,8 @@ class VehicleIndexScreen extends GetView<VehicleController> {
           // Vehicles List
           Expanded(
             child: Obx(() {
-              if (controller.loading.value) {
+              if (controller.loading.value ||
+                  controller.paginationLoading.value) {
                 return const LoadingWidget();
               }
 
@@ -238,23 +242,54 @@ class VehicleIndexScreen extends GetView<VehicleController> {
               return Column(
                 children: [
                   Expanded(
-                    child: RefreshIndicator(
-                      onRefresh: () => controller.loadVehiclesPaginated(),
-                      child: Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: ListView.builder(
-                          itemCount: controller.filteredVehicles.length,
-                          itemBuilder: (context, index) {
-                            final vehicle = controller.filteredVehicles[index];
-                            return VehicleCard(givenVehicle: vehicle);
-                          },
+                    child: Stack(
+                      children: [
+                        RefreshIndicator(
+                          onRefresh: () => controller.loadVehiclesPaginated(),
+                          child: Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: ListView.builder(
+                              itemCount: controller.filteredVehicles.length,
+                              itemBuilder: (context, index) {
+                                final vehicle =
+                                    controller.filteredVehicles[index];
+                                return VehicleCard(givenVehicle: vehicle);
+                              },
+                            ),
+                          ),
                         ),
-                      ),
+                        // Loading overlay for pagination
+                        if (controller.paginationLoading.value)
+                          Container(
+                            color: Colors.white.withOpacity(0.7),
+                            child: const Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.blue,
+                                    ),
+                                  ),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'Loading...',
+                                    style: TextStyle(
+                                      color: Colors.blue,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                  // Pagination widget
+                  // Compact Pagination widget
                   Obx(
-                    () => PaginationWidget(
+                    () => CompactPaginationWidget(
                       currentPage: controller.currentPage.value,
                       totalPages: controller.totalPages.value,
                       totalCount: controller.totalCount.value,
@@ -264,8 +299,6 @@ class VehicleIndexScreen extends GetView<VehicleController> {
                       isLoading: controller.paginationLoading.value,
                       onPrevious: controller.previousPage,
                       onNext: controller.nextPage,
-                      onPageChanged: controller.goToPage,
-                      onPageSizeChanged: controller.changePageSize,
                     ),
                   ),
                 ],

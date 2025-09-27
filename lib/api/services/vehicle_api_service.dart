@@ -36,12 +36,50 @@ class VehicleApiService {
     String? filter,
   }) async {
     try {
-      final queryParams = <String, dynamic>{'page': page};
+      final queryParams = <String, dynamic>{
+        'page': page,
+        'page_size': pageSize,
+      };
+
+      // Add search parameter if provided
+      if (search != null && search.isNotEmpty) {
+        queryParams['search'] = search;
+      }
+
+      // Add filter parameter if provided
+      if (filter != null && filter.isNotEmpty && filter != 'All') {
+        queryParams['filter'] = filter;
+      }
+
+      print(
+        'Vehicle API - Requesting paginated vehicles with params: $queryParams',
+      );
 
       final response = await _apiClient.dio.get(
         ApiEndpoints.getVehiclesPaginated,
         queryParameters: queryParams,
       );
+
+      print('Vehicle API - Response status: ${response.statusCode}');
+      print('Vehicle API - Response data keys: ${response.data.keys.toList()}');
+      if (response.data['data'] != null) {
+        print(
+          'Vehicle API - Data keys: ${response.data['data'].keys.toList()}',
+        );
+        if (response.data['data']['vehicles'] != null) {
+          print(
+            'Vehicle API - Vehicles count: ${response.data['data']['vehicles'].length}',
+          );
+        }
+        if (response.data['data']['pagination'] != null) {
+          print(
+            'Vehicle API - Pagination data: ${response.data['data']['pagination']}',
+          );
+          print(
+            'Vehicle API - Pagination keys: ${response.data['data']['pagination'].keys.toList()}',
+          );
+        }
+      }
 
       // Django response format: {success: true, message: '...', data: [...], pagination: {...}}
       if (response.data['success'] == true) {
@@ -307,6 +345,29 @@ class VehicleApiService {
         throw Exception(errorMessage);
       }
       throw Exception('Failed to remove vehicle access: ${e.message}');
+    }
+  }
+
+  // Get vehicle filter counts from server
+  Future<Map<String, int>> getVehicleFilterCounts() async {
+    try {
+      final response = await _apiClient.dio.get(
+        '/api/fleet/vehicle/filter-counts',
+      );
+
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true && response.data['data'] != null) {
+        return Map<String, int>.from(response.data['data']);
+      }
+      throw Exception(
+        'Failed to get filter counts: ${response.data['message'] ?? 'Unknown error'}',
+      );
+    } on DioException catch (e) {
+      // If filter counts endpoint doesn't exist, return empty map
+      if (e.response?.statusCode == 404) {
+        return {};
+      }
+      throw Exception('Network error: ${e.message}');
     }
   }
 }

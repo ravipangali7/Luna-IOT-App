@@ -32,7 +32,7 @@ class PaginationWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Show pagination if there are items to paginate
-    if (totalCount <= 25) return const SizedBox.shrink();
+    if (totalCount <= 0) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -208,7 +208,7 @@ class CompactPaginationWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Show pagination if there are items to paginate
-    if (totalCount <= 25) return const SizedBox.shrink();
+    if (totalCount <= 0) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -219,21 +219,45 @@ class CompactPaginationWidget extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            'Page $currentPage of $totalPages ($totalCount items)',
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+          Expanded(
+            child: Text(
+              'Page $currentPage of $totalPages ($totalCount items)',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           Row(
             children: [
+              if (isLoading) ...[
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
               IconButton(
-                onPressed: isLoading || !hasPreviousPage ? null : onPrevious,
+                onPressed: isLoading || !hasPreviousPage
+                    ? null
+                    : () {
+                        print('Previous button pressed');
+                        onPrevious?.call();
+                      },
                 icon: const Icon(Icons.chevron_left, size: 20),
                 tooltip: 'Previous page',
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 padding: EdgeInsets.zero,
               ),
               IconButton(
-                onPressed: isLoading || !hasNextPage ? null : onNext,
+                onPressed: isLoading || !hasNextPage
+                    ? null
+                    : () {
+                        print('Next button pressed');
+                        onNext?.call();
+                      },
                 icon: const Icon(Icons.chevron_right, size: 20),
                 tooltip: 'Next page',
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
