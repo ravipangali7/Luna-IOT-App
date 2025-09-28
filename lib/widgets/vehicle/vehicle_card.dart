@@ -10,6 +10,7 @@ import 'package:luna_iot/services/socket_service.dart';
 import 'package:luna_iot/services/vehicle_service.dart';
 import 'package:luna_iot/utils/time_ago.dart';
 import 'package:luna_iot/utils/vehicle_image_state.dart';
+import 'package:luna_iot/utils/vehicle_utils.dart';
 import 'package:luna_iot/widgets/vehicle/vehicle_card_bottom_sheet.dart';
 
 class VehicleCard extends StatelessWidget {
@@ -44,6 +45,7 @@ class VehicleCard extends StatelessWidget {
       vehicle.todayKm = givenVehicle.todayKm;
       vehicle.ownershipType = givenVehicle.ownershipType;
       vehicle.userVehicle = givenVehicle.userVehicle;
+      vehicle.isActive = givenVehicle.isActive; // Copy the isActive field
 
       // Vehicle Status Data
       vehicle.latestStatus = Status(
@@ -87,11 +89,21 @@ class VehicleCard extends StatelessWidget {
       );
 
       final String vehicleState = VehicleService.getState(vehicle);
+      final bool isInactive = !vehicle.isVehicleActive;
 
       return Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: InkWell(
           onTap: () {
+            if (isInactive) {
+              // Show inactive vehicle modal instead of navigating
+              VehicleUtils.showInactiveVehicleModal(
+                vehicle: vehicle,
+                action: 'Live Tracking',
+              );
+              return;
+            }
+
             if (isManualCallback) {
               callback?.call();
             } else {
@@ -102,56 +114,86 @@ class VehicleCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  // Shared Access
-                  Container(
-                    margin: EdgeInsets.only(left: 5),
-                    padding: EdgeInsets.symmetric(vertical: 2, horizontal: 12),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: Colors.purple.shade600,
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(8),
+                  // Inactive Badge
+                  if (isInactive)
+                    Container(
+                      margin: EdgeInsets.only(left: 5),
+                      padding: EdgeInsets.symmetric(
+                        vertical: 2,
+                        horizontal: 12,
                       ),
-                    ),
-                    child: Text(
-                      vehicle.ownershipType?.toUpperCase() ?? '',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 8,
-                      ),
-                    ),
-                  ),
-
-                  // Power Disconnected
-                  vehicle.latestStatus?.charging == true
-                      ? SizedBox()
-                      : Container(
-                          margin: EdgeInsets.only(left: 5),
-                          padding: EdgeInsets.symmetric(
-                            vertical: 2,
-                            horizontal: 12,
-                          ),
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: vehicle.latestStatus?.charging == true
-                                ? Colors.green.shade600
-                                : Colors.red.shade600,
-                            borderRadius: BorderRadius.vertical(
-                              top: Radius.circular(8),
-                            ),
-                          ),
-                          child: Text(
-                            vehicle.latestStatus?.charging == true
-                                ? 'POWER CONNECTED'
-                                : 'POWER DISCONNECTED',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 8,
-                            ),
-                          ),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade600,
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(8),
                         ),
+                      ),
+                      child: Text(
+                        'INACTIVE',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 8,
+                        ),
+                      ),
+                    ),
+
+                  // Shared Access - Only show for active vehicles
+                  if (!isInactive)
+                    Container(
+                      margin: EdgeInsets.only(left: 5),
+                      padding: EdgeInsets.symmetric(
+                        vertical: 2,
+                        horizontal: 12,
+                      ),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.purple.shade600,
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        vehicle.ownershipType?.toUpperCase() ?? '',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 8,
+                        ),
+                      ),
+                    ),
+
+                  // Power Disconnected - Only show for active vehicles
+                  if (!isInactive && vehicle.latestStatus?.charging == true)
+                    SizedBox()
+                  else if (!isInactive)
+                    Container(
+                      margin: EdgeInsets.only(left: 5),
+                      padding: EdgeInsets.symmetric(
+                        vertical: 2,
+                        horizontal: 12,
+                      ),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: vehicle.latestStatus?.charging == true
+                            ? Colors.green.shade600
+                            : Colors.red.shade600,
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        vehicle.latestStatus?.charging == true
+                            ? 'POWER CONNECTED'
+                            : 'POWER DISCONNECTED',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 8,
+                        ),
+                      ),
+                    ),
                 ],
               ),
 
@@ -159,7 +201,7 @@ class VehicleCard extends StatelessWidget {
               Container(
                 padding: EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isInactive ? Colors.grey.shade100 : Colors.white,
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: [
                     BoxShadow(
@@ -232,219 +274,225 @@ class VehicleCard extends StatelessWidget {
                           ],
                         ),
 
-                        // Second Data Column
-                        Column(
-                          spacing: 8,
-                          children: [
-                            // Speed
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: VehicleService.getStateColor(
-                                  vehicleState,
+                        // Second Data Column - Only show for active vehicles
+                        if (!isInactive)
+                          Column(
+                            spacing: 8,
+                            children: [
+                              // Speed
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: VehicleService.getStateColor(
+                                    vehicleState,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Column(
-                                children: [
-                                  Row(
-                                    spacing: 5,
-                                    children: [
-                                      Icon(
-                                        Icons.speed,
-                                        color: Colors.white,
-                                        size: 15,
-                                      ),
-                                      Text(
-                                        '${vehicleState == VehicleService.stopped ? 0 : vehicle.latestLocation?.speed ?? 0} km/h',
-                                        style: TextStyle(
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      spacing: 5,
+                                      children: [
+                                        Icon(
+                                          Icons.speed,
                                           color: Colors.white,
-                                          fontSize: 8,
-                                          fontWeight: FontWeight.bold,
+                                          size: 15,
                                         ),
-                                      ),
-                                    ],
-                                  ),
-
-                                  Text(
-                                    vehicleState.toUpperCase(),
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 8,
+                                        Text(
+                                          '${vehicleState == VehicleService.stopped ? 0 : vehicle.latestLocation?.speed ?? 0} km/h',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 8,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
                                     ),
+
+                                    Text(
+                                      vehicleState.toUpperCase(),
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 8,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // Battery, Signal and Satellite
+                              Row(
+                                spacing: 8,
+                                children: [
+                                  VehicleService.getSatellite(
+                                    value:
+                                        vehicle.latestLocation?.satellite ?? 0,
+                                  ),
+                                  VehicleService.getBattery(
+                                    value: vehicle.latestStatus?.battery ?? 0,
+                                  ),
+                                  VehicleService.getSignal(
+                                    value: vehicle.latestStatus?.signal ?? 0,
                                   ),
                                 ],
                               ),
-                            ),
-
-                            // Battery, Signal and Satellite
-                            Row(
-                              spacing: 8,
-                              children: [
-                                VehicleService.getSatellite(
-                                  value: vehicle.latestLocation?.satellite ?? 0,
-                                ),
-                                VehicleService.getBattery(
-                                  value: vehicle.latestStatus?.battery ?? 0,
-                                ),
-                                VehicleService.getSignal(
-                                  value: vehicle.latestStatus?.signal ?? 0,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-
-                        // Third Data Column
-                        Column(
-                          spacing: 5,
-                          children: [
-                            Row(
-                              spacing: 5,
-                              children: [
-                                StatsCard(
-                                  title: 'Today',
-                                  value:
-                                      '${vehicle.todayKm?.toStringAsFixed(2) ?? 999}Km',
-                                  icon: Icons.today,
-                                  color: Colors.blue.shade800,
-                                ),
-                                StatsCard(
-                                  title: 'Fuel',
-                                  value:
-                                      '${((vehicle.todayKm ?? 0) / (vehicle.mileage ?? 1)).toStringAsFixed(2)}L',
-                                  icon: Icons.local_gas_station,
-                                  color: Colors.orange.shade800,
-                                ),
-                              ],
-                            ),
-                            Row(
-                              spacing: 5,
-                              children: [
-                                StatsCard(
-                                  title: 'ODO',
-                                  value: '${vehicle.odometer}Km',
-                                  icon: Icons.straighten,
-                                  color: Colors.purple.shade800,
-                                ),
-                                FutureBuilder(
-                                  future: GeoService.getAltitude(
-                                    vehicle.latestLocation?.latitude ?? 0,
-                                    vehicle.latestLocation?.longitude ?? 0,
-                                  ),
-                                  builder: (context, snapshot) => StatsCard(
-                                    title: 'Altitude',
-                                    value: "${snapshot.data ?? '0'}m",
-                                    icon: Icons.landscape,
-                                    color: Colors.green.shade800,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-
-                    // Last Data Update
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.update,
-                          color: AppTheme.titleColor,
-                          size: 12,
-                        ),
-                        Text(
-                          latestUpdateTime,
-                          style: TextStyle(
-                            color: AppTheme.subTitleColor,
-                            fontSize: 12,
+                            ],
                           ),
-                        ),
+
+                        // Third Data Column - Only show for active vehicles
+                        if (!isInactive)
+                          Column(
+                            spacing: 5,
+                            children: [
+                              Row(
+                                spacing: 5,
+                                children: [
+                                  StatsCard(
+                                    title: 'Today',
+                                    value:
+                                        '${vehicle.todayKm?.toStringAsFixed(2) ?? 999}Km',
+                                    icon: Icons.today,
+                                    color: Colors.blue.shade800,
+                                  ),
+                                  StatsCard(
+                                    title: 'Fuel',
+                                    value:
+                                        '${((vehicle.todayKm ?? 0) / (vehicle.mileage ?? 1)).toStringAsFixed(2)}L',
+                                    icon: Icons.local_gas_station,
+                                    color: Colors.orange.shade800,
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                spacing: 5,
+                                children: [
+                                  StatsCard(
+                                    title: 'ODO',
+                                    value: '${vehicle.odometer}Km',
+                                    icon: Icons.straighten,
+                                    color: Colors.purple.shade800,
+                                  ),
+                                  FutureBuilder(
+                                    future: GeoService.getAltitude(
+                                      vehicle.latestLocation?.latitude ?? 0,
+                                      vehicle.latestLocation?.longitude ?? 0,
+                                    ),
+                                    builder: (context, snapshot) => StatsCard(
+                                      title: 'Altitude',
+                                      value: "${snapshot.data ?? '0'}m",
+                                      icon: Icons.landscape,
+                                      color: Colors.green.shade800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                       ],
                     ),
 
-                    // Geo Reverse Location
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.location_on,
-                          color: AppTheme.titleColor,
-                          size: 12,
-                        ),
-                        FutureBuilder(
-                          future: vehicle.hasValidLocation
-                              ? GeoService.getReverseGeoCode(
-                                  vehicle.latestLocation!.latitude!,
-                                  vehicle.latestLocation!.longitude!,
-                                )
-                              : Future.value('No location data'),
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SizedBox(
-                                    width: 12,
-                                    height: 12,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        AppTheme.subTitleColor,
+                    // Last Data Update - Only show for active vehicles
+                    if (!isInactive)
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.update,
+                            color: AppTheme.titleColor,
+                            size: 12,
+                          ),
+                          Text(
+                            latestUpdateTime,
+                            style: TextStyle(
+                              color: AppTheme.subTitleColor,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                    // Geo Reverse Location - Only show for active vehicles
+                    if (!isInactive)
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.location_on,
+                            color: AppTheme.titleColor,
+                            size: 12,
+                          ),
+                          FutureBuilder(
+                            future: vehicle.hasValidLocation
+                                ? GeoService.getReverseGeoCode(
+                                    vehicle.latestLocation!.latitude!,
+                                    vehicle.latestLocation!.longitude!,
+                                  )
+                                : Future.value('No location data'),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(
+                                      width: 12,
+                                      height: 12,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              AppTheme.subTitleColor,
+                                            ),
                                       ),
                                     ),
-                                  ),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Loading...',
-                                    style: TextStyle(
-                                      color: AppTheme.subTitleColor,
-                                      fontSize: 12,
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Loading...',
+                                      style: TextStyle(
+                                        color: AppTheme.subTitleColor,
+                                        fontSize: 12,
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              );
-                            }
+                                  ],
+                                );
+                              }
 
-                            if (snapshot.hasError) {
-                              return Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.error_outline,
-                                    color: Colors.red,
-                                    size: 12,
-                                  ),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Network error',
-                                    style: TextStyle(
+                              if (snapshot.hasError) {
+                                return Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.error_outline,
                                       color: Colors.red,
-                                      fontSize: 12,
+                                      size: 12,
                                     ),
-                                  ),
-                                ],
-                              );
-                            }
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Network error',
+                                      style: TextStyle(
+                                        color: Colors.red,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }
 
-                            final address =
-                                snapshot.data ?? 'Location unavailable';
-                            return Expanded(
-                              child: Text(
-                                address,
-                                style: TextStyle(
-                                  color: AppTheme.subTitleColor,
-                                  fontSize: 12,
+                              final address =
+                                  snapshot.data ?? 'Location unavailable';
+                              return Expanded(
+                                child: Text(
+                                  address,
+                                  style: TextStyle(
+                                    color: AppTheme.subTitleColor,
+                                    fontSize: 12,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               ),

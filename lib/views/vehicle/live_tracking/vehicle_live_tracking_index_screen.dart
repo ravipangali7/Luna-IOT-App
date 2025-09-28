@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:luna_iot/app/app_routes.dart';
 import 'package:luna_iot/app/app_theme.dart';
 import 'package:luna_iot/controllers/vehicle_controller.dart';
+import 'package:luna_iot/utils/vehicle_utils.dart';
 import 'package:luna_iot/widgets/loading_widget.dart';
 import 'package:luna_iot/widgets/vehicle/vehicle_card.dart';
 
@@ -44,15 +45,19 @@ class VehicleLiveTrackingIndexScreen extends GetView<VehicleController> {
                 givenVehicle: vehicle,
                 isManualCallback: true,
                 callback: () {
-                  final route = AppRoutes.vehicleLiveTrackingShow.replaceAll(
-                    ':imei',
-                    vehicle.imei,
+                  VehicleUtils.handleVehicleAction(
+                    vehicle: vehicle,
+                    action: 'Live Tracking',
+                    actionCallback: () {
+                      final route = AppRoutes.vehicleLiveTrackingShow
+                          .replaceAll(':imei', vehicle.imei);
+                      print(
+                        'Navigating to live tracking for IMEI: ${vehicle.imei}',
+                      );
+                      print('Route: $route');
+                      Get.offNamed(route);
+                    },
                   );
-                  print(
-                    'Navigating to live tracking for IMEI: ${vehicle.imei}',
-                  );
-                  print('Route: $route');
-                  Get.offNamed(route);
                 },
               );
             },

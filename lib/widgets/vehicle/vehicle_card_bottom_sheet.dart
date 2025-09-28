@@ -8,6 +8,7 @@ import 'package:luna_iot/models/vehicle_model.dart';
 import 'package:luna_iot/services/geo_service.dart';
 import 'package:luna_iot/services/vehicle_service.dart';
 import 'package:luna_iot/utils/vehicle_image_state.dart';
+import 'package:luna_iot/utils/vehicle_utils.dart';
 import 'package:luna_iot/views/admin/device_monitoring_show_screen.dart';
 import 'package:luna_iot/widgets/confirm_dialouge.dart';
 import 'package:luna_iot/widgets/relay_control_widget.dart';
@@ -186,34 +187,50 @@ class VehicleCardBottomSheet extends StatelessWidget {
                 title: 'Live Tracking',
                 color: Colors.red.shade700,
                 callback: () {
-                  final route = AppRoutes.vehicleLiveTrackingShow.replaceAll(
-                    ':imei',
-                    vehicle.imei,
+                  VehicleUtils.handleVehicleAction(
+                    vehicle: vehicle,
+                    action: 'Live Tracking',
+                    actionCallback: () {
+                      final route = AppRoutes.vehicleLiveTrackingShow
+                          .replaceAll(':imei', vehicle.imei);
+                      print(
+                        'Navigating to live tracking for IMEI: ${vehicle.imei}',
+                      );
+                      print('Route: $route');
+                      Get.offNamed(route);
+                    },
                   );
-                  print(
-                    'Navigating to live tracking for IMEI: ${vehicle.imei}',
-                  );
-                  print('Route: $route');
-                  Get.offNamed(route);
                 },
               ),
               BottomSheetFeatureCard(
                 icon: Icons.history,
                 title: 'History',
                 color: Colors.blue.shade700,
-                callback: () => Get.toNamed(
-                  AppRoutes.vehicleHistoryShow,
-                  arguments: vehicle,
-                ),
+                callback: () {
+                  VehicleUtils.handleVehicleAction(
+                    vehicle: vehicle,
+                    action: 'View History',
+                    actionCallback: () => Get.toNamed(
+                      AppRoutes.vehicleHistoryShow,
+                      arguments: vehicle,
+                    ),
+                  );
+                },
               ),
               BottomSheetFeatureCard(
                 icon: Icons.bar_chart,
                 title: 'Report',
                 color: Colors.green.shade700,
-                callback: () => Get.toNamed(
-                  AppRoutes.vehicleReportShow,
-                  arguments: vehicle,
-                ),
+                callback: () {
+                  VehicleUtils.handleVehicleAction(
+                    vehicle: vehicle,
+                    action: 'Generate Report',
+                    actionCallback: () => Get.toNamed(
+                      AppRoutes.vehicleReportShow,
+                      arguments: vehicle,
+                    ),
+                  );
+                },
               ),
             ],
           ),
@@ -234,14 +251,26 @@ class VehicleCardBottomSheet extends StatelessWidget {
                 icon: Icons.edit,
                 title: 'Vehicle Edit',
                 color: Colors.orange.shade700,
-                callback: () =>
-                    Get.toNamed(AppRoutes.vehicleEdit, arguments: vehicle),
+                callback: () {
+                  VehicleUtils.handleVehicleAction(
+                    vehicle: vehicle,
+                    action: 'Edit Vehicle',
+                    actionCallback: () =>
+                        Get.toNamed(AppRoutes.vehicleEdit, arguments: vehicle),
+                  );
+                },
               ),
               BottomSheetFeatureCard(
                 icon: Icons.map,
                 title: 'Geofence',
                 color: Colors.green.shade700,
-                callback: () => Get.toNamed(AppRoutes.geofence),
+                callback: () {
+                  VehicleUtils.handleVehicleAction(
+                    vehicle: vehicle,
+                    action: 'Manage Geofence',
+                    actionCallback: () => Get.toNamed(AppRoutes.geofence),
+                  );
+                },
               ),
             ],
           ),
@@ -288,7 +317,13 @@ class VehicleCardBottomSheet extends StatelessWidget {
                   icon: Icons.delete,
                   title: 'Delete',
                   color: Colors.red,
-                  callback: () => _showDeleteDialog(context),
+                  callback: () {
+                    VehicleUtils.handleVehicleAction(
+                      vehicle: vehicle,
+                      action: 'Delete Vehicle',
+                      actionCallback: () => _showDeleteDialog(context),
+                    );
+                  },
                 ),
                 BottomSheetFeatureCard(
                   icon: Icons.monitor,

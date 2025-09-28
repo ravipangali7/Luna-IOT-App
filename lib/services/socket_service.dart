@@ -13,6 +13,9 @@ class SocketService extends GetxService {
   var statusUpdates = <String, Map<String, dynamic>>{}.obs;
   var locationUpdates = <String, Map<String, dynamic>>{}.obs;
 
+  // Current tracking IMEI - only process updates for this IMEI
+  String? _currentTrackingImei;
+
   @override
   void onInit() {
     super.onInit();
@@ -151,7 +154,12 @@ class SocketService extends GetxService {
       if (data is Map<String, dynamic>) {
         final String? imei = data['imei']?.toString();
         if (imei != null) {
-          statusUpdates[imei] = Map<String, dynamic>.from(data);
+          // Only process if no tracking IMEI is set OR if this matches the tracking IMEI
+          if (_currentTrackingImei == null || _currentTrackingImei == imei) {
+            statusUpdates[imei] = Map<String, dynamic>.from(data);
+            // Force reactive update
+            statusUpdates.refresh();
+          }
         }
       } else {
         debugPrint('Status update data is not a Map: ${data.runtimeType}');
@@ -173,7 +181,12 @@ class SocketService extends GetxService {
       if (data is Map<String, dynamic>) {
         final String? imei = data['imei']?.toString();
         if (imei != null) {
-          locationUpdates[imei] = Map<String, dynamic>.from(data);
+          // Only process if no tracking IMEI is set OR if this matches the tracking IMEI
+          if (_currentTrackingImei == null || _currentTrackingImei == imei) {
+            locationUpdates[imei] = Map<String, dynamic>.from(data);
+            // Force reactive update
+            locationUpdates.refresh();
+          }
         }
       } else {
         debugPrint('Location update data is not a Map: ${data.runtimeType}');
@@ -186,5 +199,15 @@ class SocketService extends GetxService {
   // Method to get status for specific IMEI
   Map<String, dynamic>? getStatusForImei(String imei) {
     return statusUpdates[imei];
+  }
+
+  // Set the current tracking IMEI - only process updates for this IMEI
+  void setTrackingImei(String? imei) {
+    _currentTrackingImei = imei;
+  }
+
+  // Clear tracking IMEI - process all updates
+  void clearTrackingImei() {
+    _currentTrackingImei = null;
   }
 }

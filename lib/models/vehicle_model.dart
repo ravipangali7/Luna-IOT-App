@@ -11,6 +11,7 @@ class Vehicle {
   double? mileage;
   int? speedLimit;
   double? minimumFuel;
+  bool? isActive;
   DateTime? createdAt;
   DateTime? updatedAt;
   Device? device;
@@ -31,6 +32,7 @@ class Vehicle {
     this.mileage,
     this.speedLimit,
     this.minimumFuel,
+    this.isActive,
     this.createdAt,
     this.updatedAt,
     this.device,
@@ -51,6 +53,7 @@ class Vehicle {
       mileage: _parseDouble(json['mileage']),
       speedLimit: _parseInt(json['speedLimit']),
       minimumFuel: _parseDouble(json['minimumFuel']),
+      isActive: json['is_active'] ?? true,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : null,
@@ -161,6 +164,7 @@ class Vehicle {
       'mileage': mileage,
       'speedLimit': speedLimit,
       'minimumFuel': minimumFuel,
+      'is_active': isActive,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
       'device': device?.toJson(),
@@ -181,6 +185,7 @@ class Vehicle {
     double? mileage,
     int? speedLimit,
     double? minimumFuel,
+    bool? isActive,
     DateTime? createdAt,
     DateTime? updatedAt,
     Device? device,
@@ -199,6 +204,7 @@ class Vehicle {
       mileage: mileage ?? this.mileage,
       speedLimit: speedLimit ?? this.speedLimit,
       minimumFuel: minimumFuel ?? this.minimumFuel,
+      isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       device: device ?? this.device,
@@ -216,6 +222,9 @@ class Vehicle {
         latestLocation!.latitude != 0.0 &&
         latestLocation!.longitude != 0.0;
   }
+
+  // Check if vehicle is active
+  bool get isVehicleActive => isActive ?? true;
 
   // Permission checking methods
   bool get isMainUser => userVehicle?['isMain'] == true;
