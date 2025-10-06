@@ -18,6 +18,7 @@ import 'package:luna_iot/utils/time_ago.dart';
 import 'package:luna_iot/utils/vehicle_image_state.dart';
 import 'package:luna_iot/utils/vehicle_utils.dart';
 import 'package:luna_iot/widgets/loading_widget.dart';
+import 'package:luna_iot/widgets/satellite_connection_status_widget.dart';
 import 'package:luna_iot/widgets/vehicle/speedometer_widget.dart';
 import 'package:luna_iot/widgets/weather_modal_widget.dart';
 
@@ -213,24 +214,14 @@ class _VehicleLiveTrackingShowScreenState
   }
 
   void _calculateLastUpdateTime() {
-    if (_currentLocation?.createdAt != null &&
-        _currentStatus?.createdAt != null) {
-      final dbLocationTime = _currentLocation!.createdAt!;
-      final dbStatusTime = _currentStatus!.createdAt!;
-      final mostRecentDBTime = dbLocationTime.isAfter(dbStatusTime)
-          ? dbLocationTime
-          : dbStatusTime;
+    final mostRecentTime = TimeAgo.getMostRecentTime(
+      _currentStatus?.createdAt,
+      _currentLocation?.createdAt,
+    );
 
-      _lastCalculationTimestamp = mostRecentDBTime;
-      _lastCalculatedTime = TimeAgo.timeAgo(mostRecentDBTime);
-      lastUpdateTime = _lastCalculatedTime;
-    } else if (_currentLocation?.createdAt != null) {
-      _lastCalculationTimestamp = _currentLocation!.createdAt!;
-      _lastCalculatedTime = TimeAgo.timeAgo(_lastCalculationTimestamp!);
-      lastUpdateTime = _lastCalculatedTime;
-    } else if (_currentStatus?.createdAt != null) {
-      _lastCalculationTimestamp = _currentStatus!.createdAt!;
-      _lastCalculatedTime = TimeAgo.timeAgo(_lastCalculationTimestamp!);
+    if (mostRecentTime != null) {
+      _lastCalculationTimestamp = mostRecentTime;
+      _lastCalculatedTime = TimeAgo.timeAgo(mostRecentTime);
       lastUpdateTime = _lastCalculatedTime;
     } else {
       lastUpdateTime = 'No data available';
@@ -300,9 +291,9 @@ class _VehicleLiveTrackingShowScreenState
         vehicleState = newVehicleState;
         vehicleImage = newVehicleImage;
 
-        // Update last update time
-        if (newStatus.createdAt != null) {
-          final newTimestamp = newStatus.createdAt!;
+        // Update last update time using unified logic
+        final newTimestamp = newStatus.createdAt;
+        if (newTimestamp != null) {
           if (_lastCalculationTimestamp == null ||
               newTimestamp.isAfter(_lastCalculationTimestamp!)) {
             _lastCalculationTimestamp = newTimestamp;
@@ -355,9 +346,9 @@ class _VehicleLiveTrackingShowScreenState
           vehicleState = newVehicleState;
           vehicleImage = newVehicleImage;
 
-          // Update last update time
-          if (newLocation.createdAt != null) {
-            final newTimestamp = newLocation.createdAt!;
+          // Update last update time using unified logic
+          final newTimestamp = newLocation.createdAt;
+          if (newTimestamp != null) {
             if (_lastCalculationTimestamp == null ||
                 newTimestamp.isAfter(_lastCalculationTimestamp!)) {
               _lastCalculationTimestamp = newTimestamp;
@@ -558,7 +549,7 @@ class _VehicleLiveTrackingShowScreenState
   // Build status panel
   Widget _buildStatusPanel() {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.only(left: 10, right: 10, bottom: 4),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -576,26 +567,7 @@ class _VehicleLiveTrackingShowScreenState
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               // Speedometer
-              Column(
-                children: [
-                  SpeedometerWidget(
-                    currentSpeed: _currentLocation?.speed ?? 0.0,
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 5,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.black45, width: 1),
-                    ),
-                    child: Text(
-                      'ODO: ${vehicle.odometer ?? 0}Km',
-                      style: const TextStyle(fontSize: 8),
-                    ),
-                  ),
-                ],
-              ),
+              SpeedometerWidget(vehicle: vehicle),
 
               // Today Km
               Column(
@@ -603,13 +575,14 @@ class _VehicleLiveTrackingShowScreenState
                   FaIcon(
                     FontAwesomeIcons.road,
                     color: AppTheme.stopColor,
-                    size: 35,
+                    size: 30,
                   ),
+                  SizedBox(height: 2),
                   Text(
                     'Today Km',
                     style: TextStyle(
                       color: AppTheme.titleColor,
-                      fontSize: 10,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -617,7 +590,7 @@ class _VehicleLiveTrackingShowScreenState
                     '${vehicle.todayKm?.toStringAsFixed(2) ?? 0}Km',
                     style: TextStyle(
                       color: AppTheme.subTitleColor,
-                      fontSize: 10,
+                      fontSize: 12,
                     ),
                   ),
                 ],
@@ -629,13 +602,14 @@ class _VehicleLiveTrackingShowScreenState
                   FaIcon(
                     FontAwesomeIcons.clock,
                     color: AppTheme.inactiveColor,
-                    size: 35,
+                    size: 30,
                   ),
+                  SizedBox(height: 2),
                   Text(
                     'Last Data',
                     style: TextStyle(
                       color: AppTheme.titleColor,
-                      fontSize: 10,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -643,7 +617,7 @@ class _VehicleLiveTrackingShowScreenState
                     lastUpdateTime,
                     style: TextStyle(
                       color: AppTheme.subTitleColor,
-                      fontSize: 10,
+                      fontSize: 12,
                     ),
                   ),
                 ],
@@ -651,7 +625,7 @@ class _VehicleLiveTrackingShowScreenState
 
               // Battery, Real Time Gps, Signal
               Column(
-                spacing: 5,
+                spacing: 3,
                 children: [
                   VehicleService.getBattery(
                     value: _currentStatus?.battery ?? 0,
@@ -672,20 +646,176 @@ class _VehicleLiveTrackingShowScreenState
 
           // Reverse Geo Code
           Row(
-            spacing: 5,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Icon(Icons.location_on, color: Colors.red, size: 15),
-              FutureBuilder(
-                future: GeoService.getReverseGeoCode(
-                  _currentLocation?.latitude ?? 0,
-                  _currentLocation?.longitude ?? 0,
-                ),
-                builder: (context, snapshot) => Text(
-                  snapshot.data ?? '...',
-                  style: TextStyle(color: AppTheme.subTitleColor, fontSize: 12),
+              SizedBox(width: 5),
+              Expanded(
+                child: FutureBuilder(
+                  future: GeoService.getReverseGeoCode(
+                    _currentLocation?.latitude ?? 0,
+                    _currentLocation?.longitude ?? 0,
+                  ),
+                  builder: (context, snapshot) => Text(
+                    snapshot.data ?? '...',
+                    style: TextStyle(
+                      color: AppTheme.subTitleColor,
+                      fontSize: 12,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Build bottom info panel with odometer and altitude
+  Widget _buildBottomInfoPanel() {
+    return Container(
+      margin: const EdgeInsets.all(10),
+      child: Row(
+        children: [
+          // Odometer Card
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                    color: Colors.black12,
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.straighten,
+                    color: Colors.orange.shade800,
+                    size: 24,
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Odometer',
+                          style: TextStyle(
+                            color: AppTheme.subTitleColor,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text(
+                          '${vehicle.odometer}Km',
+                          style: TextStyle(
+                            color: AppTheme.titleColor,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          SizedBox(width: 8),
+
+          // Altitude Card
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                    color: Colors.black12,
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.landscape,
+                    color: Colors.purple.shade600,
+                    size: 24,
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Altitude',
+                          style: TextStyle(
+                            color: AppTheme.subTitleColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        FutureBuilder(
+                          future: GeoService.getAltitude(
+                            _currentLocation?.latitude ?? 0,
+                            _currentLocation?.longitude ?? 0,
+                          ),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return Text(
+                                '...',
+                                style: TextStyle(
+                                  color: AppTheme.titleColor,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              );
+                            }
+
+                            if (snapshot.hasError || !snapshot.hasData) {
+                              return Text(
+                                'N/A',
+                                style: TextStyle(
+                                  color: AppTheme.titleColor,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              );
+                            }
+
+                            final altitude = snapshot.data ?? '0';
+                            return Text(
+                              '${altitude}m',
+                              style: TextStyle(
+                                color: AppTheme.titleColor,
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -700,6 +830,13 @@ class _VehicleLiveTrackingShowScreenState
           'Live Tracking: ${vehicle.vehicleNo}',
           style: TextStyle(color: AppTheme.titleColor, fontSize: 14),
         ),
+        actions: [
+          SatelliteConnectionStatusWidget(
+            tooltip: 'Connection Status',
+            onTap: () {},
+          ),
+          SizedBox(width: 10),
+        ],
       ),
       body: _vehiclePosition == null
           ? const Center(child: LoadingWidget())
@@ -740,6 +877,14 @@ class _VehicleLiveTrackingShowScreenState
                   left: 0,
                   right: 0,
                   child: _buildStatusPanel(),
+                ),
+
+                // Bottom Info Panel
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: _buildBottomInfoPanel(),
                 ),
 
                 // Map Controls
@@ -849,74 +994,6 @@ class _VehicleLiveTrackingShowScreenState
                             size: 25,
                             color: Colors.white,
                           ),
-                        ),
-                      ),
-
-                      // Altitude Button
-                      Container(
-                        width: 45,
-                        height: 45,
-                        decoration: BoxDecoration(
-                          color: Colors.purple,
-                          borderRadius: BorderRadius.circular(300),
-                          boxShadow: [
-                            BoxShadow(
-                              offset: const Offset(0, 0),
-                              spreadRadius: 1,
-                              blurRadius: 15,
-                              color: Colors.black12,
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.landscape,
-                              size: 15,
-                              color: Colors.white,
-                            ),
-                            FutureBuilder(
-                              future: GeoService.getAltitude(
-                                _currentLocation?.latitude ?? 0,
-                                _currentLocation?.longitude ?? 0,
-                              ),
-                              builder: (context, snapshot) {
-                                if (snapshot.connectionState ==
-                                    ConnectionState.waiting) {
-                                  return const Text(
-                                    '...',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 7,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  );
-                                }
-
-                                if (snapshot.hasError || !snapshot.hasData) {
-                                  return const Text(
-                                    'N/A',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 7,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  );
-                                }
-
-                                final altitude = snapshot.data ?? '0';
-                                return Text(
-                                  '${altitude}m',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 7,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
                         ),
                       ),
                     ],

@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:luna_iot/api/api_client.dart';
 import 'package:luna_iot/api/services/auth_api_service.dart';
@@ -34,14 +33,16 @@ class AuthController extends GetxController {
   void onInit() {
     super.onInit();
     if (!_isInitialized) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        checkAuthStatus();
-      });
+      _isInitialized = true;
+      // Don't call checkAuthStatus here - let splash screen handle it
     }
   }
 
   Future<void> checkAuthStatus() async {
     if (isLoading.value) return;
+    if (!_isInitialized) {
+      _isInitialized = true;
+    }
     try {
       isLoading.value = true;
       final phone = await AuthStorageService.getPhone();

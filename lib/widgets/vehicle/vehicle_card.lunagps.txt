@@ -237,6 +237,71 @@ class VehicleCard extends StatelessWidget {
                             // Gap
                             SizedBox(height: 5),
 
+                            // Battery, Signal and Satellite
+                            Row(
+                              spacing: 8,
+                              children: [
+                                VehicleService.getSatellite(
+                                  value: vehicle.latestLocation?.satellite ?? 0,
+                                ),
+                                VehicleService.getBattery(
+                                  value: vehicle.latestStatus?.battery ?? 0,
+                                ),
+                                VehicleService.getSignal(
+                                  value: vehicle.latestStatus?.signal ?? 0,
+                                ),
+                              ],
+                            ),
+
+                            // Gap
+                            SizedBox(height: 8),
+
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: AppTheme.subTitleColor,
+                                  width: 1,
+                                ),
+                                borderRadius: BorderRadius.all(
+                                  Radius.circular(3),
+                                ),
+                              ),
+                              child: Text(
+                                '${vehicle.odometer} KM',
+                                style: TextStyle(
+                                  color: AppTheme.subTitleColor,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+
+                            // Gap
+                            SizedBox(height: 12),
+
+                            // Vehicle Name
+                            SizedBox(
+                              width: 100,
+                              child: Text(
+                                '(${vehicle.name ?? ''})',
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: AppTheme.subTitleColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+
+                            // Gap
+                            SizedBox(height: 2),
+
                             // Vehicle No.
                             SizedBox(
                               width: 100,
@@ -252,136 +317,74 @@ class VehicleCard extends StatelessWidget {
                                 ),
                               ),
                             ),
-
-                            // Gap
-                            SizedBox(height: 2),
-
-                            // Vehicle Name
-                            SizedBox(
-                              width: 100,
-                              child: Text(
-                                vehicle.name ?? '',
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                                maxLines: 1,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: AppTheme.subTitleColor,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
                           ],
                         ),
 
-                        // Second Data Column - Only show for active vehicles
+                        // Timeline Data Column - Only show for active vehicles
                         if (!isInactive)
-                          Column(
-                            spacing: 8,
-                            children: [
-                              // Speed
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: VehicleService.getStateColor(
-                                    vehicleState,
-                                  ),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      spacing: 5,
-                                      children: [
-                                        Icon(
-                                          Icons.speed,
-                                          color: Colors.white,
-                                          size: 15,
-                                        ),
-                                        Text(
-                                          '${vehicleState == VehicleService.stopped ? 0 : vehicle.latestLocation?.speed ?? 0} km/h',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 8,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-
-                                    Text(
-                                      vehicleState.toUpperCase(),
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 8,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              // Battery, Signal and Satellite
-                              Row(
-                                spacing: 8,
+                          Expanded(
+                            flex: 6,
+                            child: Container(
+                              child: Column(
                                 children: [
-                                  VehicleService.getSatellite(
-                                    value:
-                                        vehicle.latestLocation?.satellite ?? 0,
+                                  // Last Data
+                                  _TimelineItem(
+                                    content: latestUpdateTime,
+                                    color: VehicleService.getStateColor(
+                                      vehicleState,
+                                    ),
+                                    isFirst: true,
                                   ),
-                                  VehicleService.getBattery(
-                                    value: vehicle.latestStatus?.battery ?? 0,
-                                  ),
-                                  VehicleService.getSignal(
-                                    value: vehicle.latestStatus?.signal ?? 0,
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
 
-                        // Third Data Column - Only show for active vehicles
-                        if (!isInactive)
-                          Column(
-                            spacing: 5,
-                            children: [
-                              Row(
-                                spacing: 5,
-                                children: [
-                                  StatsCard(
-                                    title: 'Today',
-                                    value:
-                                        '${vehicle.todayKm?.toStringAsFixed(2) ?? 999}Km',
-                                    icon: Icons.today,
-                                    color: Colors.blue.shade800,
+                                  // Speed
+                                  _TimelineItem(
+                                    content:
+                                        vehicleState == VehicleService.stopped
+                                        ? "0 km/h"
+                                        : "${vehicle.latestLocation?.speed ?? 0} km/h",
+                                    color: Colors.redAccent,
                                   ),
-                                  StatsCard(
-                                    title: 'Fuel',
-                                    value:
+
+                                  // Today KM
+                                  _TimelineItem(
+                                    content:
+                                        '${(vehicle.todayKm?.toStringAsFixed(2) ?? "0.00")} KM',
+                                    color: Colors.blueAccent,
+                                  ),
+
+                                  // Fuel
+                                  _TimelineItem(
+                                    content:
                                         '${((vehicle.todayKm ?? 0) / (vehicle.mileage ?? 1)).toStringAsFixed(2)}L',
-                                    icon: Icons.local_gas_station,
-                                    color: Colors.orange.shade800,
+                                    color: Colors.deepPurpleAccent,
+                                  ),
+
+                                  // Altitude
+                                  _TimelineItem(
+                                    content: _AltitudeTextWidget(
+                                      latitude:
+                                          vehicle.latestLocation?.latitude ?? 0,
+                                      longitude:
+                                          vehicle.latestLocation?.longitude ??
+                                          0,
+                                    ),
+                                    color: VehicleService.getStateColor(
+                                      vehicleState,
+                                    ),
+                                  ),
+
+                                  // Since (Vehicle State)
+                                  _TimelineItem(
+                                    content: Text(
+                                      vehicleState.toUpperCase(),
+                                      style: TextStyle(fontSize: 13),
+                                    ),
+                                    color: Colors.redAccent,
+                                    isLast: true,
                                   ),
                                 ],
                               ),
-                              Row(
-                                spacing: 5,
-                                children: [
-                                  StatsCard(
-                                    title: 'ODO',
-                                    value: '${vehicle.odometer}Km',
-                                    icon: Icons.straighten,
-                                    color: Colors.purple.shade800,
-                                  ),
-                                  _AltitudeWidget(
-                                    latitude:
-                                        vehicle.latestLocation?.latitude ?? 0,
-                                    longitude:
-                                        vehicle.latestLocation?.longitude ?? 0,
-                                  ),
-                                ],
-                              ),
-                            ],
+                            ),
                           ),
                       ],
                     ),
@@ -435,49 +438,60 @@ class VehicleCard extends StatelessWidget {
   static final Map<String, String> _timeCache = {};
   static final Map<String, DateTime> _timestampCache = {};
 
-  // Unified cached time calculation method
+  // NEW: Cached time calculation method
   String _getCachedLastUpdateTime(
     String imei,
     Map<String, dynamic>? statusData,
   ) {
-    DateTime? socketTime;
-
     // Check if we have new socket data
     if (statusData?['createdAt'] != null) {
       try {
-        socketTime = DateTime.parse(statusData!['createdAt'].toString());
+        final socketTime = DateTime.parse(statusData!['createdAt'].toString());
+
+        // Check if this is new data (more recent than what we have cached)
+        if (!_timestampCache.containsKey(imei) ||
+            socketTime.isAfter(_timestampCache[imei]!)) {
+          // Update cache with new data
+          _timestampCache[imei] = socketTime;
+          _timeCache[imei] = TimeAgo.timeAgo(socketTime);
+          return _timeCache[imei]!;
+        }
       } catch (e) {
-        // If parsing fails, socketTime remains null
+        // If parsing fails, fall back to cached data
       }
     }
 
-    // Use unified calculation method
-    final timeString = TimeAgo.calculateLastUpdateTime(
-      statusTime: givenVehicle.latestStatus?.createdAt,
-      locationTime: givenVehicle.latestLocation?.createdAt,
-      socketTime: socketTime,
-    );
-
-    // Update cache if we have new socket data or no cache exists
-    if (socketTime != null) {
-      if (!_timestampCache.containsKey(imei) ||
-          socketTime.isAfter(_timestampCache[imei]!)) {
-        _timestampCache[imei] = socketTime;
-        _timeCache[imei] = timeString;
-      }
-    } else if (!_timeCache.containsKey(imei)) {
-      // Cache the calculated time from vehicle data
-      final mostRecentTime = TimeAgo.getMostRecentTime(
-        givenVehicle.latestStatus?.createdAt,
-        givenVehicle.latestLocation?.createdAt,
-      );
-      if (mostRecentTime != null) {
-        _timestampCache[imei] = mostRecentTime;
-      }
-      _timeCache[imei] = timeString;
+    // If no new data, check if we have cached time
+    if (_timeCache.containsKey(imei)) {
+      return _timeCache[imei]!;
     }
 
-    return _timeCache[imei] ?? timeString;
+    // If no cache, calculate from vehicle data and cache it
+    final vehicle = givenVehicle;
+    DateTime? mostRecentTime;
+
+    if (vehicle.latestLocation?.createdAt != null &&
+        vehicle.latestStatus?.createdAt != null) {
+      mostRecentTime =
+          vehicle.latestLocation!.createdAt!.isAfter(
+            vehicle.latestStatus!.createdAt!,
+          )
+          ? vehicle.latestLocation!.createdAt!
+          : vehicle.latestStatus!.createdAt!;
+    } else if (vehicle.latestLocation?.createdAt != null) {
+      mostRecentTime = vehicle.latestLocation!.createdAt!;
+    } else if (vehicle.latestStatus?.createdAt != null) {
+      mostRecentTime = vehicle.latestStatus!.createdAt!;
+    }
+
+    if (mostRecentTime != null) {
+      _timestampCache[imei] = mostRecentTime;
+      _timeCache[imei] = TimeAgo.timeAgo(mostRecentTime);
+      return _timeCache[imei]!;
+    } else {
+      _timeCache[imei] = 'No data available';
+      return _timeCache[imei]!;
+    }
   }
 
   // Show bottom sheet
@@ -699,9 +713,119 @@ class _GeocodeWidgetState extends State<_GeocodeWidget> {
       child: Text(
         _cachedAddress!,
         style: TextStyle(color: AppTheme.subTitleColor, fontSize: 12),
-        maxLines: 3,
         overflow: TextOverflow.ellipsis,
       ),
+    );
+  }
+}
+
+// Simple Altitude Text Widget for Timeline
+class _AltitudeTextWidget extends StatefulWidget {
+  final double latitude;
+  final double longitude;
+
+  const _AltitudeTextWidget({required this.latitude, required this.longitude});
+
+  @override
+  State<_AltitudeTextWidget> createState() => _AltitudeTextWidgetState();
+}
+
+class _AltitudeTextWidgetState extends State<_AltitudeTextWidget> {
+  String? _cachedAltitude;
+  String? _lastCoordinates;
+  bool _isLoading = false;
+  bool _hasError = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final currentCoords = '${widget.latitude}_${widget.longitude}';
+
+    // Only fetch if coordinates changed or no cache exists
+    if (_lastCoordinates != currentCoords ||
+        (_cachedAltitude == null && !_isLoading && !_hasError)) {
+      _lastCoordinates = currentCoords;
+      _cachedAltitude = null;
+      _isLoading = true;
+      _hasError = false;
+
+      // Fetch altitude asynchronously with error handling
+      GeoService.getAltitude(widget.latitude, widget.longitude)
+          .then((altitude) {
+            if (mounted && _lastCoordinates == currentCoords) {
+              setState(() {
+                _cachedAltitude = altitude;
+                _isLoading = false;
+                _hasError = false;
+              });
+            }
+          })
+          .catchError((error) {
+            if (mounted && _lastCoordinates == currentCoords) {
+              setState(() {
+                _cachedAltitude = '0'; // Default value on error
+                _isLoading = false;
+                _hasError = true;
+              });
+            }
+          });
+    }
+
+    return Text(
+      _isLoading ? 'Loading...' : "${_cachedAltitude ?? '0'} Meter",
+      style: TextStyle(fontSize: 13),
+    );
+  }
+}
+
+// Custom Timeline Item Widget
+class _TimelineItem extends StatelessWidget {
+  final dynamic content;
+  final Color color;
+  final bool isFirst;
+  final bool isLast;
+
+  const _TimelineItem({
+    required this.content,
+    required this.color,
+    this.isFirst = false,
+    this.isLast = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Timeline indicator and connector
+        Column(
+          children: [
+            // Top connector (only if not first)
+            if (!isFirst)
+              Container(width: 2, height: 8, color: Colors.grey.shade300),
+
+            // Dot indicator
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+
+            // Bottom connector (only if not last)
+            if (!isLast)
+              Container(width: 2, height: 8, color: Colors.grey.shade300),
+          ],
+        ),
+
+        // Content
+        Expanded(
+          child: Container(
+            padding: EdgeInsets.only(left: 10, top: 0, bottom: 0),
+            child: content is String
+                ? Text(content, style: TextStyle(fontSize: 13))
+                : content,
+          ),
+        ),
+      ],
     );
   }
 }

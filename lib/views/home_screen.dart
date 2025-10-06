@@ -3,14 +3,31 @@ import 'package:get/get.dart';
 import 'package:luna_iot/app/app_routes.dart';
 import 'package:luna_iot/app/app_theme.dart';
 import 'package:luna_iot/controllers/auth_controller.dart';
+import 'package:luna_iot/controllers/navigation_controller.dart';
 import 'package:luna_iot/widgets/home/home_admin_section.dart';
 import 'package:luna_iot/widgets/home/home_dealer_section.dart';
 import 'package:luna_iot/widgets/home/home_drawer.dart';
 import 'package:luna_iot/widgets/home/home_customer_section.dart';
 import 'package:luna_iot/widgets/loading_widget.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Set the navigation index to home (0)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (Get.isRegistered<NavigationController>()) {
+        Get.find<NavigationController>().changeIndex(0);
+      }
+    });
+  }
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
@@ -36,11 +53,15 @@ class HomeScreen extends StatelessWidget {
           style: TextStyle(fontSize: 14, color: AppTheme.titleColor),
         ),
         actions: [
+          Icon(Icons.qr_code_scanner_rounded, color: AppTheme.subTitleColor),
+          SizedBox(width: 10),
+          Icon(Icons.g_translate_outlined, color: AppTheme.subTitleColor),
+          SizedBox(width: 10),
           InkWell(
             onTap: () {
               Get.toNamed(AppRoutes.notification);
             },
-            child: Icon(Icons.notifications, color: AppTheme.titleColor),
+            child: Icon(Icons.notifications, color: AppTheme.subTitleColor),
           ),
           SizedBox(width: 10),
         ],
