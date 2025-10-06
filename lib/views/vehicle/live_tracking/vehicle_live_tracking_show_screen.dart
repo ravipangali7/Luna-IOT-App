@@ -417,10 +417,10 @@ class _VehicleLiveTrackingShowScreenState
     LatLng toPosition,
     Location newLocation,
   ) {
-    const int totalSteps = 100; // 0.01 to 1.0 = 100 steps
+    const int totalSteps = 300; // 0.01 to 1.0 = 300 steps for smoother movement
     const Duration stepDuration = Duration(
       milliseconds: 50,
-    ); // 5 seconds / 100 steps = 50ms per step
+    ); // 15 seconds / 300 steps = 50ms per step
 
     int currentStep = 0;
     double course = newLocation.course ?? 0.0;
