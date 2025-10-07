@@ -93,19 +93,19 @@ class VehicleCardBottomSheet extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            vehicle.name!,
-                            style: TextStyle(
-                              color: AppTheme.subTitleColor,
-                              fontSize: 10,
-                            ),
-                          ),
-                          Text(
                             vehicle.vehicleNo!,
                             overflow: TextOverflow.clip,
                             style: TextStyle(
                               color: AppTheme.titleColor,
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            vehicle.name!,
+                            style: TextStyle(
+                              color: AppTheme.subTitleColor,
+                              fontSize: 10,
                             ),
                           ),
                         ],

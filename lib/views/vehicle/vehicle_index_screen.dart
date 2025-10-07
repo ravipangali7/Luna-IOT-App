@@ -10,6 +10,7 @@ import 'package:luna_iot/models/search_filter_model.dart';
 import 'package:luna_iot/models/vehicle_model.dart';
 import 'package:luna_iot/widgets/loading_widget.dart';
 import 'package:luna_iot/widgets/pagination_widget.dart';
+import 'package:luna_iot/widgets/satellite_connection_status_widget.dart';
 import 'package:luna_iot/widgets/search_filter_bottom_sheet.dart';
 import 'package:luna_iot/widgets/vehicle/vehicle_card.dart';
 
@@ -93,6 +94,10 @@ class VehicleIndexScreen extends GetView<VehicleController> {
           style: TextStyle(color: AppTheme.titleColor, fontSize: 14),
         ),
         actions: [
+          SatelliteConnectionStatusWidget(
+            tooltip: 'Connection Status',
+            onTap: () {},
+          ),
           IconButton(
             onPressed: _showSearchFilterBottomSheet,
             icon: Icon(Icons.search, color: AppTheme.titleColor),

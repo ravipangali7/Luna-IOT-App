@@ -99,7 +99,37 @@ class VehicleApiService {
     }
   }
 
-  // Search vehicles using dedicated search API
+  // Search vehicles using dedicated search API with pagination
+  Future<PaginatedResponse<Vehicle>> searchVehiclesPaginated({
+    required String query,
+    int page = 1,
+    int pageSize = 25,
+  }) async {
+    try {
+      final response = await _apiClient.dio.get(
+        ApiEndpoints.searchVehicles,
+        queryParameters: {'q': query, 'page': page, 'page_size': pageSize},
+      );
+
+      // Debug: Print raw response
+      debugPrint('Search API response: ${response.data}');
+
+      // Django response format: {success: true, message: '...', data: [...], pagination: {...}}
+      if (response.data['success'] == true) {
+        return PaginatedResponse.fromJson(
+          response.data,
+          (json) => Vehicle.fromJson(json),
+        );
+      }
+      throw Exception(
+        'Failed to search vehicles: ${response.data['message'] ?? 'Unknown error'}',
+      );
+    } on DioException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    }
+  }
+
+  // Search vehicles using dedicated search API (backward compatibility)
   Future<List<Vehicle>> searchVehicles(String query) async {
     try {
       final response = await _apiClient.dio.get(

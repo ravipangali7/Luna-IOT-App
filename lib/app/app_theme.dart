@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // Colors
@@ -22,11 +23,23 @@ class AppTheme {
   static Color runningColor = Colors.green.shade600;
   static Color overspeedColor = Colors.orange.shade600;
 
+  // Source Sans 3 Text Styles
+  static TextStyle get sourceSans3Regular => GoogleFonts.sourceSans3();
+  static TextStyle get sourceSans3Bold =>
+      GoogleFonts.sourceSans3(fontWeight: FontWeight.bold);
+  static TextStyle get sourceSans3SemiBold =>
+      GoogleFonts.sourceSans3(fontWeight: FontWeight.w600);
+  static TextStyle get sourceSans3Light =>
+      GoogleFonts.sourceSans3(fontWeight: FontWeight.w300);
+  static TextStyle get sourceSans3Medium =>
+      GoogleFonts.sourceSans3(fontWeight: FontWeight.w500);
+
   // Light Theme
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
+      textTheme: GoogleFonts.sourceSans3TextTheme(),
 
       scaffoldBackgroundColor: backgroundColor,
 

@@ -23,6 +23,7 @@ class RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isOtpSent = false;
+  bool _agreeToTerms = false;
 
   @override
   void initState() {
@@ -153,10 +154,13 @@ class RegisterScreenState extends State<RegisterScreen> {
                                 TextFormField(
                                   controller: _nameController,
                                   decoration: InputDecoration(
+                                    contentPadding: EdgeInsets.symmetric(
+                                      vertical: 20,
+                                    ),
                                     labelText: 'Full Name',
                                     prefixIcon: Icon(
                                       Icons.person,
-                                      color: AppTheme.primaryColor,
+                                      color: AppTheme.subTitleColor,
                                     ),
                                   ),
                                   validator: (value) {
@@ -173,10 +177,13 @@ class RegisterScreenState extends State<RegisterScreen> {
                                   controller: _phoneController,
                                   keyboardType: TextInputType.phone,
                                   decoration: InputDecoration(
+                                    contentPadding: EdgeInsets.symmetric(
+                                      vertical: 20,
+                                    ),
                                     labelText: 'Phone Number',
                                     prefixIcon: Icon(
                                       Icons.phone,
-                                      color: AppTheme.primaryColor,
+                                      color: AppTheme.subTitleColor,
                                     ),
                                   ),
                                   validator: (value) {
@@ -193,17 +200,20 @@ class RegisterScreenState extends State<RegisterScreen> {
                                   controller: _passwordController,
                                   obscureText: _obscurePassword,
                                   decoration: InputDecoration(
+                                    contentPadding: EdgeInsets.symmetric(
+                                      vertical: 20,
+                                    ),
                                     labelText: 'Password',
                                     prefixIcon: Icon(
                                       Icons.lock,
-                                      color: AppTheme.primaryColor,
+                                      color: AppTheme.subTitleColor,
                                     ),
                                     suffixIcon: IconButton(
                                       icon: Icon(
                                         _obscurePassword
                                             ? Icons.visibility_off
                                             : Icons.visibility,
-                                        color: AppTheme.primaryColor,
+                                        color: AppTheme.subTitleColor,
                                       ),
                                       onPressed: () {
                                         setState(() {
@@ -229,17 +239,20 @@ class RegisterScreenState extends State<RegisterScreen> {
                                   controller: _confirmPasswordController,
                                   obscureText: _obscureConfirmPassword,
                                   decoration: InputDecoration(
+                                    contentPadding: EdgeInsets.symmetric(
+                                      vertical: 20,
+                                    ),
                                     labelText: 'Confirm Password',
                                     prefixIcon: Icon(
                                       Icons.lock_outline,
-                                      color: AppTheme.primaryColor,
+                                      color: AppTheme.subTitleColor,
                                     ),
                                     suffixIcon: IconButton(
                                       icon: Icon(
                                         _obscureConfirmPassword
                                             ? Icons.visibility_off
                                             : Icons.visibility,
-                                        color: AppTheme.primaryColor,
+                                        color: AppTheme.subTitleColor,
                                       ),
                                       onPressed: () {
                                         setState(() {
@@ -259,16 +272,57 @@ class RegisterScreenState extends State<RegisterScreen> {
                                     return null;
                                   },
                                 ),
+
+                                const SizedBox(height: 16),
+
+                                // Terms and Privacy Policy Checkbox
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Checkbox(
+                                      value: _agreeToTerms,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _agreeToTerms = value ?? false;
+                                        });
+                                      },
+                                      activeColor: AppTheme.primaryColor,
+                                    ),
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            _agreeToTerms = !_agreeToTerms;
+                                          });
+                                        },
+                                        child: Text(
+                                          'By signing up you agree to our terms and privacy policy',
+                                          style: TextStyle(
+                                            color: AppTheme.subTitleColor,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
                                 const SizedBox(height: 24),
 
                                 // Send OTP Button
                                 Obx(
                                   () => ElevatedButton(
-                                    onPressed: _authController.isLoading.value
+                                    onPressed:
+                                        (_authController.isLoading.value ||
+                                            !_agreeToTerms)
                                         ? null
                                         : _handleSendOTP,
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppTheme.primaryColor,
+                                      backgroundColor:
+                                          (_authController.isLoading.value ||
+                                              !_agreeToTerms)
+                                          ? Colors.grey.shade400
+                                          : AppTheme.primaryColor,
                                       padding: const EdgeInsets.symmetric(
                                         vertical: 16,
                                       ),
@@ -292,6 +346,20 @@ class RegisterScreenState extends State<RegisterScreen> {
                                           ),
                                   ),
                                 ),
+
+                                // Terms agreement reminder
+                                if (!_agreeToTerms &&
+                                    !_authController.isLoading.value)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 8.0),
+                                    child: Text(
+                                      'Please agree to terms and privacy policy to continue',
+                                      style: TextStyle(
+                                        color: Colors.red.shade600,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
                               ] else ...[
                                 // OTP Field
                                 TextFormField(
@@ -299,6 +367,9 @@ class RegisterScreenState extends State<RegisterScreen> {
                                   keyboardType: TextInputType.number,
                                   maxLength: 6,
                                   decoration: InputDecoration(
+                                    contentPadding: EdgeInsets.symmetric(
+                                      vertical: 20,
+                                    ),
                                     labelText: 'OTP',
                                     prefixIcon: Icon(
                                       Icons.security,

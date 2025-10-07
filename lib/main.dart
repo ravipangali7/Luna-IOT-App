@@ -7,8 +7,11 @@ import 'package:luna_iot/api/services/auth_api_service.dart';
 import 'package:luna_iot/app/app_routes.dart';
 import 'package:luna_iot/app/app_theme.dart';
 import 'package:luna_iot/controllers/auth_controller.dart';
+import 'package:luna_iot/controllers/main_screen_controller.dart';
+import 'package:luna_iot/controllers/navigation_controller.dart';
 import 'package:luna_iot/services/firebase_service.dart';
 import 'package:luna_iot/services/socket_service.dart';
+import 'package:luna_iot/views/main_screen.dart';
 import 'package:luna_iot/views/splash_screen.dart';
 import 'package:upgrader/upgrader.dart';
 
@@ -45,6 +48,8 @@ class MyApp extends StatelessWidget {
         Get.lazyPut(() => ApiClient());
         Get.lazyPut(() => AuthApiService(Get.find<ApiClient>()));
         Get.lazyPut(() => AuthController(Get.find<AuthApiService>()));
+        Get.put(NavigationController());
+        Get.put(MainScreenController());
 
         // Schedule FCM token update after auth check
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -84,5 +89,4 @@ class MyApp extends StatelessWidget {
       }
     });
   }
-
 }

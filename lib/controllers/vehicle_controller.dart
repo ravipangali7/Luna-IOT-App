@@ -55,6 +55,7 @@ class VehicleController extends GetxController {
 
   // Search related
   final RxBool isSearching = false.obs;
+  final RxBool isInSearchMode = false.obs;
   final RxList<Map<String, dynamic>> searchResults =
       <Map<String, dynamic>>[].obs;
 
@@ -199,7 +200,10 @@ class VehicleController extends GetxController {
       'Next page clicked. Current page: ${currentPage.value}, Has next: ${hasNextPage.value}',
     );
     if (hasNextPage.value) {
-      if (_allVehicles.isNotEmpty) {
+      if (isInSearchMode.value) {
+        // Use search pagination
+        await _performSearch(searchQuery.value, currentPage.value + 1);
+      } else if (_allVehicles.isNotEmpty) {
         // Use client-side pagination with total count
         _applyClientSidePaginationWithTotalCount(
           _allVehicles,
@@ -220,7 +224,10 @@ class VehicleController extends GetxController {
       'Previous page clicked. Current page: ${currentPage.value}, Has previous: ${hasPreviousPage.value}',
     );
     if (hasPreviousPage.value) {
-      if (_allVehicles.isNotEmpty) {
+      if (isInSearchMode.value) {
+        // Use search pagination
+        await _performSearch(searchQuery.value, currentPage.value - 1);
+      } else if (_allVehicles.isNotEmpty) {
         // Use client-side pagination with total count
         _applyClientSidePaginationWithTotalCount(
           _allVehicles,
@@ -238,7 +245,10 @@ class VehicleController extends GetxController {
   // Go to specific page
   Future<void> goToPage(int page) async {
     if (page >= 1 && page <= totalPages.value) {
-      if (_allVehicles.isNotEmpty) {
+      if (isInSearchMode.value) {
+        // Use search pagination
+        await _performSearch(searchQuery.value, page);
+      } else if (_allVehicles.isNotEmpty) {
         // Use client-side pagination with total count
         _applyClientSidePaginationWithTotalCount(_allVehicles, page);
       } else {
@@ -269,6 +279,13 @@ class VehicleController extends GetxController {
   }
 
   void _applyFilter() {
+    // If we're in search mode, don't apply client-side filtering
+    // as search results are already filtered by the server
+    if (searchQuery.value.trim().isNotEmpty) {
+      filteredVehicles.assignAll(vehicles);
+      return;
+    }
+
     List<Vehicle> stateFiltered;
 
     if (selectedFilter.value == 'All') {
@@ -305,17 +322,69 @@ class VehicleController extends GetxController {
 
   // Add these methods after the existing methods (around line 94)
   void applySearchAndFilter() {
-    filteredVehicles.value = SearchFilterService.searchVehicles(
-      vehicles: vehicles,
-      searchQuery: searchQuery.value,
-      filters: currentFilters,
-    );
+    // If we have a search query, don't apply client-side filtering
+    // as search results are already filtered by the server
+    if (searchQuery.value.trim().isNotEmpty) {
+      filteredVehicles.assignAll(vehicles);
+    } else {
+      // Apply client-side filtering for non-search scenarios
+      filteredVehicles.value = SearchFilterService.searchVehicles(
+        vehicles: vehicles,
+        searchQuery: searchQuery.value,
+        filters: currentFilters,
+      );
+    }
   }
 
   void updateSearchQuery(String query) async {
     searchQuery.value = query;
     currentPage.value = 1; // Reset to first page when searching
-    await loadVehiclesPaginated(); // Load with search query
+
+    if (query.trim().isEmpty) {
+      // If search is empty, load normal paginated data
+      isInSearchMode.value = false;
+      await loadVehiclesPaginated();
+    } else {
+      // Use dedicated search API for non-empty queries
+      isInSearchMode.value = true;
+      await _performSearch(query, 1);
+    }
+  }
+
+  // Perform search using dedicated search API
+  Future<void> _performSearch(String query, int page) async {
+    try {
+      paginationLoading.value = true;
+
+      final searchResponse = await _vehicleApiService.searchVehiclesPaginated(
+        query: query,
+        page: page,
+        pageSize: pageSize.value,
+      );
+
+      // Update vehicles with search results
+      vehicles.value = searchResponse.data;
+      filteredVehicles.assignAll(vehicles);
+
+      // Update pagination for search results
+      currentPage.value = searchResponse.pagination.currentPage;
+      totalPages.value = searchResponse.pagination.totalPages;
+      totalCount.value = searchResponse.pagination.count;
+      hasNextPage.value = searchResponse.pagination.hasNext;
+      hasPreviousPage.value = searchResponse.pagination.hasPrevious;
+
+      debugPrint(
+        'Search completed - Found ${searchResponse.data.length} vehicles for query: $query, Page: $page',
+      );
+    } catch (e) {
+      debugPrint('Search error: $e');
+      Get.snackbar(
+        'Search Error',
+        'Failed to search vehicles: ${e.toString()}',
+      );
+    } finally {
+      paginationLoading.value = false;
+    }
   }
 
   void updateFilter(String key, String? value) {
@@ -332,6 +401,7 @@ class VehicleController extends GetxController {
     currentFilters.clear();
     selectedFilter.value = 'All';
     currentPage.value = 1; // Reset to first page when clearing filters
+    isInSearchMode.value = false; // Exit search mode
     loadVehiclesPaginated(); // Load with cleared filters
   }
 

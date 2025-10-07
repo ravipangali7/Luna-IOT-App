@@ -49,6 +49,10 @@ import 'package:luna_iot/views/vehicle/vehicle_create_screen.dart';
 import 'package:luna_iot/views/vehicle/vehicle_edit_screen.dart';
 import 'package:luna_iot/views/vehicle/vehicle_index_screen.dart';
 import 'package:luna_iot/views/splash_screen.dart';
+import 'package:luna_iot/views/vehicle_tag/vehicle_tag_screen.dart';
+import 'package:luna_iot/views/sos/sos_screen.dart';
+import 'package:luna_iot/views/ev_charge/ev_charge_screen.dart';
+import 'package:luna_iot/views/profile/profile_screen.dart';
 
 class AppRoutes {
   static const String splash = '/splash';
@@ -110,6 +114,12 @@ class AppRoutes {
   static const String popup = '/popup';
   static const String popupCreate = '/popup/create';
   static const String popupEdit = '/popup/edit/:id';
+
+  // Bottom Navigation Routes
+  static const String vehicleTag = '/vehicle-tag';
+  static const String sos = '/sos';
+  static const String evCharge = '/ev-charge';
+  static const String profile = '/profile';
 
   // ########### ROUTES ###########
   static List<GetPage> routes = [
@@ -371,6 +381,28 @@ class AppRoutes {
       name: popupEdit,
       page: () => PopupEditScreen(),
       binding: PopupBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+
+    // ---- Bottom Navigation Routes ----
+    GetPage(
+      name: vehicleTag,
+      page: () => const VehicleTagScreen(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: sos,
+      page: () => const SosScreen(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: evCharge,
+      page: () => const EvChargeScreen(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: profile,
+      page: () => const ProfileScreen(),
       middlewares: [AuthMiddleware()],
     ),
   ];

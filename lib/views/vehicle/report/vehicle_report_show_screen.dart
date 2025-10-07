@@ -1,7 +1,5 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:get/get.dart';
 import 'package:luna_iot/app/app_theme.dart';
 import 'package:luna_iot/api/api_client.dart';
 import 'package:luna_iot/api/services/report_api_service.dart';
@@ -165,8 +163,11 @@ class _VehicleReportShowScreenState extends State<VehicleReportShowScreen> {
         endDate!,
       );
 
+      // Validate and fix distance calculation if needed
+      final validatedData = _validateAndFixReportData(data);
+
       setState(() {
-        reportData = data;
+        reportData = validatedData;
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -180,6 +181,36 @@ class _VehicleReportShowScreenState extends State<VehicleReportShowScreen> {
         isLoading = false;
       });
     }
+  }
+
+  // Validate and fix report data if distance calculation is incorrect
+  ReportData _validateAndFixReportData(ReportData data) {
+    // Check if total distance seems incorrect (0km but has daily data)
+    if (data.stats.totalKm == 0.0 && data.dailyData.isNotEmpty) {
+      // Recalculate total distance from daily data
+      double correctedTotalKm = 0.0;
+      for (final daily in data.dailyData) {
+        correctedTotalKm += daily.totalKm;
+      }
+
+      // Create corrected stats
+      final correctedStats = ReportStats(
+        totalKm: correctedTotalKm,
+        totalTime: data.stats.totalTime,
+        averageSpeed: correctedTotalKm > 0
+            ? (correctedTotalKm / (data.stats.totalTime / 60))
+            : 0.0,
+        maxSpeed: data.stats.maxSpeed,
+        totalIdleTime: data.stats.totalIdleTime,
+        totalRunningTime: data.stats.totalRunningTime,
+        totalOverspeedTime: data.stats.totalOverspeedTime,
+        totalStopTime: data.stats.totalStopTime,
+      );
+
+      return ReportData(stats: correctedStats, dailyData: data.dailyData);
+    }
+
+    return data; // Return original data if no correction needed
   }
 
   String _formatDuration(int minutes) {
