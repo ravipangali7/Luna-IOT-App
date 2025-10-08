@@ -34,6 +34,8 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
 
   DateTime? startDate;
   DateTime? endDate;
+  TimeOfDay? startTime;
+  TimeOfDay? endTime;
   bool isLoading = false;
   bool isPlaying = false;
   bool isTripSelected = false; // Add this flag
@@ -59,6 +61,11 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
   // Camera following optimization
   LatLng? _lastCameraPosition;
 
+  // Add progress slider variables
+  double _sliderValue = 0.0;
+  bool _isSliderDragging = false;
+  bool _showProgressSlider = false;
+
   @override
   void initState() {
     super.initState();
@@ -72,14 +79,9 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
     final today = DateTime.now();
     setState(() {
       startDate = DateTime(today.year, today.month, today.day - 1); // Yesterday
-      endDate = DateTime(
-        today.year,
-        today.month,
-        today.day,
-        23,
-        59,
-        59,
-      ); // Today end of day
+      endDate = DateTime(today.year, today.month, today.day); // Today
+      startTime = TimeOfDay(hour: 0, minute: 0); // 12:00 AM
+      endTime = TimeOfDay(hour: 23, minute: 59); // 11:59 PM
     });
 
     // Automatically fetch history data for yesterday to today
@@ -103,7 +105,10 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
     );
 
     _animation.addListener(() {
-      _updateVehiclePosition();
+      if (!_isSliderDragging) {
+        _updateVehiclePosition();
+        _updateSliderValue();
+      }
     });
 
     _animationController.addStatusListener((status) {
@@ -121,20 +126,20 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
   // Calculate animation duration based on number of route points
   Duration _calculateAnimationDuration() {
     if (routePoints.isEmpty) {
-      return Duration(seconds: 10); // Default duration if no points
+      return Duration(seconds: 15); // Default duration if no points
     }
 
     final pointCount = routePoints.length;
 
-    // Base calculation: 150ms per point for smooth, visible movement
-    // This ensures balanced movement between visible and smooth
-    final baseDurationMs = pointCount * 150; // 150ms = 0.15 seconds per point
+    // Base calculation: 300ms per point for slower, smoother movement
+    // This ensures more visible and smooth movement
+    final baseDurationMs = pointCount * 300; // 300ms = 0.3 seconds per point
 
     // Apply minimum and maximum limits
-    final minDuration = Duration(seconds: 3); // Minimum 3 seconds
+    final minDuration = Duration(seconds: 5); // Minimum 5 seconds
     final maxDuration = Duration(
-      minutes: 2,
-    ); // Maximum 2 minutes for very long routes
+      minutes: 5,
+    ); // Maximum 5 minutes for very long routes
 
     final calculatedDuration = Duration(milliseconds: baseDurationMs);
 
@@ -233,9 +238,70 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
     if (picked != null) {
       setState(() {
         // Send only date string: YYYY-MM-DD
-        endDate = DateTime(picked.year, picked.month, picked.day, 23, 59, 59);
+        endDate = DateTime(picked.year, picked.month, picked.day);
       });
     }
+  }
+
+  Future<void> _selectStartTime() async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: startTime ?? TimeOfDay(hour: 0, minute: 0),
+    );
+    if (picked != null) {
+      setState(() {
+        startTime = picked;
+      });
+    }
+  }
+
+  Future<void> _selectEndTime() async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: endTime ?? TimeOfDay(hour: 23, minute: 59),
+    );
+    if (picked != null) {
+      setState(() {
+        endTime = picked;
+      });
+    }
+  }
+
+  // Filter history data by time on frontend
+  List<History> _filterHistoryByTime(List<History> allHistoryData) {
+    if (startTime == null || endTime == null) {
+      return allHistoryData;
+    }
+
+    return allHistoryData.where((history) {
+      if (history.createdAt == null) return false;
+
+      final historyTime = TimeOfDay.fromDateTime(history.createdAt!);
+      final historyDate = DateTime(
+        history.createdAt!.year,
+        history.createdAt!.month,
+        history.createdAt!.day,
+      );
+
+      // Check if history is within the selected date range
+      bool isWithinDateRange = true;
+      if (startDate != null && endDate != null) {
+        isWithinDateRange =
+            (historyDate.isAtSameMomentAs(startDate!) ||
+                historyDate.isAfter(startDate!)) &&
+            (historyDate.isAtSameMomentAs(endDate!) ||
+                historyDate.isBefore(endDate!));
+      }
+
+      if (!isWithinDateRange) return false;
+
+      // Check if history is within the selected time range
+      final historyMinutes = historyTime.hour * 60 + historyTime.minute;
+      final startMinutes = startTime!.hour * 60 + startTime!.minute;
+      final endMinutes = endTime!.hour * 60 + endTime!.minute;
+
+      return historyMinutes >= startMinutes && historyMinutes <= endMinutes;
+    }).toList();
   }
 
   Future<void> _fetchHistoryData() async {
@@ -257,14 +323,17 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
       final controller = Get.find<VehicleController>();
 
       // Fetch combined history data
-      final historyData = await controller.getCombinedHistoryByDateRange(
+      final allHistoryData = await controller.getCombinedHistoryByDateRange(
         widget.vehicle.imei,
         startDate!,
         endDate!,
       );
 
+      // Filter by time on frontend
+      final filteredHistoryData = _filterHistoryByTime(allHistoryData);
+
       setState(() {
-        this.historyData = historyData;
+        this.historyData = filteredHistoryData;
       });
 
       print('Fetched ${historyData.length} history records');
@@ -276,6 +345,7 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
           _markers = {};
           _polylines = {};
           trips = [];
+          _showProgressSlider = false;
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -306,6 +376,7 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
         _markers = {};
         _polylines = {};
         trips = [];
+        _showProgressSlider = false;
       });
     } finally {
       setState(() {
@@ -369,6 +440,8 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
 
     setState(() {
       isTripSelected = true; // Set flag when trip is selected
+      _showProgressSlider = true; // Show slider for trip
+      _sliderValue = 0.0; // Reset slider to start position
 
       // Update route points to show only this trip
       routePoints = trip.tripPoints
@@ -435,6 +508,7 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
         routePoints = [];
         _markers = {};
         _polylines = {};
+        _showProgressSlider = false;
       });
 
       print('No history data found - cleared map completely');
@@ -453,6 +527,7 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
         routePoints = [];
         _markers = {};
         _polylines = {};
+        _showProgressSlider = false;
       });
 
       print('No location data found - cleared map completely');
@@ -461,6 +536,8 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
 
     setState(() {
       isTripSelected = false; // Reset flag when showing all history
+      _showProgressSlider = true; // Show slider when there's data
+      _sliderValue = 0.0; // Reset slider to start position
 
       routePoints = locationDataList
           .where((data) => data.latitude != null && data.longitude != null)
@@ -944,19 +1021,19 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
   void _moveMapAroundVehicle(LatLng position, double bearing) {
     if (_mapController == null) return;
 
-    // Check if vehicle has moved significantly (very small threshold for responsive following)
+    // Check if vehicle has moved significantly (smaller threshold for smoother following)
     if (_lastCameraPosition != null) {
       final distance = _calculateDistance(_lastCameraPosition!, position);
-      if (distance < 0.0000001) {
-        // ~0.01 meter in degrees for very responsive visual updates
+      if (distance < 0.0000005) {
+        // ~0.05 meter in degrees for smoother visual updates
         return;
       }
     }
 
     _lastCameraPosition = position;
 
-    // Use moveCamera for instant response to keep vehicle perfectly centered
-    _mapController!.moveCamera(
+    // Use animateCamera for smoother camera movement
+    _mapController!.animateCamera(
       CameraUpdate.newCameraPosition(
         CameraPosition(
           target: position, // Keep vehicle position in center
@@ -985,8 +1062,9 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
 
   // Apply smooth interpolation to reduce jumping
   double _applySmoothInterpolation(double t) {
-    // Use cubic easing for smooth acceleration/deceleration
-    return t * t * (3.0 - 2.0 * t); // Smoothstep 3rd order for smooth movement
+    // Use smoother cubic easing for more natural movement
+    // This creates a more gradual acceleration and deceleration
+    return t * t * t * (t * (t * 6.0 - 15.0) + 10.0); // Smootherstep 5th order
   }
 
   // Internal polyline update method (called from batched setState)
@@ -1154,6 +1232,18 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
       isPlaying = true;
     });
 
+    // Check if slider has been moved from start position
+    if (_sliderValue > 0.0) {
+      // Play from current slider position
+      _playFromCurrentPosition();
+    } else {
+      // Play from beginning (original behavior)
+      _playFromBeginning();
+    }
+  }
+
+  // Original play from beginning logic
+  void _playFromBeginning() {
     // Recalculate animation duration based on current route points
     final newDuration = _calculateAnimationDuration();
     _animationController.duration = newDuration;
@@ -1205,6 +1295,286 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
           ? MapType.hybrid
           : MapType.normal;
     });
+  }
+
+  // Add method to update slider value based on animation progress
+  void _updateSliderValue() {
+    if (!_isSliderDragging && _animationController.isAnimating) {
+      setState(() {
+        _sliderValue = _animation.value;
+      });
+    }
+  }
+
+  // Add method to handle slider changes
+  void _onSliderChanged(double value) {
+    if (routePoints.isEmpty) return;
+
+    setState(() {
+      _sliderValue = value;
+      _isSliderDragging = true;
+    });
+
+    // Stop current animation if playing
+    if (isPlaying) {
+      _animationController.stop();
+      setState(() {
+        isPlaying = false;
+      });
+    }
+
+    // Update vehicle position based on slider value
+    _updateVehiclePositionFromSlider(value);
+  }
+
+  // Add method to handle slider drag end
+  void _onSliderDragEnd() {
+    setState(() {
+      _isSliderDragging = false;
+    });
+  }
+
+  // Add method to update vehicle position from slider
+  void _updateVehiclePositionFromSlider(double value) {
+    if (routePoints.isEmpty) return;
+
+    final progress = value.clamp(0.0, 1.0);
+    final totalPoints = routePoints.length - 1;
+
+    // Calculate current segment and interpolation
+    final currentIndex = (progress * totalPoints).floor();
+    final nextIndex = (currentIndex + 1).clamp(0, totalPoints);
+
+    // Calculate smooth interpolation within the current segment
+    final segmentProgress = (progress * totalPoints) - currentIndex;
+
+    // Use smooth interpolation to reduce jumping
+    final smoothInterpolation = _applySmoothInterpolation(segmentProgress);
+
+    final currentPoint = routePoints[currentIndex];
+    final nextPoint = routePoints[nextIndex];
+
+    // Smooth interpolation between points
+    final lat =
+        currentPoint.latitude +
+        (nextPoint.latitude - currentPoint.latitude) * smoothInterpolation;
+    final lng =
+        currentPoint.longitude +
+        (nextPoint.longitude - currentPoint.longitude) * smoothInterpolation;
+
+    final newPosition = LatLng(lat, lng);
+
+    // Calculate bearing (rotation) for the map
+    double bearing = 0.0;
+    if (nextIndex > currentIndex) {
+      bearing = _calculateBearing(currentPoint, nextPoint);
+    }
+
+    // Update current data for display
+    _updateCurrentDataFromSlider(currentIndex, nextIndex, smoothInterpolation);
+
+    // Update map and markers
+    _updateMapFromSlider(newPosition, bearing, progress);
+  }
+
+  // Add method to update current data from slider
+  void _updateCurrentDataFromSlider(
+    int currentIndex,
+    int nextIndex,
+    double interpolation,
+  ) {
+    if (historyData.isEmpty) return;
+
+    // Get location data for current and next points
+    final locationDataList = historyData
+        .where((data) => data.type == 'location')
+        .toList();
+
+    if (locationDataList.isEmpty) return;
+
+    if (currentIndex < locationDataList.length &&
+        nextIndex < locationDataList.length) {
+      final currentData = locationDataList[currentIndex];
+      final nextData = locationDataList[nextIndex];
+
+      // Interpolate date/time
+      if (currentData.createdAt != null && nextData.createdAt != null) {
+        final currentTime = currentData.createdAt!;
+        final nextTime = nextData.createdAt!;
+        final timeDiff = nextTime.difference(currentTime).inMilliseconds;
+        final interpolatedTime = currentTime.add(
+          Duration(milliseconds: (timeDiff * interpolation).round()),
+        );
+
+        setState(() {
+          _currentDateTime = interpolatedTime;
+        });
+      }
+
+      // Interpolate speed
+      if (currentData.speed != null && nextData.speed != null) {
+        final currentSpeed = currentData.speed!;
+        final nextSpeed = nextData.speed!;
+        final interpolatedSpeed =
+            currentSpeed + (nextSpeed - currentSpeed) * interpolation;
+
+        setState(() {
+          _currentSpeed = interpolatedSpeed;
+        });
+      }
+    }
+  }
+
+  // Add method to update map from slider
+  void _updateMapFromSlider(
+    LatLng newPosition,
+    double bearing,
+    double progress,
+  ) {
+    setState(() {
+      // Update vehicle marker position
+      _markers.removeWhere((marker) => marker.markerId == MarkerId('vehicle'));
+      _markers.add(
+        Marker(
+          markerId: MarkerId('vehicle'),
+          position: newPosition,
+          icon:
+              _cachedVehicleIcon ??
+              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+          rotation: 0.0,
+          anchor: Offset(0.5, 0.5),
+          infoWindow: InfoWindow(title: 'Vehicle', snippet: 'Positioned'),
+        ),
+      );
+
+      // Update polyline to show only remaining route
+      _updatePolylineFromSlider(progress);
+    });
+
+    // Update camera
+    _moveMapAroundVehicle(newPosition, bearing);
+  }
+
+  // Add method to update polyline from slider
+  void _updatePolylineFromSlider(double progress) {
+    if (routePoints.length < 2) return;
+
+    // Calculate how many points the vehicle has passed
+    final totalPoints = routePoints.length - 1;
+    final currentPointIndex = (progress * totalPoints).floor();
+
+    // Get the current interpolated position
+    final segmentProgress = (progress * totalPoints) - currentPointIndex;
+    final currentPosition = _getInterpolatedPosition(
+      currentPointIndex,
+      segmentProgress,
+    );
+
+    // Create new polyline starting from current vehicle position
+    List<LatLng> remainingPoints = [];
+
+    // Add current interpolated position as first point
+    remainingPoints.add(currentPosition);
+
+    // Add all remaining route points after current position
+    if (currentPointIndex < routePoints.length - 1) {
+      remainingPoints.addAll(routePoints.skip(currentPointIndex + 1));
+    }
+
+    // Remove existing polyline and add new one
+    _polylines.removeWhere(
+      (polyline) => polyline.polylineId == PolylineId('route'),
+    );
+
+    // Always show polyline if there are at least 2 points (current + next)
+    if (remainingPoints.length >= 2) {
+      _polylines.add(
+        Polyline(
+          polylineId: PolylineId('route'),
+          points: remainingPoints,
+          color: Colors.blue,
+          width: 3,
+          geodesic: true,
+        ),
+      );
+    }
+  }
+
+  // Add method to play animation from current slider position
+  void _playFromCurrentPosition() {
+    if (routePoints.length < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No route to animate'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Recalculate animation duration based on remaining route points
+    final remainingPoints = _getRemainingRoutePoints();
+    final newDuration = _calculateAnimationDurationFromPoints(remainingPoints);
+    _animationController.duration = newDuration;
+
+    // Start animation from current position
+    _animationController.value = _sliderValue;
+    _animationController.forward();
+  }
+
+  // Add method to get remaining route points from current position
+  List<LatLng> _getRemainingRoutePoints() {
+    if (routePoints.isEmpty) return [];
+
+    final progress = _sliderValue.clamp(0.0, 1.0);
+    final totalPoints = routePoints.length - 1;
+    final currentPointIndex = (progress * totalPoints).floor();
+
+    // Get the current interpolated position
+    final segmentProgress = (progress * totalPoints) - currentPointIndex;
+    final currentPosition = _getInterpolatedPosition(
+      currentPointIndex,
+      segmentProgress,
+    );
+
+    // Create remaining points starting from current position
+    List<LatLng> remainingPoints = [currentPosition];
+
+    // Add all remaining route points after current position
+    if (currentPointIndex < routePoints.length - 1) {
+      remainingPoints.addAll(routePoints.skip(currentPointIndex + 1));
+    }
+
+    return remainingPoints;
+  }
+
+  // Add method to calculate animation duration from specific points
+  Duration _calculateAnimationDurationFromPoints(List<LatLng> points) {
+    if (points.isEmpty) {
+      return Duration(seconds: 15); // Default duration if no points
+    }
+
+    final pointCount = points.length;
+
+    // Base calculation: 300ms per point for slower, smoother movement
+    final baseDurationMs = pointCount * 300; // 300ms = 0.3 seconds per point
+
+    // Apply minimum and maximum limits
+    final minDuration = Duration(seconds: 5); // Minimum 5 seconds
+    final maxDuration = Duration(
+      minutes: 5,
+    ); // Maximum 5 minutes for very long routes
+
+    final calculatedDuration = Duration(milliseconds: baseDurationMs);
+
+    // Clamp between min and max
+    if (calculatedDuration < minDuration) {
+      return minDuration;
+    } else if (calculatedDuration > maxDuration) {
+      return maxDuration;
+    } else {
+      return calculatedDuration;
+    }
   }
 
   @override
@@ -1337,172 +1707,286 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
 
                   SizedBox(height: 16),
 
-                  // Date pickers and buttons row
-                  Row(
+                  // Date and Time pickers
+                  Column(
                     children: [
-                      // Start Date
-                      Expanded(
-                        flex: 2,
-                        child: InkWell(
-                          onTap: _selectStartDate,
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              vertical: 12,
-                              horizontal: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: AppTheme.secondaryColor,
-                              ),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.calendar_today,
-                                  color: AppTheme.primaryColor,
-                                  size: 18,
+                      // Date pickers row
+                      Row(
+                        children: [
+                          // Start Date
+                          Expanded(
+                            flex: 2,
+                            child: InkWell(
+                              onTap: _selectStartDate,
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 12,
                                 ),
-                                SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    startDate != null
-                                        ? '${startDate!.day}/${startDate!.month}/${startDate!.year}'
-                                        : 'Start',
-                                    style: TextStyle(
-                                      color: startDate != null
-                                          ? AppTheme.titleColor
-                                          : AppTheme.subTitleColor,
-                                      fontSize: 13,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: AppTheme.secondaryColor,
                                   ),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
-                              ],
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.calendar_today,
+                                      color: AppTheme.primaryColor,
+                                      size: 18,
+                                    ),
+                                    SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        startDate != null
+                                            ? '${startDate!.day}/${startDate!.month}/${startDate!.year}'
+                                            : 'Start Date',
+                                        style: TextStyle(
+                                          color: startDate != null
+                                              ? AppTheme.titleColor
+                                              : AppTheme.subTitleColor,
+                                          fontSize: 13,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
 
-                      SizedBox(width: 8),
+                          SizedBox(width: 8),
 
-                      // End Date
-                      Expanded(
-                        flex: 2,
-                        child: InkWell(
-                          onTap: _selectEndDate,
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              vertical: 12,
-                              horizontal: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: startDate == null
-                                    ? AppTheme.secondaryColor.withOpacity(0.5)
-                                    : AppTheme.secondaryColor,
+                          // End Date
+                          Expanded(
+                            flex: 2,
+                            child: InkWell(
+                              onTap: _selectEndDate,
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: startDate == null
+                                        ? AppTheme.secondaryColor.withOpacity(
+                                            0.5,
+                                          )
+                                        : AppTheme.secondaryColor,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.calendar_today,
+                                      color: startDate == null
+                                          ? AppTheme.subTitleColor
+                                          : AppTheme.primaryColor,
+                                      size: 18,
+                                    ),
+                                    SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        endDate != null
+                                            ? '${endDate!.day}/${endDate!.month}/${endDate!.year}'
+                                            : 'End Date',
+                                        style: TextStyle(
+                                          color: endDate != null
+                                              ? AppTheme.titleColor
+                                              : AppTheme.subTitleColor,
+                                          fontSize: 13,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              borderRadius: BorderRadius.circular(8),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.calendar_today,
-                                  color: startDate == null
-                                      ? AppTheme.subTitleColor
+                          ),
+
+                          SizedBox(width: 8),
+
+                          // Go Button
+                          SizedBox(
+                            width: 50,
+                            child: ElevatedButton(
+                              onPressed:
+                                  (startDate != null &&
+                                      endDate != null &&
+                                      !isLoading)
+                                  ? _fetchHistoryData
+                                  : null,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryColor,
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 8,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: isLoading
+                                  ? SizedBox(
+                                      height: 14,
+                                      width: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
+                                      ),
+                                    )
+                                  : Icon(Icons.search, size: 16),
+                            ),
+                          ),
+
+                          SizedBox(width: 8),
+
+                          // Play/Stop Button
+                          if (routePoints.length > 1)
+                            SizedBox(
+                              width: 50,
+                              child: ElevatedButton(
+                                onPressed: isPlaying
+                                    ? _stopAnimation
+                                    : _playAnimation,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: isPlaying
+                                      ? Colors.red
                                       : AppTheme.primaryColor,
-                                  size: 18,
-                                ),
-                                SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    endDate != null
-                                        ? '${endDate!.day}/${endDate!.month}/${endDate!.year}'
-                                        : 'End',
-                                    style: TextStyle(
-                                      color: endDate != null
-                                          ? AppTheme.titleColor
-                                          : AppTheme.subTitleColor,
-                                      fontSize: 13,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: 12,
+                                    horizontal: 8,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
                                 ),
-                              ],
+                                child: Icon(
+                                  isPlaying ? Icons.stop : Icons.play_arrow,
+                                  size: 16,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
+                        ],
                       ),
 
-                      SizedBox(width: 8),
+                      SizedBox(height: 8),
 
-                      // Go Button
-                      SizedBox(
-                        width: 50,
-                        child: ElevatedButton(
-                          onPressed:
-                              (startDate != null &&
-                                  endDate != null &&
-                                  !isLoading)
-                              ? _fetchHistoryData
-                              : null,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryColor,
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(
-                              vertical: 12,
-                              horizontal: 8,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: isLoading
-                              ? SizedBox(
-                                  height: 14,
-                                  width: 14,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
-                                    ),
+                      // Time pickers row
+                      Row(
+                        children: [
+                          // Start Time
+                          Expanded(
+                            flex: 2,
+                            child: InkWell(
+                              onTap: _selectStartTime,
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: AppTheme.secondaryColor,
                                   ),
-                                )
-                              : Icon(Icons.search, size: 16),
-                        ),
-                      ),
-
-                      SizedBox(width: 8),
-
-                      // Play/Stop Button
-                      if (routePoints.length > 1)
-                        SizedBox(
-                          width: 50,
-                          child: ElevatedButton(
-                            onPressed: isPlaying
-                                ? _stopAnimation
-                                : _playAnimation,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: isPlaying
-                                  ? Colors.red
-                                  : AppTheme.primaryColor,
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(
-                                vertical: 12,
-                                horizontal: 8,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.access_time,
+                                      color: AppTheme.primaryColor,
+                                      size: 18,
+                                    ),
+                                    SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        startTime != null
+                                            ? '${startTime!.format(context)}'
+                                            : 'Start Time',
+                                        style: TextStyle(
+                                          color: startTime != null
+                                              ? AppTheme.titleColor
+                                              : AppTheme.subTitleColor,
+                                          fontSize: 13,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: Icon(
-                              isPlaying ? Icons.stop : Icons.play_arrow,
-                              size: 16,
                             ),
                           ),
-                        ),
+
+                          SizedBox(width: 8),
+
+                          // End Time
+                          Expanded(
+                            flex: 2,
+                            child: InkWell(
+                              onTap: _selectEndTime,
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: AppTheme.secondaryColor,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.access_time,
+                                      color: AppTheme.primaryColor,
+                                      size: 18,
+                                    ),
+                                    SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        endTime != null
+                                            ? '${endTime!.format(context)}'
+                                            : 'End Time',
+                                        style: TextStyle(
+                                          color: endTime != null
+                                              ? AppTheme.titleColor
+                                              : AppTheme.subTitleColor,
+                                          fontSize: 13,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          SizedBox(width: 8),
+
+                          // Spacer to align with buttons above
+                          SizedBox(width: 50),
+                          SizedBox(width: 8),
+                          if (routePoints.length > 1) SizedBox(width: 50),
+                        ],
+                      ),
                     ],
                   ),
 
@@ -1611,10 +2095,52 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
                     Padding(
                       padding: EdgeInsets.only(top: 8),
                       child: Text(
-                        'Date Range: ${startDate!.day}/${startDate!.month}/${startDate!.year} - ${endDate!.day}/${endDate!.month}/${endDate!.year}',
+                        'Range: ${startDate!.day}/${startDate!.month}/${startDate!.year} ${startTime?.format(context) ?? '12:00 AM'} - ${endDate!.day}/${endDate!.month}/${endDate!.year} ${endTime?.format(context) ?? '11:59 PM'}',
                         style: TextStyle(
                           color: AppTheme.subTitleColor,
                           fontSize: 12,
+                        ),
+                      ),
+                    ),
+
+                  // Progress Slider (integrated in bottom UI)
+                  if (_showProgressSlider && routePoints.length > 1)
+                    Padding(
+                      padding: EdgeInsets.only(top: 12),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: AppTheme.primaryColor.withOpacity(0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            activeTrackColor: AppTheme.primaryColor,
+                            inactiveTrackColor: AppTheme.primaryColor
+                                .withOpacity(0.3),
+                            thumbColor: AppTheme.primaryColor,
+                            thumbShape: RoundSliderThumbShape(
+                              enabledThumbRadius: 6,
+                            ),
+                            trackHeight: 3,
+                            overlayShape: RoundSliderOverlayShape(
+                              overlayRadius: 12,
+                            ),
+                          ),
+                          child: Slider(
+                            value: _sliderValue,
+                            onChanged: _onSliderChanged,
+                            onChangeEnd: (value) => _onSliderDragEnd(),
+                            min: 0.0,
+                            max: 1.0,
+                          ),
                         ),
                       ),
                     ),

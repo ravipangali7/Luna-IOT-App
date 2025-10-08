@@ -14,7 +14,22 @@ class AuthMiddleware extends GetMiddleware {
       return RouteSettings(name: AppRoutes.login);
     }
 
-    // Allow access if auth check is not complete yet or user is logged in
+    // Check if user account is deactivated
+    if (authController.isAuthChecked.value &&
+        authController.isLoggedIn.value &&
+        authController.currentUser.value?.status == 'INACTIVE') {
+      // Show deactivation message and redirect to login
+      Get.snackbar(
+        'Account Deactivated',
+        'Your account is deactivated. Please contact administration.',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: Duration(seconds: 5),
+      );
+      return RouteSettings(name: AppRoutes.login);
+    }
+
+    // Allow access if auth check is not complete yet or user is logged in and active
     return null;
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:luna_iot/api/api_client.dart';
 import 'package:luna_iot/api/services/auth_api_service.dart';
@@ -671,4 +672,50 @@ class AuthController extends GetxController {
   // Get all user permissions (role + direct)
   List<String> getAllUserPermissions() =>
       currentUser.value?.getAllPermissions() ?? [];
+
+  // Delete account (deactivate account)
+  Future<bool> deleteAccount() async {
+    try {
+      isLoading.value = true;
+
+      final response = await _authApiService.deleteAccount();
+
+      if (response['success'] == true) {
+        // Clear auth data and logout user
+        await AuthStorageService.removeAuth();
+        isLoggedIn.value = false;
+        currentUser.value = null;
+
+        Get.snackbar(
+          'Account Deactivated',
+          response['message'] ??
+              'Your account has been deactivated successfully',
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+        );
+
+        // Navigate to login screen
+        Get.offAllNamed('/login');
+        return true;
+      } else {
+        Get.snackbar(
+          'Error',
+          response['message'] ?? 'Failed to delete account',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+        return false;
+      }
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Failed to delete account: ${e.toString()}',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
 }

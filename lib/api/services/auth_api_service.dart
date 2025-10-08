@@ -273,4 +273,27 @@ class AuthApiService {
       // Don't throw error as this is not critical for login
     }
   }
+
+  // Delete account (deactivate account)
+  Future<Map<String, dynamic>> deleteAccount() async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/api/core/auth/delete-account',
+      );
+      return response.data;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        throw Exception('Authentication required');
+      } else if (e.response?.statusCode == 404) {
+        throw Exception('User not found');
+      } else if (e.response?.statusCode == 500) {
+        throw Exception('Server error. Please try again later.');
+      } else {
+        throw Exception('Failed to delete account: ${e.message}');
+      }
+    } catch (e) {
+      print('Delete account error: $e');
+      throw Exception('Failed to delete account: ${e.toString()}');
+    }
+  }
 }
