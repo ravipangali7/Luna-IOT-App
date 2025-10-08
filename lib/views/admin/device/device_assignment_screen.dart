@@ -223,14 +223,29 @@ class DeviceAssignmentScreen extends GetView<DeviceController> {
               color: AppTheme.titleColor,
             ),
           ),
+          const SizedBox(height: 8),
+          Text(
+            'Enter IMEI and search to find devices, or scan QR code. Use the search button to verify device exists before adding.\n\nNote: You can only search for devices you have permission to access.',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppTheme.subTitleColor,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
           const SizedBox(height: 16),
 
-          // IMEI Input with Scan and Add buttons
+          // IMEI Input with Search, Scan and Add buttons
           Row(
             children: [
               Expanded(
                 child: TextFormField(
                   controller: controller.imeiController,
+                  onChanged: (value) {
+                    // Clear search results when user starts typing
+                    if (value.isEmpty) {
+                      controller.deviceSearchResults.clear();
+                    }
+                  },
                   decoration: InputDecoration(
                     labelText: 'IMEI',
                     hintText: 'Enter device IMEI',
@@ -244,11 +259,22 @@ class DeviceAssignmentScreen extends GetView<DeviceController> {
                             );
                             if (imei != null) {
                               controller.imeiController.text = imei;
-                              controller.addDevice(imei);
+                              controller.searchDeviceByImei(imei);
                             }
                           },
                           icon: Icon(Icons.qr_code_scanner),
                           tooltip: 'Scan QR Code',
+                        ),
+                        IconButton(
+                          onPressed: () {
+                            if (controller.imeiController.text.isNotEmpty) {
+                              controller.searchDeviceByImei(
+                                controller.imeiController.text,
+                              );
+                            }
+                          },
+                          icon: Icon(Icons.search),
+                          tooltip: 'Search Device',
                         ),
                         IconButton(
                           onPressed: () {
@@ -267,14 +293,134 @@ class DeviceAssignmentScreen extends GetView<DeviceController> {
                   ),
                   onFieldSubmitted: (value) {
                     if (value.isNotEmpty) {
-                      controller.addDevice(value);
-                      controller.imeiController.clear();
+                      controller.searchDeviceByImei(value);
                     }
                   },
                 ),
               ),
             ],
           ),
+
+          const SizedBox(height: 16),
+
+          // Device Search Results
+          Obx(() {
+            if (controller.isSearchingDevice.value) {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                child: const Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            if (controller.deviceSearchResults.isNotEmpty) {
+              return Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppTheme.primaryColor.withOpacity(0.3),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Search Results',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.titleColor,
+                            fontSize: 14,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            controller.deviceSearchResults.clear();
+                            controller.deviceSearchQuery.value = '';
+                          },
+                          child: Text(
+                            'Clear',
+                            style: TextStyle(
+                              color: AppTheme.errorColor,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ...controller.deviceSearchResults.map((device) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppTheme.secondaryColor),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.memory, color: AppTheme.primaryColor),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'IMEI: ${device.imei}',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: AppTheme.titleColor,
+                                    ),
+                                  ),
+                                  if (device.phone != null &&
+                                      device.phone!.isNotEmpty)
+                                    Text(
+                                      'Phone: ${device.phone}',
+                                      style: TextStyle(
+                                        color: AppTheme.subTitleColor,
+                                      ),
+                                    ),
+                                  if (device.model != null &&
+                                      device.model!.isNotEmpty)
+                                    Text(
+                                      'Model: ${device.model}',
+                                      style: TextStyle(
+                                        color: AppTheme.subTitleColor,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            ElevatedButton(
+                              onPressed: () {
+                                controller.addDevice(device.imei);
+                                controller.imeiController.clear();
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryColor,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                              child: Text('Add'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ],
+                ),
+              );
+            }
+
+            return const SizedBox.shrink();
+          }),
         ],
       ),
     );

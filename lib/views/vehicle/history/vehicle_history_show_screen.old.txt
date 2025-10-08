@@ -51,14 +51,11 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
   // Animation controller for vehicle movement
   late AnimationController _animationController;
   late Animation<double> _animation;
+  int _currentPointIndex = 0;
 
   // Current data during animation
   DateTime? _currentDateTime;
   double _currentSpeed = 0.0;
-
-  // Camera following optimization
-  DateTime _lastCameraUpdate = DateTime.now();
-  LatLng? _lastCameraPosition;
 
   @override
   void initState() {
@@ -89,16 +86,18 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
   }
 
   void _setupAnimation() {
-    // Calculate duration based on number of route points
-    final duration = _calculateAnimationDuration();
+    _animationController = AnimationController(
+      duration: Duration(
+        seconds: 40,
+      ), // Increased duration for smoother movement
+      vsync: this,
+    );
 
-    _animationController = AnimationController(duration: duration, vsync: this);
-
-    // Use linear curve for smooth, consistent movement
+    // Use smooth easing curve for more natural movement
     _animation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: Curves.easeInOut, // Linear animation for smooth movement
+        curve: Curves.easeInOut, // Smooth easing instead of linear
       ),
     );
 
@@ -111,39 +110,8 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
         setState(() {
           isPlaying = false;
         });
-
-        // Restore original polyline when animation completes
-        _restoreOriginalPolyline();
       }
     });
-  }
-
-  // Calculate animation duration based on number of route points
-  Duration _calculateAnimationDuration() {
-    if (routePoints.isEmpty) {
-      return Duration(seconds: 10); // Default duration if no points
-    }
-
-    final pointCount = routePoints.length;
-
-    // Base calculation: 150ms per point for smoother movement
-    // This ensures consistent speed regardless of trip length
-    final baseDurationMs = pointCount * 150;
-
-    // Apply minimum and maximum limits
-    final minDuration = Duration(seconds: 8); // Minimum 8 seconds
-    final maxDuration = Duration(minutes: 8); // Maximum 8 minutes
-
-    final calculatedDuration = Duration(milliseconds: baseDurationMs);
-
-    // Clamp between min and max
-    if (calculatedDuration < minDuration) {
-      return minDuration;
-    } else if (calculatedDuration > maxDuration) {
-      return maxDuration;
-    } else {
-      return calculatedDuration;
-    }
   }
 
   void _initializeMap() {
@@ -851,8 +819,8 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
     // Calculate smooth interpolation within the current segment
     final segmentProgress = (progress * totalPoints) - currentIndex;
 
-    // Use smooth interpolation to reduce jumping
-    final smoothInterpolation = _applySmoothInterpolation(segmentProgress);
+    // Apply smooth easing to the segment interpolation
+    final smoothInterpolation = _applySmoothEasing(segmentProgress);
 
     final currentPoint = routePoints[currentIndex];
     final nextPoint = routePoints[nextIndex];
@@ -876,9 +844,6 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
     // Update current data for display
     _updateCurrentData(currentIndex, nextIndex, smoothInterpolation);
 
-    // Update polyline to show "eaten" effect
-    _updatePolylineForAnimation(progress);
-
     // Update vehicle marker position and rotation
     setState(() {
       _markers.removeWhere((marker) => marker.markerId == MarkerId('vehicle'));
@@ -886,115 +851,14 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
 
     _addVehicleMarkerWithRotation(newPosition, false, bearing);
 
-    // Always follow the vehicle with camera at road level zoom
-    _followVehicleWithCamera(newPosition, bearing);
+    // Check if vehicle is going out of screen and adjust camera
+    _checkAndAdjustCamera(newPosition);
   }
 
-  // Follow vehicle with camera at road level zoom
-  void _followVehicleWithCamera(LatLng position, double bearing) {
-    if (_mapController == null) return;
-
-    // Check if vehicle has moved significantly (at least 10 meters)
-    if (_lastCameraPosition != null) {
-      final distance = _calculateDistance(_lastCameraPosition!, position);
-      if (distance < 0.0001) {
-        // ~10 meters in degrees
-        return;
-      }
-    }
-
-    // Throttle camera updates to prevent too frequent calls (every 50ms)
-    final now = DateTime.now();
-    if (now.difference(_lastCameraUpdate).inMilliseconds < 50) {
-      return;
-    }
-    _lastCameraUpdate = now;
-    _lastCameraPosition = position;
-
-    // Use moveCamera for instant following to keep vehicle in center
-    _mapController!.moveCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(
-          target: position,
-          zoom: 17.0, // Road level zoom
-          bearing: bearing, // Rotate camera to match vehicle direction
-          // tilt: 60.0, // Slight tilt for better road view
-        ),
-      ),
-    );
-  }
-
-  // Calculate distance between two LatLng points
-  double _calculateDistance(LatLng point1, LatLng point2) {
-    final lat1 = point1.latitude * (pi / 180);
-    final lat2 = point2.latitude * (pi / 180);
-    final deltaLat = (point2.latitude - point1.latitude) * (pi / 180);
-    final deltaLng = (point2.longitude - point1.longitude) * (pi / 180);
-
-    final a =
-        sin(deltaLat / 2) * sin(deltaLat / 2) +
-        cos(lat1) * cos(lat2) * sin(deltaLng / 2) * sin(deltaLng / 2);
-    final c = 2 * asin(sqrt(a));
-
-    return c; // Distance in radians
-  }
-
-  // Apply smooth interpolation to reduce jumping
-  double _applySmoothInterpolation(double t) {
-    // Use smooth step function for natural movement
+  // Apply smooth easing to make movement more natural
+  double _applySmoothEasing(double t) {
+    // Use cubic easing for very smooth movement
     return t * t * (3.0 - 2.0 * t);
-  }
-
-  // Update polyline to show "eaten" effect as vehicle moves
-  void _updatePolylineForAnimation(double progress) {
-    if (routePoints.length < 2) return;
-
-    // Calculate how many points the vehicle has passed
-    final totalPoints = routePoints.length - 1;
-    final currentPointIndex = (progress * totalPoints).floor();
-
-    // Create new polyline with only remaining points
-    final remainingPoints = routePoints.skip(currentPointIndex).toList();
-
-    setState(() {
-      _polylines.removeWhere(
-        (polyline) => polyline.polylineId == PolylineId('route'),
-      );
-
-      if (remainingPoints.length > 1) {
-        _polylines.add(
-          Polyline(
-            polylineId: PolylineId('route'),
-            points: remainingPoints,
-            color: Colors.blue,
-            width: 3,
-            geodesic: true,
-          ),
-        );
-      }
-    });
-  }
-
-  // Restore original polyline when animation stops or completes
-  void _restoreOriginalPolyline() {
-    if (routePoints.length < 2) return;
-
-    setState(() {
-      _polylines.removeWhere(
-        (polyline) => polyline.polylineId == PolylineId('route'),
-      );
-
-      // Restore the full original polyline
-      _polylines.add(
-        Polyline(
-          polylineId: PolylineId('route'),
-          points: routePoints,
-          color: Colors.blue,
-          width: 3,
-          geodesic: true,
-        ),
-      );
-    });
   }
 
   void _updateCurrentData(
@@ -1056,6 +920,29 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
     bearing = (bearing + 360) % 360;
 
     return bearing;
+  }
+
+  void _checkAndAdjustCamera(LatLng vehiclePosition) {
+    if (_mapController == null) return;
+
+    // Get current camera position
+    _mapController!.getVisibleRegion().then((bounds) {
+      // Check if vehicle is within visible bounds
+      bool isVehicleVisible =
+          vehiclePosition.latitude >= bounds.southwest.latitude &&
+          vehiclePosition.latitude <= bounds.northeast.latitude &&
+          vehiclePosition.longitude >= bounds.southwest.longitude &&
+          vehiclePosition.longitude <= bounds.northeast.longitude;
+
+      // If vehicle is going out of screen, adjust camera
+      if (!isVehicleVisible) {
+        _mapController!.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(target: vehiclePosition, zoom: 15.0),
+          ),
+        );
+      }
+    });
   }
 
   Future<void> _addVehicleMarkerWithRotation(
@@ -1129,10 +1016,6 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
       isPlaying = true;
     });
 
-    // Recalculate animation duration based on current route points
-    final newDuration = _calculateAnimationDuration();
-    _animationController.duration = newDuration;
-
     // Reset vehicle marker to start position
     setState(() {
       _markers.removeWhere((marker) => marker.markerId == MarkerId('vehicle'));
@@ -1142,20 +1025,10 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
       _addVehicleMarker(routePoints.first, false);
     }
 
-    // Set camera to road level zoom at start position
-    if (routePoints.isNotEmpty) {
-      _mapController?.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: routePoints.first,
-            zoom: 18.0, // Road level zoom
-            tilt: 60.0, // Slight tilt for better road view
-          ),
-        ),
-      );
-    }
+    // Fit map to route before starting animation
+    _fitMapToRoute();
 
-    // Wait a bit for the camera to adjust, then start animation
+    // Wait a bit for the map to fit, then start animation
     Future.delayed(Duration(milliseconds: 500), () {
       _animationController.reset();
       _animationController.forward();
@@ -1167,9 +1040,6 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
     setState(() {
       isPlaying = false;
     });
-
-    // Restore original polyline when animation stops
-    _restoreOriginalPolyline();
   }
 
   // Add toggle map type function

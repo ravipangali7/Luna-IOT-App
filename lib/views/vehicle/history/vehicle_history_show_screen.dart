@@ -51,11 +51,13 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
   // Animation controller for vehicle movement
   late AnimationController _animationController;
   late Animation<double> _animation;
-  int _currentPointIndex = 0;
 
   // Current data during animation
   DateTime? _currentDateTime;
   double _currentSpeed = 0.0;
+
+  // Camera following optimization
+  LatLng? _lastCameraPosition;
 
   @override
   void initState() {
@@ -63,6 +65,7 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
     _initializeMap();
     _setupAnimation();
     _initializeDefaultDates();
+    _cacheVehicleIcon(); // Cache vehicle icon for better performance
   }
 
   void _initializeDefaultDates() {
@@ -86,18 +89,16 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
   }
 
   void _setupAnimation() {
-    _animationController = AnimationController(
-      duration: Duration(
-        seconds: 40,
-      ), // Increased duration for smoother movement
-      vsync: this,
-    );
+    // Calculate duration based on number of route points
+    final duration = _calculateAnimationDuration();
 
-    // Use smooth easing curve for more natural movement
+    _animationController = AnimationController(duration: duration, vsync: this);
+
+    // Use linear curve for smooth, consistent movement
     _animation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: Curves.easeInOut, // Smooth easing instead of linear
+        curve: Curves.linear, // Linear animation for consistent movement
       ),
     );
 
@@ -110,8 +111,41 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
         setState(() {
           isPlaying = false;
         });
+
+        // Restore original polyline when animation completes
+        _restoreOriginalPolyline();
       }
     });
+  }
+
+  // Calculate animation duration based on number of route points
+  Duration _calculateAnimationDuration() {
+    if (routePoints.isEmpty) {
+      return Duration(seconds: 10); // Default duration if no points
+    }
+
+    final pointCount = routePoints.length;
+
+    // Base calculation: 150ms per point for smooth, visible movement
+    // This ensures balanced movement between visible and smooth
+    final baseDurationMs = pointCount * 150; // 150ms = 0.15 seconds per point
+
+    // Apply minimum and maximum limits
+    final minDuration = Duration(seconds: 3); // Minimum 3 seconds
+    final maxDuration = Duration(
+      minutes: 2,
+    ); // Maximum 2 minutes for very long routes
+
+    final calculatedDuration = Duration(milliseconds: baseDurationMs);
+
+    // Clamp between min and max
+    if (calculatedDuration < minDuration) {
+      return minDuration;
+    } else if (calculatedDuration > maxDuration) {
+      return maxDuration;
+    } else {
+      return calculatedDuration;
+    }
   }
 
   void _initializeMap() {
@@ -775,9 +809,11 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
         _markers.add(
           Marker(
             markerId: MarkerId('vehicle'),
-            position: position,
+            position: position, // This will be the current route position
             icon: vehicleIcon,
-            rotation: 0.0,
+            rotation:
+                0.0, // Vehicle marker doesn't rotate - map rotates instead
+            anchor: Offset(0.5, 0.5), // Center the marker perfectly
             infoWindow: InfoWindow(
               title: 'Vehicle',
               snippet: isStopped ? 'Stopped' : 'Moving',
@@ -791,11 +827,13 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
         _markers.add(
           Marker(
             markerId: MarkerId('vehicle'),
-            position: position,
+            position: position, // This will be the current route position
             icon: BitmapDescriptor.defaultMarkerWithHue(
               BitmapDescriptor.hueBlue,
             ),
-            rotation: 0.0,
+            rotation:
+                0.0, // Vehicle marker doesn't rotate - map rotates instead
+            anchor: Offset(0.5, 0.5), // Center the marker perfectly
             infoWindow: InfoWindow(
               title: 'Vehicle',
               snippet: isStopped ? 'Stopped' : 'Moving',
@@ -819,8 +857,8 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
     // Calculate smooth interpolation within the current segment
     final segmentProgress = (progress * totalPoints) - currentIndex;
 
-    // Apply smooth easing to the segment interpolation
-    final smoothInterpolation = _applySmoothEasing(segmentProgress);
+    // Use smooth interpolation to reduce jumping
+    final smoothInterpolation = _applySmoothInterpolation(segmentProgress);
 
     final currentPoint = routePoints[currentIndex];
     final nextPoint = routePoints[nextIndex];
@@ -835,30 +873,209 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
 
     final newPosition = LatLng(lat, lng);
 
-    // Calculate bearing (rotation) for the vehicle marker
+    // Calculate bearing (rotation) for the map
     double bearing = 0.0;
     if (nextIndex > currentIndex) {
       bearing = _calculateBearing(currentPoint, nextPoint);
     }
 
-    // Update current data for display
+    // Update current data for display (this updates the bottom card)
     _updateCurrentData(currentIndex, nextIndex, smoothInterpolation);
 
-    // Update vehicle marker position and rotation
-    setState(() {
-      _markers.removeWhere((marker) => marker.markerId == MarkerId('vehicle'));
-    });
-
-    _addVehicleMarkerWithRotation(newPosition, false, bearing);
-
-    // Check if vehicle is going out of screen and adjust camera
-    _checkAndAdjustCamera(newPosition);
+    // Perform all visual updates in a single batched operation
+    _performFrameUpdate(newPosition, bearing, progress);
   }
 
-  // Apply smooth easing to make movement more natural
-  double _applySmoothEasing(double t) {
-    // Use cubic easing for very smooth movement
-    return t * t * (3.0 - 2.0 * t);
+  // Cache for vehicle icon to avoid reloading
+  BitmapDescriptor? _cachedVehicleIcon;
+
+  // Perform all visual updates in a single batched setState
+  void _performFrameUpdate(
+    LatLng newPosition,
+    double bearing,
+    double progress,
+  ) {
+    setState(() {
+      // Update vehicle marker position
+      _markers.removeWhere((marker) => marker.markerId == MarkerId('vehicle'));
+      _markers.add(
+        Marker(
+          markerId: MarkerId('vehicle'),
+          position: newPosition,
+          icon:
+              _cachedVehicleIcon ??
+              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+          rotation: 0.0,
+          anchor: Offset(0.5, 0.5),
+          infoWindow: InfoWindow(title: 'Vehicle', snippet: 'Moving'),
+        ),
+      );
+
+      // Update polyline for eating effect
+      _updatePolylineForAnimationInternal(progress);
+    });
+
+    // Update camera outside setState for better performance
+    _moveMapAroundVehicle(newPosition, bearing);
+  }
+
+  // Cache vehicle icon for better performance
+  Future<void> _cacheVehicleIcon() async {
+    try {
+      final vehicleImagePath = VehicleService.imagePath(
+        vehicleType: widget.vehicle.vehicleType ?? 'Car',
+        vehicleState: VehicleService.running,
+        imageState: VehicleImageState.live,
+      );
+
+      _cachedVehicleIcon = await BitmapDescriptor.fromAssetImage(
+        const ImageConfiguration(size: Size(60, 60)),
+        vehicleImagePath,
+      );
+    } catch (e) {
+      // Use default marker if caching fails
+      _cachedVehicleIcon = BitmapDescriptor.defaultMarkerWithHue(
+        BitmapDescriptor.hueBlue,
+      );
+    }
+  }
+
+  // Move map around vehicle marker to keep it centered
+  void _moveMapAroundVehicle(LatLng position, double bearing) {
+    if (_mapController == null) return;
+
+    // Check if vehicle has moved significantly (very small threshold for responsive following)
+    if (_lastCameraPosition != null) {
+      final distance = _calculateDistance(_lastCameraPosition!, position);
+      if (distance < 0.0000001) {
+        // ~0.01 meter in degrees for very responsive visual updates
+        return;
+      }
+    }
+
+    _lastCameraPosition = position;
+
+    // Use moveCamera for instant response to keep vehicle perfectly centered
+    _mapController!.moveCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(
+          target: position, // Keep vehicle position in center
+          zoom: 16.0, // Closer zoom for slow movement
+          bearing: bearing, // Rotate map to match vehicle direction
+          // tilt: 45.0, // Slight tilt for better road view
+        ),
+      ),
+    );
+  }
+
+  // Calculate distance between two LatLng points
+  double _calculateDistance(LatLng point1, LatLng point2) {
+    final lat1 = point1.latitude * (pi / 180);
+    final lat2 = point2.latitude * (pi / 180);
+    final deltaLat = (point2.latitude - point1.latitude) * (pi / 180);
+    final deltaLng = (point2.longitude - point1.longitude) * (pi / 180);
+
+    final a =
+        sin(deltaLat / 2) * sin(deltaLat / 2) +
+        cos(lat1) * cos(lat2) * sin(deltaLng / 2) * sin(deltaLng / 2);
+    final c = 2 * asin(sqrt(a));
+
+    return c; // Distance in radians
+  }
+
+  // Apply smooth interpolation to reduce jumping
+  double _applySmoothInterpolation(double t) {
+    // Use cubic easing for smooth acceleration/deceleration
+    return t * t * (3.0 - 2.0 * t); // Smoothstep 3rd order for smooth movement
+  }
+
+  // Internal polyline update method (called from batched setState)
+  void _updatePolylineForAnimationInternal(double progress) {
+    if (routePoints.length < 2) return;
+
+    // Calculate how many points the vehicle has passed with more precision
+    final totalPoints = routePoints.length - 1;
+    final currentPointIndex = (progress * totalPoints).floor();
+
+    // Get the current interpolated position
+    final segmentProgress = (progress * totalPoints) - currentPointIndex;
+    final currentPosition = _getInterpolatedPosition(
+      currentPointIndex,
+      segmentProgress,
+    );
+
+    // Create new polyline starting from current vehicle position
+    List<LatLng> remainingPoints = [];
+
+    // Add current interpolated position as first point
+    remainingPoints.add(currentPosition);
+
+    // Add all remaining route points after current position
+    if (currentPointIndex < routePoints.length - 1) {
+      remainingPoints.addAll(routePoints.skip(currentPointIndex + 1));
+    }
+
+    // Remove existing polyline and add new one
+    _polylines.removeWhere(
+      (polyline) => polyline.polylineId == PolylineId('route'),
+    );
+
+    // Always show polyline if there are at least 2 points (current + next)
+    if (remainingPoints.length >= 2) {
+      _polylines.add(
+        Polyline(
+          polylineId: PolylineId('route'),
+          points: remainingPoints,
+          color: Colors.blue,
+          width: 3,
+          geodesic: true,
+        ),
+      );
+    }
+  }
+
+  // Helper method to get interpolated position between two points
+  LatLng _getInterpolatedPosition(int currentIndex, double segmentProgress) {
+    if (currentIndex >= routePoints.length - 1) {
+      return routePoints.last;
+    }
+
+    final currentPoint = routePoints[currentIndex];
+    final nextPoint = routePoints[currentIndex + 1];
+
+    // Apply smooth interpolation
+    final smoothProgress = _applySmoothInterpolation(segmentProgress);
+
+    final lat =
+        currentPoint.latitude +
+        (nextPoint.latitude - currentPoint.latitude) * smoothProgress;
+    final lng =
+        currentPoint.longitude +
+        (nextPoint.longitude - currentPoint.longitude) * smoothProgress;
+
+    return LatLng(lat, lng);
+  }
+
+  // Restore original polyline when animation stops or completes
+  void _restoreOriginalPolyline() {
+    if (routePoints.length < 2) return;
+
+    setState(() {
+      _polylines.removeWhere(
+        (polyline) => polyline.polylineId == PolylineId('route'),
+      );
+
+      // Restore the full original polyline
+      _polylines.add(
+        Polyline(
+          polylineId: PolylineId('route'),
+          points: routePoints,
+          color: Colors.blue,
+          width: 3,
+          geodesic: true,
+        ),
+      );
+    });
   }
 
   void _updateCurrentData(
@@ -922,85 +1139,6 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
     return bearing;
   }
 
-  void _checkAndAdjustCamera(LatLng vehiclePosition) {
-    if (_mapController == null) return;
-
-    // Get current camera position
-    _mapController!.getVisibleRegion().then((bounds) {
-      // Check if vehicle is within visible bounds
-      bool isVehicleVisible =
-          vehiclePosition.latitude >= bounds.southwest.latitude &&
-          vehiclePosition.latitude <= bounds.northeast.latitude &&
-          vehiclePosition.longitude >= bounds.southwest.longitude &&
-          vehiclePosition.longitude <= bounds.northeast.longitude;
-
-      // If vehicle is going out of screen, adjust camera
-      if (!isVehicleVisible) {
-        _mapController!.animateCamera(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(target: vehiclePosition, zoom: 15.0),
-          ),
-        );
-      }
-    });
-  }
-
-  Future<void> _addVehicleMarkerWithRotation(
-    LatLng position,
-    bool isStopped,
-    double rotation,
-  ) async {
-    try {
-      // Get vehicle image path for running state during animation
-      final vehicleImagePath = VehicleService.imagePath(
-        vehicleType: widget.vehicle.vehicleType ?? 'Car',
-        vehicleState: isStopped
-            ? VehicleService.stopped
-            : VehicleService.running,
-        imageState: VehicleImageState.live,
-      );
-
-      final BitmapDescriptor vehicleIcon =
-          await BitmapDescriptor.fromAssetImage(
-            const ImageConfiguration(size: Size(60, 60)),
-            vehicleImagePath,
-          );
-
-      setState(() {
-        _markers.add(
-          Marker(
-            markerId: MarkerId('vehicle'),
-            position: position,
-            icon: vehicleIcon,
-            rotation: rotation,
-            infoWindow: InfoWindow(
-              title: 'Vehicle',
-              snippet: isStopped ? 'Stopped' : 'Moving',
-            ),
-          ),
-        );
-      });
-    } catch (e) {
-      // Fallback to default marker if image loading fails
-      setState(() {
-        _markers.add(
-          Marker(
-            markerId: MarkerId('vehicle'),
-            position: position,
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueBlue,
-            ),
-            rotation: rotation,
-            infoWindow: InfoWindow(
-              title: 'Vehicle',
-              snippet: isStopped ? 'Stopped' : 'Moving',
-            ),
-          ),
-        );
-      });
-    }
-  }
-
   void _playAnimation() {
     if (routePoints.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1016,7 +1154,12 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
       isPlaying = true;
     });
 
-    // Reset vehicle marker to start position
+    // Recalculate animation duration based on current route points
+    final newDuration = _calculateAnimationDuration();
+    _animationController.duration = newDuration;
+
+    // Create stationary vehicle marker at start position (only once)
+    // This marker will never move - only the map moves around it
     setState(() {
       _markers.removeWhere((marker) => marker.markerId == MarkerId('vehicle'));
     });
@@ -1025,11 +1168,21 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
       _addVehicleMarker(routePoints.first, false);
     }
 
-    // Fit map to route before starting animation
-    _fitMapToRoute();
+    // Set camera to road level zoom at start position
+    if (routePoints.isNotEmpty) {
+      _mapController?.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: routePoints.first,
+            zoom: 18.0, // Closer zoom for slow movement
+            tilt: 45.0, // Slight tilt for better road view
+          ),
+        ),
+      );
+    }
 
-    // Wait a bit for the map to fit, then start animation
-    Future.delayed(Duration(milliseconds: 500), () {
+    // Wait a bit for the camera to adjust, then start animation
+    Future.delayed(Duration(milliseconds: 300), () {
       _animationController.reset();
       _animationController.forward();
     });
@@ -1040,6 +1193,9 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
     setState(() {
       isPlaying = false;
     });
+
+    // Restore original polyline when animation stops
+    _restoreOriginalPolyline();
   }
 
   // Add toggle map type function

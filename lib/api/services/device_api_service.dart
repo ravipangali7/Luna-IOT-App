@@ -115,15 +115,29 @@ class DeviceApiService {
       final response = await _apiClient.dio.get(
         ApiEndpoints.getDeviceByImei.replaceAll(':imei', imei),
       );
-      // Django response format: {success: true, message: '...', data: {...}}
+      // Node.js response format: {success: true, message: '...', data: {...}}
       if (response.data['success'] == true && response.data['data'] != null) {
         return Device.fromJson(response.data['data']);
       }
       throw Exception(
         'Failed to get device: ${response.data['message'] ?? 'Unknown error'}',
       );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        throw Exception('Device not found');
+      } else if (e.response?.statusCode == 403) {
+        throw Exception(
+          'Access denied. You do not have permission to view this device',
+        );
+      } else if (e.response?.statusCode == 401) {
+        throw Exception('Authentication required');
+      } else {
+        final errorMessage =
+            e.response?.data?['message'] ?? 'Network error: ${e.message}';
+        throw Exception(errorMessage);
+      }
     } catch (e) {
-      throw Exception('Failed to get device by IMEI');
+      throw Exception('Failed to get device by IMEI: ${e.toString()}');
     }
   }
 

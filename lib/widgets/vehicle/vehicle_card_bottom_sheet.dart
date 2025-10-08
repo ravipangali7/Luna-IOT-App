@@ -13,6 +13,7 @@ import 'package:luna_iot/views/admin/device_monitoring_show_screen.dart';
 import 'package:luna_iot/widgets/confirm_dialouge.dart';
 import 'package:luna_iot/widgets/relay_control_widget.dart';
 import 'package:luna_iot/widgets/role_based_widget.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:luna_iot/widgets/weather_modal_widget.dart';
 
 class VehicleCardBottomSheet extends StatelessWidget {
@@ -183,7 +184,7 @@ class VehicleCardBottomSheet extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               BottomSheetFeatureCard(
-                icon: Icons.location_on,
+                icon: FontAwesomeIcons.locationDot,
                 title: 'Live Tracking',
                 color: Colors.red.shade700,
                 callback: () {
@@ -203,7 +204,7 @@ class VehicleCardBottomSheet extends StatelessWidget {
                 },
               ),
               BottomSheetFeatureCard(
-                icon: Icons.history,
+                icon: FontAwesomeIcons.redo,
                 title: 'History',
                 color: Colors.blue.shade700,
                 callback: () {
@@ -218,7 +219,7 @@ class VehicleCardBottomSheet extends StatelessWidget {
                 },
               ),
               BottomSheetFeatureCard(
-                icon: Icons.bar_chart,
+                icon: FontAwesomeIcons.chartLine,
                 title: 'Report',
                 color: Colors.green.shade700,
                 callback: () {
@@ -236,32 +237,26 @@ class VehicleCardBottomSheet extends StatelessWidget {
           ),
 
           // Gap
-          SizedBox(height: 10),
+          SizedBox(height: 5),
 
           // Features List 2
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               BottomSheetFeatureCard(
-                icon: Icons.library_books,
+                icon: FontAwesomeIcons.book,
                 title: 'Vehicle Profile',
                 color: Colors.blueGrey.shade700,
               ),
+
               BottomSheetFeatureCard(
-                icon: Icons.edit,
-                title: 'Vehicle Edit',
-                color: Colors.orange.shade700,
-                callback: () {
-                  VehicleUtils.handleVehicleAction(
-                    vehicle: vehicle,
-                    action: 'Edit Vehicle',
-                    actionCallback: () =>
-                        Get.toNamed(AppRoutes.vehicleEdit, arguments: vehicle),
-                  );
-                },
+                icon: FontAwesomeIcons.clock,
+                title: 'Vehicle Event',
+                color: Colors.blue.shade600,
+                callback: () {},
               ),
               BottomSheetFeatureCard(
-                icon: Icons.map,
+                icon: FontAwesomeIcons.map,
                 title: 'Geofence',
                 color: Colors.green.shade700,
                 callback: () {
@@ -276,27 +271,68 @@ class VehicleCardBottomSheet extends StatelessWidget {
           ),
 
           // Gap
-          SizedBox(height: 10),
+          SizedBox(height: 5),
 
           // Features List 3
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               BottomSheetFeatureCard(
-                icon: Icons.flag,
+                icon: FontAwesomeIcons.clipboardCheck,
+                title: 'Troubleshoot',
+                color: Colors.green.shade700,
+              ),
+
+              BottomSheetFeatureCard(
+                icon: FontAwesomeIcons.edit,
+                title: 'Vehicle Edit',
+                color: Colors.orange.shade700,
+                callback: () {
+                  VehicleUtils.handleVehicleAction(
+                    vehicle: vehicle,
+                    action: 'Edit Vehicle',
+                    actionCallback: () =>
+                        Get.toNamed(AppRoutes.vehicleEdit, arguments: vehicle),
+                  );
+                },
+              ),
+              BottomSheetFeatureCard(
+                icon: FontAwesomeIcons.share,
+                title: 'Share Track',
+                color: Colors.green.shade700,
+                callback: () {
+                  VehicleUtils.handleVehicleAction(
+                    vehicle: vehicle,
+                    action: 'Manage Geofence',
+                    actionCallback: () => Get.toNamed(AppRoutes.geofence),
+                  );
+                },
+              ),
+            ],
+          ),
+
+          // Gap
+          SizedBox(height: 5),
+
+          // Features List 3
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              BottomSheetFeatureCard(
+                icon: FontAwesomeIcons.flagCheckered,
                 title: 'Near By',
                 color: Colors.pink.shade700,
                 callback: () =>
                     GeoService.showNearbyPlacesModal(context, vehicle),
               ),
               BottomSheetFeatureCard(
-                icon: Icons.directions,
+                icon: FontAwesomeIcons.mapSigns,
                 title: 'Find Vehicle',
                 color: Colors.green.shade700,
                 callback: () => GeoService.findVehicle(context, vehicle),
               ),
               BottomSheetFeatureCard(
-                icon: Icons.handyman,
+                icon: FontAwesomeIcons.tools,
                 title: 'Fleet Record',
                 color: Colors.blueGrey.shade700,
                 callback: () {},
@@ -314,7 +350,7 @@ class VehicleCardBottomSheet extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 BottomSheetFeatureCard(
-                  icon: Icons.delete,
+                  icon: FontAwesomeIcons.trash,
                   title: 'Delete',
                   color: Colors.red,
                   callback: () {
@@ -326,7 +362,7 @@ class VehicleCardBottomSheet extends StatelessWidget {
                   },
                 ),
                 BottomSheetFeatureCard(
-                  icon: Icons.monitor,
+                  icon: FontAwesomeIcons.desktop,
                   title: 'Monitoring',
                   color: Colors.blueGrey,
                   callback: () {
@@ -339,7 +375,7 @@ class VehicleCardBottomSheet extends StatelessWidget {
                   },
                 ),
                 BottomSheetFeatureCard(
-                  icon: Icons.monitor,
+                  icon: FontAwesomeIcons.desktop,
                   title: 'Monitoring',
                   color: Colors.blueGrey,
                   callback: () {},
@@ -448,31 +484,31 @@ class BottomSheetFeatureCard extends StatelessWidget {
     return InkWell(
       onTap: () => callback?.call(),
       child: Container(
-        width: 105,
+        width: 110,
         height: 80,
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              offset: Offset(0, 0),
-              spreadRadius: -1,
-              blurRadius: 25,
-              color: Colors.black12,
+              offset: Offset(0, 2),
+              spreadRadius: 2,
+              blurRadius: 4,
+              color: Colors.black12.withAlpha(30),
             ),
           ],
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(3),
         ),
         alignment: Alignment.center,
         child: Column(
-          spacing: 8,
+          spacing: 2,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 25),
+            FaIcon(icon, color: color, size: 25),
             Text(
               title,
               style: TextStyle(
-                color: AppTheme.subTitleColor,
-                fontSize: 10,
+                color: AppTheme.titleColor,
+                fontSize: 12,
                 fontWeight: FontWeight.bold,
               ),
             ),

@@ -29,6 +29,11 @@ class DeviceController extends GetxController {
   var searchResults = <Map<String, dynamic>>[].obs;
   var isSearching = false.obs;
 
+  // Device search for assignment
+  var deviceSearchResults = <Device>[].obs;
+  var isSearchingDevice = false.obs;
+  var deviceSearchQuery = ''.obs;
+
   // Text controllers for assignment screen
   late TextEditingController phoneController;
   late TextEditingController imeiController;
@@ -151,9 +156,9 @@ class DeviceController extends GetxController {
         hasPreviousPage.value = paginatedResponse.pagination.hasPrevious;
 
         // Debug: Print device data to see what we're getting
-        debugPrint('Loaded devices count: ${devices.value.length}');
-        if (devices.value.isNotEmpty) {
-          debugPrint('First device: ${devices.value.first.toJson()}');
+        debugPrint('Loaded devices count: ${devices.length}');
+        if (devices.isNotEmpty) {
+          debugPrint('First device: ${devices.first.toJson()}');
         }
       } catch (e) {
         // Fallback to regular endpoint if pagination is not available
@@ -323,7 +328,93 @@ class DeviceController extends GetxController {
     searchResults.clear();
   }
 
+  // Search device by IMEI for assignment
+  Future<void> searchDeviceByImei(String imei) async {
+    if (imei.isEmpty) {
+      deviceSearchResults.clear();
+      return;
+    }
+
+    try {
+      isSearchingDevice.value = true;
+      deviceSearchQuery.value = imei;
+      debugPrint('Searching for device with IMEI: $imei');
+
+      // First try to find in already loaded devices
+      final existingDevice = devices.firstWhereOrNull((d) => d.imei == imei);
+      if (existingDevice != null) {
+        deviceSearchResults.value = [existingDevice];
+        Get.snackbar('Success', 'Device found in local cache');
+        return;
+      }
+
+      // If not found locally, search via API
+      try {
+        final device = await _deviceApiService.getDeviceByImei(imei);
+        deviceSearchResults.value = [device];
+        Get.snackbar('Success', 'Device found via API');
+      } catch (apiError) {
+        // If specific device search fails, try general search as fallback
+        debugPrint(
+          'Specific device search failed, trying general search: $apiError',
+        );
+        try {
+          final searchResults = await _deviceApiService.searchDevices(imei);
+          final matchingDevice = searchResults.firstWhereOrNull(
+            (d) => d.imei == imei,
+          );
+          if (matchingDevice != null) {
+            deviceSearchResults.value = [matchingDevice];
+            Get.snackbar('Success', 'Device found via general search');
+          } else {
+            throw Exception('Device not found in search results');
+          }
+        } catch (searchError) {
+          // Re-throw the original API error if general search also fails
+          throw apiError;
+        }
+      }
+    } catch (e) {
+      deviceSearchResults.clear();
+      print('Device search error: $e');
+
+      // Provide more specific error messages
+      String errorMessage = 'Device not found';
+      if (e.toString().contains('Access denied')) {
+        errorMessage =
+            'Access denied. You may not have permission to view this device.';
+      } else if (e.toString().contains('Authentication required')) {
+        errorMessage = 'Please log in again to search for devices.';
+      } else if (e.toString().contains('Device not found')) {
+        errorMessage = 'Device with IMEI "$imei" not found in the system.';
+      } else if (e.toString().contains('Network error')) {
+        errorMessage =
+            'Network error. Please check your connection and try again.';
+      }
+
+      Get.snackbar('Search Failed', errorMessage);
+    } finally {
+      isSearchingDevice.value = false;
+    }
+  }
+
   void addDevice(String imei) {
+    // First check if device is in search results
+    final searchDevice = deviceSearchResults.firstWhereOrNull(
+      (d) => d.imei == imei,
+    );
+    if (searchDevice != null) {
+      if (!selectedDevices.any((d) => d.imei == imei)) {
+        selectedDevices.add(searchDevice);
+        Get.snackbar('Success', 'Device added to assignment list');
+        return;
+      } else {
+        Get.snackbar('Error', 'Device already in assignment list');
+        return;
+      }
+    }
+
+    // Fallback to existing logic
     final device = devices.firstWhereOrNull((d) => d.imei == imei);
     if (device != null) {
       if (!selectedDevices.any((d) => d.imei == imei)) {
@@ -377,6 +468,8 @@ class DeviceController extends GetxController {
     selectedUser.value = null;
     selectedDevices.clear();
     searchResults.clear();
+    deviceSearchResults.clear();
+    deviceSearchQuery.value = '';
     phoneController.clear();
     imeiController.clear();
   }
