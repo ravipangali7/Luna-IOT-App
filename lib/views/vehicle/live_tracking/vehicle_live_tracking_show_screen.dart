@@ -21,6 +21,8 @@ import 'package:luna_iot/widgets/loading_widget.dart';
 import 'package:luna_iot/widgets/satellite_connection_status_widget.dart';
 import 'package:luna_iot/widgets/vehicle/speedometer_widget.dart';
 import 'package:luna_iot/widgets/weather_modal_widget.dart';
+import 'package:luna_iot/widgets/simple_marquee_widget.dart';
+import 'package:luna_iot/widgets/vehicle/share_track_modal.dart';
 
 class VehicleLiveTrackingShowScreen extends StatefulWidget {
   const VehicleLiveTrackingShowScreen({super.key, required this.imei});
@@ -63,6 +65,19 @@ class _VehicleLiveTrackingShowScreenState
   String lastUpdateTime = '...';
   String _lastCalculatedTime = '...';
   DateTime? _lastCalculationTimestamp;
+
+  // Altitude API optimization
+  bool _hasNewLocationData = false;
+  String? _cachedAltitude;
+  bool _isAltitudeLoading = false;
+
+  // Animation queue management
+  Timer? _animationTimer;
+  LatLng? _animationTargetPosition;
+  LatLng? _pendingTargetPosition;
+  bool _isAnimating = false;
+  int _currentAnimationStep = 0;
+  int _totalAnimationSteps = 0;
 
   // Socket listeners
   Worker? _statusWorker;
@@ -134,7 +149,8 @@ class _VehicleLiveTrackingShowScreenState
   void _stopTracking() {
     _isTracking = false;
 
-    // Clear the tracking IMEI in socket service
+    // Leave socket room
+    _socketService.leaveVehicleRoom(widget.imei);
     _socketService.clearTrackingImei();
 
     _statusWorker?.dispose();
@@ -142,6 +158,11 @@ class _VehicleLiveTrackingShowScreenState
     _updateThrottle?.cancel();
     _cameraAnimationController.stop();
     _markerAnimationController.stop();
+
+    // Clean up animation queue
+    _animationTimer?.cancel();
+    _isAnimating = false;
+    _pendingTargetPosition = null;
   }
 
   // Fetch vehicle data from API
@@ -209,6 +230,10 @@ class _VehicleLiveTrackingShowScreenState
     _currentLocation = vehicle.latestLocation;
     _currentStatus = vehicle.latestStatus;
 
+    // Initialize altitude flag for first load
+    _hasNewLocationData = true;
+    _isAltitudeLoading = true; // Show loading for first load
+
     // Calculate initial time
     _calculateLastUpdateTime();
   }
@@ -232,7 +257,8 @@ class _VehicleLiveTrackingShowScreenState
   void _startRealTimeTracking() {
     if (_isTracking) return;
 
-    // Set the tracking IMEI in socket service to filter updates
+    // Join socket room for this vehicle (room-based filtering)
+    _socketService.joinVehicleRoom(widget.imei);
     _socketService.setTrackingImei(widget.imei);
 
     _isTracking = true;
@@ -341,8 +367,8 @@ class _VehicleLiveTrackingShowScreenState
         setState(() {
           vehicle = updatedVehicle;
           _currentLocation = newLocation;
-          _vehiclePosition = newPosition;
-          routePoints.add(newPosition);
+          // DON'T update _vehiclePosition here - let animation do it
+          // DON'T add to routePoints here - let animation do it
           vehicleState = newVehicleState;
           vehicleImage = newVehicleImage;
 
@@ -357,14 +383,18 @@ class _VehicleLiveTrackingShowScreenState
             }
           }
 
+          // Mark that we have new location data for altitude API
+          _hasNewLocationData = true;
+          _isAltitudeLoading = true; // Show loading for new data
+
           _updateMarker();
-          _updatePolyline();
+          // DON'T update polyline here - let animation draw it
           _updateMapRotation();
         });
 
         // Start smooth animation from previous position to new position
         if (previousPosition != null) {
-          _animateToNewPosition(previousPosition, newPosition, newLocation);
+          _startOrQueueAnimation(previousPosition, newPosition, newLocation);
         } else {
           // First position - just center on vehicle
           _centerOnVehicleWithRotation(newPosition, newLocation.course ?? 0.0);
@@ -373,6 +403,96 @@ class _VehicleLiveTrackingShowScreenState
         _loadCustomMarker();
       }
     } catch (e) {}
+  }
+
+  // Smart animation manager - handles GPS interruptions
+  void _startOrQueueAnimation(
+    LatLng fromPosition,
+    LatLng toPosition,
+    Location newLocation,
+  ) {
+    // Move camera immediately to the new GPS position
+    if (_mapController != null) {
+      double course = newLocation.course ?? 0.0;
+      _mapController!.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: toPosition,
+            zoom: 17.0,
+            bearing: course,
+            tilt: 0.0,
+          ),
+        ),
+      );
+    }
+
+    if (_isAnimating) {
+      // Animation in progress - queue the new destination
+      _pendingTargetPosition = toPosition;
+      // Speed up current animation to reach current target faster
+      _speedUpCurrentAnimation();
+    } else {
+      // No animation in progress - start fresh
+      _startMarkerAnimation(fromPosition, toPosition, newLocation);
+    }
+  }
+
+  // Speed up current animation when new GPS point arrives
+  void _speedUpCurrentAnimation() {
+    int remainingSteps = _totalAnimationSteps - _currentAnimationStep;
+
+    // If more than 25% remaining, speed up to 50% of original duration
+    if (remainingSteps > (_totalAnimationSteps * 0.25)) {
+      _animationTimer?.cancel();
+
+      // Store current marker position as new start
+      LatLng currentMarkerPosition = _vehiclePosition!;
+      LatLng targetPosition = _animationTargetPosition!;
+
+      // Calculate new animation from current position to target
+      const int speedUpSteps = 25; // Faster completion
+      const Duration fastStepDuration = Duration(milliseconds: 100);
+
+      int speedUpStep = 0;
+
+      _animationTimer = Timer.periodic(fastStepDuration, (timer) {
+        if (speedUpStep >= speedUpSteps || !_isTracking || !mounted) {
+          timer.cancel();
+          // Add final position when speed-up completes
+          if (!routePoints.contains(targetPosition)) {
+            routePoints.add(targetPosition);
+            _updatePolyline();
+          }
+          _onAnimationComplete();
+          return;
+        }
+
+        speedUpStep++;
+        double t = speedUpStep / speedUpSteps;
+
+        // Interpolate from CURRENT position to target
+        LatLng interpolatedPosition = LatLng(
+          currentMarkerPosition.latitude +
+              (targetPosition.latitude - currentMarkerPosition.latitude) * t,
+          currentMarkerPosition.longitude +
+              (targetPosition.longitude - currentMarkerPosition.longitude) * t,
+        );
+
+        _vehiclePosition = interpolatedPosition;
+        _updateMarkerPositionSmooth(interpolatedPosition);
+
+        // Add intermediate points during speed-up
+        if (speedUpStep % 5 == 0) {
+          routePoints.add(interpolatedPosition);
+          _updatePolyline();
+          setState(() {});
+        } else if (speedUpStep >= speedUpSteps) {
+          routePoints.add(targetPosition);
+          _updatePolyline();
+          setState(() {});
+        }
+      });
+    }
   }
 
   // Center on vehicle with map rotation
@@ -389,72 +509,81 @@ class _VehicleLiveTrackingShowScreenState
     );
   }
 
-  // Animate smooth movement from point 0 to point 1 over 5 seconds
-  void _animateToNewPosition(
+  // Start marker animation with reduced setState frequency to prevent shakiness
+  void _startMarkerAnimation(
     LatLng fromPosition,
     LatLng toPosition,
     Location newLocation,
   ) {
-    if (_mapController == null || !_isTracking) return;
+    // Cancel any existing animation first
+    _animationTimer?.cancel();
 
-    // First, draw the polyline (it's already drawn in setState above)
-    // Now start smooth linear animation from 0.01 to 0.99 over 5 seconds
-    _startSmoothLinearAnimation(fromPosition, toPosition, newLocation);
-  }
+    const int totalSteps = 75;
+    const Duration stepDuration = Duration(milliseconds: 200);
+    const int setStateEveryNSteps = 5; // Reduced from 3 to 5
 
-  // Start smooth linear animation between two points over 5 seconds
-  void _startSmoothLinearAnimation(
-    LatLng fromPosition,
-    LatLng toPosition,
-    Location newLocation,
-  ) {
-    const int totalSteps = 300; // 0.01 to 1.0 = 300 steps for smoother movement
-    const Duration stepDuration = Duration(
-      milliseconds: 50,
-    ); // 15 seconds / 300 steps = 50ms per step
+    // Reset state
+    _isAnimating = true;
+    _currentAnimationStep = 0;
+    _totalAnimationSteps = totalSteps;
+    _animationTargetPosition = toPosition;
 
-    int currentStep = 0;
-    double course = newLocation.course ?? 0.0;
-
-    Timer.periodic(stepDuration, (timer) {
-      if (currentStep >= totalSteps || !_isTracking || !mounted) {
+    _animationTimer = Timer.periodic(stepDuration, (timer) {
+      if (_currentAnimationStep >= totalSteps || !_isTracking || !mounted) {
         timer.cancel();
+        // Add final position to routePoints when animation completes
+        if (!routePoints.contains(toPosition)) {
+          routePoints.add(toPosition);
+          _updatePolyline();
+        }
+        _onAnimationComplete();
         return;
       }
 
-      // Calculate interpolation factor (0.01 to 1.0)
-      double t = (currentStep + 1) / totalSteps; // 0.01 to 1.0
+      _currentAnimationStep++;
+      double t = _currentAnimationStep / totalSteps;
 
-      // Linear interpolation between points
-      double lat =
-          fromPosition.latitude +
-          (toPosition.latitude - fromPosition.latitude) * t;
-      double lng =
-          fromPosition.longitude +
-          (toPosition.longitude - fromPosition.longitude) * t;
-
-      LatLng interpolatedPosition = LatLng(lat, lng);
-
-      // Update both marker position and map position during animation
-      setState(() {
-        _vehiclePosition = interpolatedPosition;
-        _updateMarker();
-      });
-
-      // Update map position with smooth movement
-      _mapController!.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: interpolatedPosition,
-            zoom: 17.0,
-            bearing: course,
-            tilt: 0.0,
-          ),
-        ),
+      // Calculate interpolated position
+      LatLng interpolatedPosition = LatLng(
+        fromPosition.latitude +
+            (toPosition.latitude - fromPosition.latitude) * t,
+        fromPosition.longitude +
+            (toPosition.longitude - fromPosition.longitude) * t,
       );
 
-      currentStep++;
+      _vehiclePosition = interpolatedPosition;
+      _updateMarkerPositionSmooth(interpolatedPosition);
+
+      // Add intermediate points to polyline every N steps
+      if (_currentAnimationStep % setStateEveryNSteps == 0) {
+        routePoints.add(interpolatedPosition);
+        _updatePolyline();
+        setState(() {
+          // Minimal UI update
+        });
+      } else if (_currentAnimationStep >= totalSteps) {
+        routePoints.add(toPosition);
+        _updatePolyline();
+        setState(() {
+          // Minimal UI update
+        });
+      }
     });
+  }
+
+  // Handle animation completion and process queue
+  void _onAnimationComplete() {
+    _isAnimating = false;
+
+    // Check if there's a pending destination
+    if (_pendingTargetPosition != null) {
+      LatLng nextStart = _animationTargetPosition ?? _vehiclePosition!;
+      LatLng nextTarget = _pendingTargetPosition!;
+      _pendingTargetPosition = null;
+
+      // Start animation to pending destination
+      _startMarkerAnimation(nextStart, nextTarget, _currentLocation!);
+    }
   }
 
   // Load custom marker
@@ -499,6 +628,31 @@ class _VehicleLiveTrackingShowScreenState
         ),
       };
     });
+  }
+
+  // Update marker position smoothly during animation
+  void _updateMarkerPositionSmooth(LatLng newPosition) {
+    if (!mounted) return;
+
+    // Calculate marker rotation based on vehicle course
+    double markerRotation = _calculateMarkerRotation();
+
+    // Update markers set efficiently
+    _markers = {
+      Marker(
+        markerId: MarkerId(vehicle.imei),
+        position: newPosition,
+        icon:
+            _customMarkerIcon ??
+            BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+        infoWindow: InfoWindow(
+          title: vehicle.vehicleNo ?? 'Vehicle',
+          snippet: '${vehicle.vehicleType} - $vehicleState',
+        ),
+        rotation: markerRotation,
+        anchor: const Offset(0.5, 0.5), // Center the marker rotation
+      ),
+    };
   }
 
   // Calculate marker rotation - always keep marker pointing North (upward)
@@ -656,15 +810,19 @@ class _VehicleLiveTrackingShowScreenState
                     _currentLocation?.latitude ?? 0,
                     _currentLocation?.longitude ?? 0,
                   ),
-                  builder: (context, snapshot) => Text(
-                    snapshot.data ?? '...',
-                    style: TextStyle(
-                      color: AppTheme.subTitleColor,
-                      fontSize: 12,
-                    ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  builder: (context, snapshot) {
+                    final address = snapshot.data ?? '...';
+                    return SimpleMarqueeText(
+                      text: address,
+                      style: TextStyle(
+                        color: AppTheme.subTitleColor,
+                        fontSize: 12,
+                      ),
+                      scrollAxisExtent: 300.0,
+                      scrollDuration: Duration(seconds: 10),
+                      autoStart: true,
+                    );
+                  },
                 ),
               ),
             ],
@@ -771,13 +929,22 @@ class _VehicleLiveTrackingShowScreenState
                           ),
                         ),
                         FutureBuilder(
-                          future: GeoService.getAltitude(
-                            _currentLocation?.latitude ?? 0,
-                            _currentLocation?.longitude ?? 0,
-                          ),
+                          future: _hasNewLocationData
+                              ? GeoService.getAltitude(
+                                  _currentLocation?.latitude ?? 0,
+                                  _currentLocation?.longitude ?? 0,
+                                ).then((altitude) {
+                                  _cachedAltitude = altitude;
+                                  _hasNewLocationData =
+                                      false; // Reset flag after API call
+                                  _isAltitudeLoading =
+                                      false; // Stop loading after API call
+                                  return altitude;
+                                })
+                              : Future.value(_cachedAltitude ?? 'N/A'),
                           builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
+                            // Show loading only if we have no cached data and are loading
+                            if (_isAltitudeLoading && _cachedAltitude == null) {
                               return Text(
                                 '...',
                                 style: TextStyle(
@@ -788,7 +955,23 @@ class _VehicleLiveTrackingShowScreenState
                               );
                             }
 
-                            if (snapshot.hasError || !snapshot.hasData) {
+                            // Show loading if we're waiting for new data and have no cached data
+                            if (snapshot.connectionState ==
+                                    ConnectionState.waiting &&
+                                _cachedAltitude == null) {
+                              return Text(
+                                '...',
+                                style: TextStyle(
+                                  color: AppTheme.titleColor,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              );
+                            }
+
+                            // Show error if there's an error and no cached data
+                            if ((snapshot.hasError || !snapshot.hasData) &&
+                                _cachedAltitude == null) {
                               return Text(
                                 'N/A',
                                 style: TextStyle(
@@ -799,7 +982,9 @@ class _VehicleLiveTrackingShowScreenState
                               );
                             }
 
-                            final altitude = snapshot.data ?? '0';
+                            // Show cached altitude if available, otherwise show new data
+                            final altitude =
+                                _cachedAltitude ?? snapshot.data ?? '0';
                             return Text(
                               '${altitude}m',
                               style: TextStyle(
@@ -991,6 +1176,42 @@ class _VehicleLiveTrackingShowScreenState
                           ),
                           child: const Icon(
                             Icons.sunny_snowing,
+                            size: 25,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+
+                      // Share Track Button
+                      InkWell(
+                        onTap: () {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (context) => ShareTrackModal(
+                              imei: widget.imei,
+                              vehicleNo: vehicle.vehicleNo ?? 'Unknown',
+                            ),
+                          );
+                        },
+                        child: Container(
+                          width: 45,
+                          height: 45,
+                          decoration: BoxDecoration(
+                            color: Colors.purple.shade600,
+                            borderRadius: BorderRadius.circular(300),
+                            boxShadow: [
+                              BoxShadow(
+                                offset: const Offset(0, 0),
+                                spreadRadius: 1,
+                                blurRadius: 15,
+                                color: Colors.black12,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.share,
                             size: 25,
                             color: Colors.white,
                           ),

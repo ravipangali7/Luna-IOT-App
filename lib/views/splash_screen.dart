@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:luna_iot/controllers/auth_controller.dart';
-import 'package:luna_iot/app/app_theme.dart';
 import 'package:luna_iot/views/auth/login_screen.dart';
 import 'package:luna_iot/views/main_screen.dart';
 import 'package:luna_iot/widgets/loading_widget.dart';
+import 'package:luna_iot/services/popup_service.dart';
+import 'package:luna_iot/api/services/popup_api_service.dart';
+import 'package:luna_iot/api/api_client.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -33,7 +35,9 @@ class _SplashScreenState extends State<SplashScreen> {
       // Use a post frame callback to ensure UI is ready
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (authController.isLoggedIn.value) {
+          // Navigate to main screen and trigger popup after navigation
           Get.offAll(MainScreen());
+          _showPopupsAfterNavigation();
         } else {
           Get.offAll(LoginScreen());
         }
@@ -41,6 +45,26 @@ class _SplashScreenState extends State<SplashScreen> {
     } catch (e) {
       print('Splash: Error in splash screen: $e');
       Get.offAll(LoginScreen());
+    }
+  }
+
+  /// Show popups after navigation to main screen
+  Future<void> _showPopupsAfterNavigation() async {
+    try {
+      // Wait a bit more to ensure main screen is fully loaded
+      await Future.delayed(Duration(milliseconds: 1000));
+
+      // Initialize popup dependencies if not already done
+      if (!Get.isRegistered<PopupApiService>()) {
+        Get.lazyPut(() => PopupApiService(Get.find<ApiClient>()));
+      }
+
+      final context = Get.context;
+      if (context != null) {
+        await PopupService().showActivePopups(context);
+      }
+    } catch (e) {
+      print('Failed to show popups after navigation: $e');
     }
   }
 

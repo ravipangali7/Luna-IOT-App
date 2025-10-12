@@ -172,16 +172,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       // Navigate to edit profile
                     },
                   ),
-                  _buildProfileOption(
-                    icon: Icons.security_outlined,
-                    title: 'Privacy & Security',
-                    subtitle: 'Manage your privacy settings',
-                    onTap: () {
-                      // Navigate to privacy settings
-                    },
-                  ),
                 ],
               ),
+
+              // Biometric Authentication Section
+              Obx(() {
+                if (authController.isBiometricAvailable.value) {
+                  return _buildProfileSection(
+                    title: 'Security',
+                    children: [_buildBiometricOption(authController)],
+                  );
+                }
+                return const SizedBox.shrink();
+              }),
 
               _buildProfileSection(
                 title: 'Support',
@@ -479,5 +482,140 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildBiometricOption(AuthController authController) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppTheme.primaryColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            Icons.fingerprint,
+            color: AppTheme.primaryColor,
+            size: 24,
+          ),
+        ),
+        title: Text(
+          '${authController.getBiometricDisplayName()} Login',
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+        ),
+        subtitle: Text(
+          authController.isBiometricEnabled.value
+              ? 'Enabled - Use ${authController.getBiometricDisplayName().toLowerCase()} to log in quickly'
+              : 'Disabled - Enable for faster and more secure login',
+          style: TextStyle(color: Colors.grey[600], fontSize: 14),
+        ),
+        trailing: Obx(
+          () => Switch(
+            value: authController.isBiometricEnabled.value,
+            onChanged: (value) async {
+              if (value) {
+                await _enableBiometric(authController);
+              } else {
+                await _disableBiometric(authController);
+              }
+            },
+            activeColor: AppTheme.primaryColor,
+          ),
+        ),
+        onTap: () async {
+          if (authController.isBiometricEnabled.value) {
+            await _disableBiometric(authController);
+          } else {
+            await _enableBiometric(authController);
+          }
+        },
+      ),
+    );
+  }
+
+  Future<void> _enableBiometric(AuthController authController) async {
+    try {
+      final success = await authController.enableBiometric();
+
+      if (success) {
+        Get.snackbar(
+          'Biometric Login Enabled',
+          'You can now use ${authController.getBiometricDisplayName().toLowerCase()} to log in quickly and securely.',
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+        );
+      }
+    } catch (e) {
+      Get.snackbar(
+        'Setup Failed',
+        e.toString(),
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 3),
+      );
+    }
+  }
+
+  Future<void> _disableBiometric(AuthController authController) async {
+    // Show confirmation dialog
+    final confirmed = await Get.dialog<bool>(
+      AlertDialog(
+        title: const Text('Disable Biometric Login'),
+        content: Text(
+          'Are you sure you want to disable ${authController.getBiometricDisplayName().toLowerCase()} login? You will need to use your password to log in.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(result: false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Get.back(result: true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Disable'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await authController.disableBiometric();
+
+        Get.snackbar(
+          'Biometric Login Disabled',
+          'You will now need to use your password to log in.',
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+        );
+      } catch (e) {
+        Get.snackbar(
+          'Error',
+          e.toString(),
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+        );
+      }
+    }
   }
 }

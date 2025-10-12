@@ -340,8 +340,7 @@ class VehicleIndexScreen extends GetView<VehicleController> {
       }
 
       // Create RelayController
-      final relayController = RelayController();
-      Get.put(relayController);
+      Get.put<RelayController>(RelayController());
     }
   }
 }

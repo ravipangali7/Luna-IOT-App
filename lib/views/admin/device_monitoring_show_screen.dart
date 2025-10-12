@@ -35,6 +35,9 @@ class _DeviceMonitoringShowScreenState
   void initState() {
     super.initState();
 
+    // Join room for this specific device
+    _socketService.joinVehicleRoom(widget.imei);
+
     // Listen to device monitoring messages and filter for this IMEI
     ever(_socketService.deviceMonitoringMessages, (messages) {
       _filterMessagesForDevice();
@@ -75,6 +78,7 @@ class _DeviceMonitoringShowScreenState
 
   @override
   void dispose() {
+    _socketService.leaveVehicleRoom(widget.imei);
     _scrollController.dispose();
     super.dispose();
   }

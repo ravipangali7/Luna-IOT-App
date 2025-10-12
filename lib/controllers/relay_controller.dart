@@ -20,14 +20,14 @@ class RelayController extends GetxController {
   }
 
   // Turn relay ON
-  Future<void> turnRelayOn(String imei) async {
+  Future<void> turnRelayOn(String phone) async {
     try {
       isLoading.value = true;
       currentCommand.value = 'ON';
       errorMessage.value = '';
 
       // Send relay ON command
-      final result = await _relayApiService.turnRelayOn(imei);
+      final result = await _relayApiService.turnRelayOn(phone);
 
       if (result['success'] == true) {
         // Update relay status
@@ -78,14 +78,14 @@ class RelayController extends GetxController {
   }
 
   // Turn relay OFF
-  Future<void> turnRelayOff(String imei) async {
+  Future<void> turnRelayOff(String phone) async {
     try {
       isLoading.value = true;
       currentCommand.value = 'OFF';
       errorMessage.value = '';
 
       // Send relay OFF command
-      final result = await _relayApiService.turnRelayOff(imei);
+      final result = await _relayApiService.turnRelayOff(phone);
 
       if (result['success'] == true) {
         // Update relay status
@@ -135,7 +135,16 @@ class RelayController extends GetxController {
     }
   }
 
-  // Get current relay status
+  // Initialize relay status from vehicle data
+  void initializeRelayStatus(bool? vehicleRelayStatus) {
+    if (vehicleRelayStatus != null) {
+      relayStatus.value = vehicleRelayStatus;
+    } else {
+      relayStatus.value = false; // Default to OFF if no status available
+    }
+  }
+
+  // Get current relay status (keeping for backward compatibility)
   Future<void> getRelayStatus(String imei) async {
     try {
       final result = await _relayApiService.getRelayStatus(imei);

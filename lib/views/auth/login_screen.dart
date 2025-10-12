@@ -48,6 +48,24 @@ class LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _handleBiometricLogin() async {
+    try {
+      final success = await _authController.loginWithBiometric();
+
+      if (success) {
+        Get.offAll(() => HomeScreen());
+      }
+    } catch (e) {
+      Get.snackbar(
+        'Biometric Login Failed',
+        e.toString(),
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 3),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -175,18 +193,58 @@ class LoginScreenState extends State<LoginScreen> {
                                   Icons.lock,
                                   color: AppTheme.subTitleColor,
                                 ),
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _obscurePassword
-                                        ? Icons.visibility_off
-                                        : Icons.visibility,
-                                    color: AppTheme.subTitleColor,
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _obscurePassword = !_obscurePassword;
-                                    });
-                                  },
+                                suffixIcon: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(
+                                        _obscurePassword
+                                            ? Icons.visibility_off
+                                            : Icons.visibility,
+                                        color: AppTheme.subTitleColor,
+                                      ),
+                                      onPressed: () {
+                                        setState(() {
+                                          _obscurePassword = !_obscurePassword;
+                                        });
+                                      },
+                                    ),
+
+                                    // Biometric Login Button
+                                    Obx(() {
+                                      if (_authController
+                                          .shouldShowBiometricLogin()) {
+                                        return GestureDetector(
+                                          onTap: _handleBiometricLogin,
+                                          child: Container(
+                                            margin: const EdgeInsets.only(
+                                              right: 8,
+                                            ),
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: AppTheme.primaryColor
+                                                  .withOpacity(0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                              border: Border.all(
+                                                color: AppTheme.primaryColor
+                                                    .withOpacity(0.3),
+                                                width: 1,
+                                              ),
+                                            ),
+                                            child: Icon(
+                                              Icons.fingerprint,
+                                              color: AppTheme.primaryColor,
+                                              size: 25,
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                      return const SizedBox.shrink();
+                                    }),
+
+                                    // Password visibility toggle
+                                  ],
                                 ),
                                 hintText: 'Enter password',
                                 hintStyle: TextStyle(
@@ -240,6 +298,7 @@ class LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                             ),
+
                             const SizedBox(height: 8),
 
                             // Login Button
@@ -274,24 +333,6 @@ class LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             const SizedBox(height: 24),
-
-                            // Finger Print
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              spacing: 4,
-                              children: [
-                                Icon(
-                                  Icons.fingerprint,
-                                  color: AppTheme.primaryColor,
-                                ),
-                                Text(
-                                  'Login with Fingerprint/Face Scan',
-                                  style: TextStyle(
-                                    color: AppTheme.primaryColor,
-                                  ),
-                                ),
-                              ],
-                            ),
 
                             // Register Link
                             TextButton(

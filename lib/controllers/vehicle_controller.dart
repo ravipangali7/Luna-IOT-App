@@ -76,6 +76,10 @@ class VehicleController extends GetxController {
   var filteredVehicles = <Vehicle>[].obs;
   late SocketService _socketService;
 
+  // Socket listeners
+  Worker? _statusWorker;
+  Worker? _locationWorker;
+
   // Filter options
   static const List<String> filterOptions = [
     'All',
@@ -109,8 +113,10 @@ class VehicleController extends GetxController {
 
     loadVehiclesPaginated(); // Use paginated loading by default
     getAvailableVehicles();
-    _startRealTimeUpdates();
     _setupSocketListeners();
+
+    // Join rooms after vehicles are loaded
+    ever(vehicles, (_) => _joinVehicleRooms());
   }
 
   // Load all vehicles with complete data (ownership, today's km, latest status and location)
@@ -119,6 +125,9 @@ class VehicleController extends GetxController {
       loading.value = true;
       vehicles.value = await _vehicleApiService.getAllVehicles();
       _applyFilter(); // Apply current filter after loading
+
+      // Join rooms for newly loaded vehicles
+      _joinVehicleRooms();
     } catch (e) {
       debugPrint('Error loading vehicles: ${e.toString()}');
       Get.snackbar('Error', 'Failed to load vehicles');
@@ -157,6 +166,9 @@ class VehicleController extends GetxController {
       totalCount.value = paginatedResponse.pagination.count;
       hasNextPage.value = paginatedResponse.pagination.hasNext;
       hasPreviousPage.value = paginatedResponse.pagination.hasPrevious;
+
+      // Join rooms for newly loaded vehicles
+      _joinVehicleRooms();
 
       debugPrint(
         'Pagination updated - Current: ${currentPage.value}, Total: ${totalPages.value}, Count: ${totalCount.value}, HasNext: ${hasNextPage.value}, HasPrevious: ${hasPreviousPage.value}',
@@ -405,24 +417,24 @@ class VehicleController extends GetxController {
     loadVehiclesPaginated(); // Load with cleared filters
   }
 
-  // Start real-time updates
-  void _startRealTimeUpdates() {
-    Timer.periodic(const Duration(seconds: 10), (timer) {
-      _updateVehicleStatesFromSocket();
-    });
-  }
-
   // Setup socket listeners for real-time updates
   void _setupSocketListeners() {
     // Listen for status updates
-    ever(_socketService.statusUpdates, (updates) {
+    _statusWorker = ever(_socketService.statusUpdates, (updates) {
       _updateVehicleStatesFromSocket();
     });
 
     // Listen for location updates
-    ever(_socketService.locationUpdates, (updates) {
+    _locationWorker = ever(_socketService.locationUpdates, (updates) {
       _updateVehicleStatesFromSocket();
     });
+  }
+
+  // Join rooms for all vehicles (call this after vehicles are loaded)
+  void _joinVehicleRooms() {
+    for (var vehicle in vehicles) {
+      _socketService.joinVehicleRoom(vehicle.imei);
+    }
   }
 
   // Update vehicle states from socket data
@@ -952,6 +964,15 @@ class VehicleController extends GetxController {
 
   @override
   void onClose() {
+    // Leave all vehicle rooms
+    for (var vehicle in vehicles) {
+      _socketService.leaveVehicleRoom(vehicle.imei);
+    }
+
+    // Dispose workers
+    _statusWorker?.dispose();
+    _locationWorker?.dispose();
+
     phoneController.dispose();
     imeiController.dispose();
     super.onClose();

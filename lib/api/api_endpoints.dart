@@ -97,4 +97,18 @@ class ApiEndpoints {
       '/api/health/blood-donation/type/:type';
   static const String getBloodDonationsByBloodGroup =
       '/api/health/blood-donation/blood-group/:bloodGroup';
+
+  // Share Track - Django fleet endpoints
+  static const String createShareTrack = '/api/fleet/share-track/create/';
+  static const String getExistingShareTrack =
+      '/api/fleet/share-track/existing/:imei/';
+  static const String deleteShareTrack = '/api/fleet/share-track/delete/:imei/';
+  static const String getMyShareTracks = '/api/fleet/share-track/my-tracks/';
+  static const String getShareTrackByToken =
+      '/api/fleet/share-track/token/:token/';
+
+  // Biometric Authentication - Django core endpoints
+  static const String biometricLogin = '/api/core/auth/biometric-login';
+  static const String updateBiometricToken = '/api/core/auth/biometric-token';
+  static const String removeBiometricToken = '/api/core/auth/biometric-token';
 }

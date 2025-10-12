@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:luna_iot/api/api_client.dart';
+import 'package:luna_iot/api/services/relay_api_service.dart';
 import 'package:luna_iot/app/app_theme.dart';
 import 'package:luna_iot/controllers/relay_controller.dart';
 import 'package:luna_iot/models/location_model.dart';
@@ -12,6 +14,7 @@ import 'package:luna_iot/utils/time_ago.dart';
 import 'package:luna_iot/utils/vehicle_image_state.dart';
 import 'package:luna_iot/utils/vehicle_utils.dart';
 import 'package:luna_iot/widgets/vehicle/vehicle_card_bottom_sheet.dart';
+import 'package:luna_iot/widgets/simple_marquee_widget.dart';
 
 class VehicleCard extends StatelessWidget {
   final Vehicle givenVehicle;
@@ -46,6 +49,7 @@ class VehicleCard extends StatelessWidget {
       vehicle.ownershipType = givenVehicle.ownershipType;
       vehicle.userVehicle = givenVehicle.userVehicle;
       vehicle.isActive = givenVehicle.isActive; // Copy the isActive field
+      vehicle.device = givenVehicle.device; // Copy the device field - FIXED!
 
       // Vehicle Status Data
       vehicle.latestStatus = Status(
@@ -490,11 +494,30 @@ class VehicleCard extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => VehicleCardBottomSheet(
-        vehicle: vehicle,
-        vehicleState: vehicleState ?? '',
-        relayController: Get.find<RelayController>(),
-      ),
+      builder: (context) {
+        try {
+          final relayController = Get.find<RelayController>();
+          return VehicleCardBottomSheet(
+            vehicle: vehicle,
+            vehicleState: vehicleState ?? '',
+            relayController: relayController,
+          );
+        } catch (e) {
+          print('RelayController not found, creating new one: $e');
+          // Create a new RelayController if not found
+          final apiClient = Get.find<ApiClient>();
+          final relayApiService = RelayApiService(apiClient);
+          final relayController = RelayController();
+          Get.put(relayApiService);
+          Get.put(relayController);
+
+          return VehicleCardBottomSheet(
+            vehicle: vehicle,
+            vehicleState: vehicleState ?? '',
+            relayController: relayController,
+          );
+        }
+      },
     );
   }
 }
@@ -696,11 +719,12 @@ class _GeocodeWidgetState extends State<_GeocodeWidget> {
     }
 
     return Expanded(
-      child: Text(
-        _cachedAddress!,
+      child: SimpleMarqueeText(
+        text: _cachedAddress!,
         style: TextStyle(color: AppTheme.subTitleColor, fontSize: 12),
-        maxLines: 3,
-        overflow: TextOverflow.ellipsis,
+        scrollAxisExtent: 200.0,
+        scrollDuration: Duration(seconds: 10),
+        autoStart: true,
       ),
     );
   }

@@ -13,7 +13,7 @@ class SocketService extends GetxService {
   var statusUpdates = <String, Map<String, dynamic>>{}.obs;
   var locationUpdates = <String, Map<String, dynamic>>{}.obs;
 
-  // Current tracking IMEI - only process updates for this IMEI
+  // Current tracking IMEI - kept for backward compatibility
   String? _currentTrackingImei;
 
   @override
@@ -123,6 +123,24 @@ class SocketService extends GetxService {
     }
   }
 
+  // Join vehicle room for targeted updates
+  void joinVehicleRoom(String imei) {
+    if (socket != null && isConnected.value) {
+      socket!.emit('join_vehicle', imei);
+    } else {
+      debugPrint(
+        '❌ Cannot join room - Socket not connected. Socket: ${socket != null}, Connected: ${isConnected.value}',
+      );
+    }
+  }
+
+  // Leave vehicle room
+  void leaveVehicleRoom(String imei) {
+    if (socket != null && isConnected.value) {
+      socket!.emit('leave_vehicle', imei);
+    }
+  }
+
   void disconnect() {
     if (socket != null) {
       socket!.disconnect();
@@ -154,12 +172,12 @@ class SocketService extends GetxService {
       if (data is Map<String, dynamic>) {
         final String? imei = data['imei']?.toString();
         if (imei != null) {
-          // Only process if no tracking IMEI is set OR if this matches the tracking IMEI
-          if (_currentTrackingImei == null || _currentTrackingImei == imei) {
-            statusUpdates[imei] = Map<String, dynamic>.from(data);
-            // Force reactive update
-            statusUpdates.refresh();
-          }
+          // Room-based filtering ensures we only get relevant data
+          // No need for client-side IMEI filtering anymore
+          statusUpdates[imei] = Map<String, dynamic>.from(data);
+          debugPrint('📡 Status update received for IMEI: $imei');
+          // Force reactive update
+          statusUpdates.refresh();
         }
       } else {
         debugPrint('Status update data is not a Map: ${data.runtimeType}');
@@ -181,12 +199,11 @@ class SocketService extends GetxService {
       if (data is Map<String, dynamic>) {
         final String? imei = data['imei']?.toString();
         if (imei != null) {
-          // Only process if no tracking IMEI is set OR if this matches the tracking IMEI
-          if (_currentTrackingImei == null || _currentTrackingImei == imei) {
-            locationUpdates[imei] = Map<String, dynamic>.from(data);
-            // Force reactive update
-            locationUpdates.refresh();
-          }
+          // Room-based filtering ensures we only get relevant data
+          // No need for client-side IMEI filtering anymore
+          locationUpdates[imei] = Map<String, dynamic>.from(data);
+          // Force reactive update
+          locationUpdates.refresh();
         }
       } else {
         debugPrint('Location update data is not a Map: ${data.runtimeType}');

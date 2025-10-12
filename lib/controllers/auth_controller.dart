@@ -5,13 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:luna_iot/api/api_client.dart';
 import 'package:luna_iot/api/services/auth_api_service.dart';
-import 'package:luna_iot/api/services/popup_api_service.dart';
+import 'package:luna_iot/api/services/biometric_api_service.dart';
 import 'package:luna_iot/models/user_model.dart';
 import 'package:luna_iot/services/auth_storage_service.dart';
-import 'package:luna_iot/services/popup_service.dart';
+import 'package:luna_iot/services/biometric_service.dart';
 
 class AuthController extends GetxController {
   final AuthApiService _authApiService;
+  BiometricApiService? _biometricApiService;
 
   var isLoading = false.obs;
   var isLoggedIn = false.obs;
@@ -28,6 +29,11 @@ class AuthController extends GetxController {
   var canResendForgotPasswordOtp = false.obs;
   var resetToken = ''.obs;
 
+  // Biometric authentication variables
+  var isBiometricEnabled = false.obs;
+  var isBiometricAvailable = false.obs;
+  var biometricType = ''.obs;
+
   AuthController(this._authApiService);
 
   @override
@@ -35,6 +41,10 @@ class AuthController extends GetxController {
     super.onInit();
     if (!_isInitialized) {
       _isInitialized = true;
+      // Initialize biometric API service
+      _biometricApiService = BiometricApiService(Get.find<ApiClient>());
+      // Check biometric availability
+      checkBiometricAvailability();
       // Don't call checkAuthStatus here - let splash screen handle it
     }
   }
@@ -78,22 +88,10 @@ class AuthController extends GetxController {
           if (isLoggedIn.value) {
             await _updateFcmTokenAfterLogin();
 
-            // Show active popups after auto-login
-            try {
-              await Future.delayed(
-                Duration(milliseconds: 1000),
-              ); // Delay to ensure UI is ready
+            // Load biometric status after successful login
+            await loadBiometricStatus();
 
-              // Initialize popup dependencies
-              Get.lazyPut(() => PopupApiService(Get.find<ApiClient>()));
-
-              final context = Get.context;
-              if (context != null) {
-                PopupService().showActivePopups(context);
-              }
-            } catch (e) {
-              print('Failed to show active popups: $e');
-            }
+            // Popups will be shown by splash screen or main screen after navigation
           }
         } catch (e) {
           // Check if it's a 401 error (unauthorized - token invalid)
@@ -160,6 +158,9 @@ class AuthController extends GetxController {
           currentUser.value = User.fromJson(userData);
           isLoggedIn.value = true;
 
+          // Load biometric status after successful login
+          await loadBiometricStatus();
+
           // Update FCM token after successful login
           try {
             // Add a small delay to ensure storage is written
@@ -174,22 +175,7 @@ class AuthController extends GetxController {
             print('Failed to update FCM token: $e');
           }
 
-          // Show active popups after successful login
-          try {
-            await Future.delayed(
-              Duration(milliseconds: 500),
-            ); // Small delay to ensure UI is ready
-
-            // Initialize popup dependencies
-            Get.lazyPut(() => PopupApiService(Get.find<ApiClient>()));
-
-            final context = Get.context;
-            if (context != null) {
-              PopupService().showActivePopups(context);
-            }
-          } catch (e) {
-            print('Failed to show active popups: $e');
-          }
+          // Popups will be shown by splash screen or main screen after navigation
 
           return true;
         } else {
@@ -294,22 +280,7 @@ class AuthController extends GetxController {
         currentUser.value = User.fromJson(userData);
         isLoggedIn.value = true;
 
-        // Show active popups after successful registration
-        try {
-          await Future.delayed(
-            Duration(milliseconds: 500),
-          ); // Small delay to ensure UI is ready
-
-          // Initialize popup dependencies
-          Get.lazyPut(() => PopupApiService(Get.find<ApiClient>()));
-
-          final context = Get.context;
-          if (context != null) {
-            PopupService().showActivePopups(context);
-          }
-        } catch (e) {
-          print('Failed to show active popups: $e');
-        }
+        // Popups will be shown by splash screen or main screen after navigation
 
         Get.snackbar('Success', 'Registration successful');
         Get.offAllNamed('/'); // Navigate to home
@@ -500,22 +471,7 @@ class AuthController extends GetxController {
         currentUser.value = User.fromJson(userData);
         isLoggedIn.value = true;
 
-        // Show active popups after successful password reset
-        try {
-          await Future.delayed(
-            Duration(milliseconds: 500),
-          ); // Small delay to ensure UI is ready
-
-          // Initialize popup dependencies
-          Get.lazyPut(() => PopupApiService(Get.find<ApiClient>()));
-
-          final context = Get.context;
-          if (context != null) {
-            PopupService().showActivePopups(context);
-          }
-        } catch (e) {
-          print('Failed to show active popups: $e');
-        }
+        // Popups will be shown by splash screen or main screen after navigation
 
         Get.snackbar('Success', 'Password reset successfully');
         return true;
@@ -683,8 +639,10 @@ class AuthController extends GetxController {
       if (response['success'] == true) {
         // Clear auth data and logout user
         await AuthStorageService.removeAuth();
+        await AuthStorageService.removeBiometricCredentials();
         isLoggedIn.value = false;
         currentUser.value = null;
+        isBiometricEnabled.value = false;
 
         Get.snackbar(
           'Account Deactivated',
@@ -717,5 +675,222 @@ class AuthController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  // Biometric authentication methods
+
+  /// Check if biometric authentication is available on the device
+  Future<void> checkBiometricAvailability() async {
+    try {
+      final available = await BiometricService.isBiometricAvailable();
+      isBiometricAvailable.value = available;
+
+      if (available) {
+        final primaryType = await BiometricService.getPrimaryBiometricType();
+        biometricType.value = primaryType ?? 'Fingerprint';
+      }
+    } catch (e) {
+      debugPrint('Error checking biometric availability: $e');
+      isBiometricAvailable.value = false;
+    }
+  }
+
+  /// Load biometric enabled status from storage
+  Future<void> loadBiometricStatus() async {
+    try {
+      final enabled = await AuthStorageService.isBiometricEnabled();
+      isBiometricEnabled.value = enabled;
+    } catch (e) {
+      debugPrint('Error loading biometric status: $e');
+      isBiometricEnabled.value = false;
+    }
+  }
+
+  /// Login using biometric authentication
+  Future<bool> loginWithBiometric() async {
+    try {
+      if (!isBiometricAvailable.value) {
+        throw Exception(
+          'Biometric authentication is not available on this device',
+        );
+      }
+
+      if (!isBiometricEnabled.value) {
+        throw Exception(
+          'Biometric login is not enabled. Please enable it in settings.',
+        );
+      }
+
+      isLoading.value = true;
+
+      // Get stored biometric credentials
+      final credentials = await AuthStorageService.getBiometricCredentials();
+      final phone = credentials['phone'];
+      final biometricToken = credentials['token'];
+
+      if (phone == null || biometricToken == null) {
+        throw Exception(
+          'Biometric credentials not found. Please re-enable biometric login.',
+        );
+      }
+
+      // Authenticate with device biometric
+      final authenticated = await BiometricService.authenticate(
+        BiometricService.getAuthReason(),
+      );
+
+      if (!authenticated) {
+        throw Exception('Biometric authentication was cancelled or failed');
+      }
+
+      // Call biometric login API
+      final response = await _biometricApiService!.biometricLogin(
+        phone,
+        biometricToken,
+      );
+
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.containsKey('success') &&
+          response['success'] == true &&
+          response.containsKey('data')) {
+        final userData = response['data'] as Map<String, dynamic>;
+
+        // Check if we have the required fields
+        if (userData.containsKey('phone') && userData.containsKey('token')) {
+          // Save new session token
+          await AuthStorageService.saveAuth(
+            userData['phone'],
+            userData['token'],
+          );
+
+          // Parse user data including role
+          currentUser.value = User.fromJson(userData);
+          isLoggedIn.value = true;
+
+          // Update FCM token after successful login
+          try {
+            await Future.delayed(Duration(milliseconds: 100));
+            final fcmToken = await FirebaseMessaging.instance.getToken();
+            if (fcmToken != null) {
+              await _updateFcmTokenAfterLogin();
+            }
+          } catch (e) {
+            print('Failed to update FCM token: $e');
+          }
+
+          // Popups will be shown by splash screen or main screen after navigation
+
+          return true;
+        } else {
+          throw Exception('Invalid response from server');
+        }
+      } else {
+        throw Exception(response['message'] ?? 'Biometric login failed');
+      }
+    } catch (e) {
+      debugPrint('Biometric login error: $e');
+      rethrow;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// Enable biometric authentication for current user
+  Future<bool> enableBiometric() async {
+    try {
+      if (!isBiometricAvailable.value) {
+        throw Exception(
+          'Biometric authentication is not available on this device',
+        );
+      }
+
+      if (currentUser.value == null) {
+        throw Exception(
+          'User must be logged in to enable biometric authentication',
+        );
+      }
+
+      // Authenticate with device biometric first
+      final authenticated = await BiometricService.authenticate(
+        BiometricService.getAuthReason(),
+      );
+
+      if (!authenticated) {
+        throw Exception('Biometric authentication was cancelled or failed');
+      }
+
+      // Generate a biometric token (using the same token generation as regular login)
+      final biometricToken =
+          DateTime.now().millisecondsSinceEpoch.toString() +
+          currentUser.value!.phone.hashCode.toString();
+
+      // Store biometric credentials locally
+      await AuthStorageService.saveBiometricCredentials(
+        currentUser.value!.phone,
+        biometricToken,
+      );
+
+      // Update backend with biometric token
+      try {
+        await _biometricApiService!.updateBiometricToken(
+          currentUser.value!.phone,
+          biometricToken,
+        );
+      } catch (e) {
+        // If backend update fails, remove local credentials
+        await AuthStorageService.removeBiometricCredentials();
+        throw Exception('Failed to enable biometric login: ${e.toString()}');
+      }
+
+      // Update local state
+      isBiometricEnabled.value = true;
+      await AuthStorageService.setBiometricEnabled(true);
+
+      return true;
+    } catch (e) {
+      debugPrint('Enable biometric error: $e');
+      rethrow;
+    }
+  }
+
+  /// Disable biometric authentication
+  Future<void> disableBiometric() async {
+    try {
+      if (currentUser.value == null) {
+        throw Exception(
+          'User must be logged in to disable biometric authentication',
+        );
+      }
+
+      // Remove biometric credentials from backend
+      try {
+        await _biometricApiService!.removeBiometricToken(
+          currentUser.value!.phone,
+        );
+      } catch (e) {
+        debugPrint('Failed to remove biometric token from backend: $e');
+        // Continue with local cleanup even if backend fails
+      }
+
+      // Remove local biometric credentials
+      await AuthStorageService.removeBiometricCredentials();
+      await AuthStorageService.setBiometricEnabled(false);
+
+      // Update local state
+      isBiometricEnabled.value = false;
+    } catch (e) {
+      debugPrint('Disable biometric error: $e');
+      rethrow;
+    }
+  }
+
+  /// Check if biometric login should be shown
+  bool shouldShowBiometricLogin() {
+    return isBiometricAvailable.value && isBiometricEnabled.value;
+  }
+
+  /// Get biometric type for display
+  String getBiometricDisplayName() {
+    return biometricType.value.isNotEmpty ? biometricType.value : 'Fingerprint';
   }
 }

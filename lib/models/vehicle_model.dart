@@ -3,6 +3,7 @@ import 'package:luna_iot/models/location_model.dart';
 import 'package:luna_iot/models/status_model.dart';
 
 class Vehicle {
+  int? id;
   String imei;
   String? name;
   String? vehicleNo;
@@ -11,6 +12,7 @@ class Vehicle {
   double? mileage;
   int? speedLimit;
   double? minimumFuel;
+  String? expireDate;
   bool? isActive;
   DateTime? createdAt;
   DateTime? updatedAt;
@@ -22,8 +24,11 @@ class Vehicle {
   // Ownership information
   String? ownershipType; // 'Own', 'Customer', 'Shared'
   Map<String, dynamic>? userVehicle; // User-vehicle relationship data
+  List<Map<String, dynamic>>?
+  userVehicles; // Multiple user-vehicle relationships
 
   Vehicle({
+    this.id,
     required this.imei,
     this.name,
     this.vehicleNo,
@@ -32,6 +37,7 @@ class Vehicle {
     this.mileage,
     this.speedLimit,
     this.minimumFuel,
+    this.expireDate,
     this.isActive,
     this.createdAt,
     this.updatedAt,
@@ -41,18 +47,21 @@ class Vehicle {
     this.todayKm,
     this.ownershipType,
     this.userVehicle,
+    this.userVehicles,
   });
 
   factory Vehicle.fromJson(Map<String, dynamic> json) {
     return Vehicle(
+      id: json['id'],
       imei: json['imei'] ?? '',
-      name: json['name'] ?? '',
-      vehicleNo: json['vehicleNo'] ?? '',
-      vehicleType: json['vehicleType'] ?? '',
+      name: json['name'],
+      vehicleNo: json['vehicleNo'],
+      vehicleType: json['vehicleType'],
       odometer: _parseDouble(json['odometer']),
       mileage: _parseDouble(json['mileage']),
       speedLimit: _parseInt(json['speedLimit']),
       minimumFuel: _parseDouble(json['minimumFuel']),
+      expireDate: json['expireDate'],
       isActive: json['is_active'] ?? true,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
@@ -70,6 +79,9 @@ class Vehicle {
       todayKm: _parseDouble(json['todayKm']),
       ownershipType: _determineOwnershipType(json),
       userVehicle: _getUserVehicleData(json),
+      userVehicles: json['userVehicles'] != null
+          ? List<Map<String, dynamic>>.from(json['userVehicles'])
+          : null,
     );
   }
 
@@ -156,6 +168,7 @@ class Vehicle {
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'imei': imei,
       'name': name,
       'vehicleNo': vehicleNo,
@@ -164,6 +177,7 @@ class Vehicle {
       'mileage': mileage,
       'speedLimit': speedLimit,
       'minimumFuel': minimumFuel,
+      'expireDate': expireDate,
       'is_active': isActive,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
@@ -173,10 +187,12 @@ class Vehicle {
       'todayKm': todayKm,
       'ownershipType': ownershipType,
       'userVehicle': userVehicle,
+      'userVehicles': userVehicles,
     };
   }
 
   Vehicle copyWith({
+    int? id,
     String? imei,
     String? name,
     String? vehicleNo,
@@ -185,6 +201,7 @@ class Vehicle {
     double? mileage,
     int? speedLimit,
     double? minimumFuel,
+    String? expireDate,
     bool? isActive,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -194,8 +211,10 @@ class Vehicle {
     double? todayKm,
     String? ownershipType,
     Map<String, dynamic>? userVehicle,
+    List<Map<String, dynamic>>? userVehicles,
   }) {
     return Vehicle(
+      id: id ?? this.id,
       imei: imei ?? this.imei,
       name: name ?? this.name,
       vehicleNo: vehicleNo ?? this.vehicleNo,
@@ -204,6 +223,7 @@ class Vehicle {
       mileage: mileage ?? this.mileage,
       speedLimit: speedLimit ?? this.speedLimit,
       minimumFuel: minimumFuel ?? this.minimumFuel,
+      expireDate: expireDate ?? this.expireDate,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -213,6 +233,7 @@ class Vehicle {
       todayKm: todayKm ?? this.todayKm,
       ownershipType: ownershipType ?? this.ownershipType,
       userVehicle: userVehicle ?? this.userVehicle,
+      userVehicles: userVehicles ?? this.userVehicles,
     );
   }
 

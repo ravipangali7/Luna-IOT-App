@@ -4,12 +4,12 @@ import 'package:luna_iot/controllers/relay_controller.dart';
 import 'package:luna_iot/app/app_theme.dart';
 
 class RelayControlWidget extends StatelessWidget {
-  final String imei;
+  final String phone;
   final RelayController relayController;
 
   const RelayControlWidget({
     Key? key,
-    required this.imei,
+    required this.phone,
     required this.relayController,
   }) : super(key: key);
 
@@ -97,7 +97,7 @@ class RelayControlWidget extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: !isLoading
-                        ? () => relayController.turnRelayOn(imei)
+                        ? () => relayController.turnRelayOn(phone)
                         : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
@@ -132,7 +132,7 @@ class RelayControlWidget extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: !isLoading
-                        ? () => relayController.turnRelayOff(imei)
+                        ? () => relayController.turnRelayOff(phone)
                         : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,

@@ -1,11 +1,13 @@
 class Device {
   final String id;
   final String imei;
-  final String? phone;
+  final String phone;
   final String? sim;
   final String? protocol;
   final String? iccid;
   final String? model;
+  final String? status;
+  final Map<String, dynamic>? subscriptionPlan;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final List<Map<String, dynamic>>? userDevices;
@@ -14,11 +16,13 @@ class Device {
   Device({
     required this.id,
     required this.imei,
-    this.phone,
+    required this.phone,
     this.sim,
     this.protocol,
     this.iccid,
     this.model,
+    this.status,
+    this.subscriptionPlan,
     this.createdAt,
     this.updatedAt,
     this.userDevices,
@@ -30,10 +34,12 @@ class Device {
       id: json['id'].toString(),
       imei: json['imei'] ?? '',
       phone: json['phone'] ?? '',
-      sim: json['sim'] ?? '',
-      protocol: json['protocol'] ?? '',
-      iccid: json['iccid'] ?? '',
-      model: json['model'] ?? '',
+      sim: json['sim'],
+      protocol: json['protocol'],
+      iccid: json['iccid'],
+      model: json['model'],
+      status: json['status'],
+      subscriptionPlan: json['subscription_plan'],
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : null,
@@ -58,6 +64,8 @@ class Device {
       'protocol': protocol,
       'iccid': iccid,
       'model': model,
+      'status': status,
+      'subscription_plan': subscriptionPlan,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
       'userDevices': userDevices,
@@ -73,6 +81,8 @@ class Device {
     String? protocol,
     String? iccid,
     String? model,
+    String? status,
+    Map<String, dynamic>? subscriptionPlan,
     DateTime? createdAt,
     DateTime? updatedAt,
     List<Map<String, dynamic>>? userDevices,
@@ -86,6 +96,8 @@ class Device {
       protocol: protocol ?? this.protocol,
       iccid: iccid ?? this.iccid,
       model: model ?? this.model,
+      status: status ?? this.status,
+      subscriptionPlan: subscriptionPlan ?? this.subscriptionPlan,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       userDevices: userDevices ?? this.userDevices,
