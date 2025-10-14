@@ -63,7 +63,6 @@ class _VehicleLiveTrackingShowScreenState
   Status? _currentStatus;
   bool _isTracking = false;
   String lastUpdateTime = '...';
-  String _lastCalculatedTime = '...';
   DateTime? _lastCalculationTimestamp;
 
   // Altitude API optimization
@@ -71,48 +70,28 @@ class _VehicleLiveTrackingShowScreenState
   String? _cachedAltitude;
   bool _isAltitudeLoading = false;
 
-  // Animation queue management
-  Timer? _animationTimer;
-  LatLng? _animationTargetPosition;
-  LatLng? _pendingTargetPosition;
-  bool _isAnimating = false;
-  int _currentAnimationStep = 0;
-  int _totalAnimationSteps = 0;
-
   // Socket listeners
   Worker? _statusWorker;
   Worker? _locationWorker;
 
-  // Animation controllers for smooth movement
-  late AnimationController _cameraAnimationController;
-  late AnimationController _markerAnimationController;
-
-  // Animation settings
-  static const Duration _animationDuration = Duration(milliseconds: 1000);
-  static const Duration _markerAnimationDuration = Duration(milliseconds: 500);
-
   // Throttling for updates
   Timer? _updateThrottle;
   static const Duration _throttleDuration = Duration(milliseconds: 200);
+
+  // Animation for marker movement
+  Timer? _markerAnimationTimer;
+  LatLng? _animationStartPosition;
+  LatLng? _animationTargetPosition;
+
+  // Timer to update last data display
+  Timer? _lastUpdateTimer;
 
   bool get isWeb => kIsWeb;
 
   @override
   void initState() {
     super.initState();
-    _initializeAnimationControllers();
     _initializeScreen();
-  }
-
-  void _initializeAnimationControllers() {
-    _cameraAnimationController = AnimationController(
-      duration: _animationDuration,
-      vsync: this,
-    );
-    _markerAnimationController = AnimationController(
-      duration: _markerAnimationDuration,
-      vsync: this,
-    );
   }
 
   @override
@@ -156,13 +135,8 @@ class _VehicleLiveTrackingShowScreenState
     _statusWorker?.dispose();
     _locationWorker?.dispose();
     _updateThrottle?.cancel();
-    _cameraAnimationController.stop();
-    _markerAnimationController.stop();
-
-    // Clean up animation queue
-    _animationTimer?.cancel();
-    _isAnimating = false;
-    _pendingTargetPosition = null;
+    _markerAnimationTimer?.cancel();
+    _lastUpdateTimer?.cancel();
   }
 
   // Fetch vehicle data from API
@@ -235,22 +209,24 @@ class _VehicleLiveTrackingShowScreenState
     _isAltitudeLoading = true; // Show loading for first load
 
     // Calculate initial time
-    _calculateLastUpdateTime();
-  }
-
-  void _calculateLastUpdateTime() {
     final mostRecentTime = TimeAgo.getMostRecentTime(
       _currentStatus?.createdAt,
       _currentLocation?.createdAt,
     );
-
     if (mostRecentTime != null) {
       _lastCalculationTimestamp = mostRecentTime;
-      _lastCalculatedTime = TimeAgo.timeAgo(mostRecentTime);
-      lastUpdateTime = _lastCalculatedTime;
+      lastUpdateTime = TimeAgo.timeAgo(mostRecentTime);
     } else {
       lastUpdateTime = 'No data available';
     }
+  }
+
+  // Safe type conversion for int/double values
+  double _toDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    return 0.0;
   }
 
   // Start real-time tracking with optimized socket handling
@@ -262,6 +238,20 @@ class _VehicleLiveTrackingShowScreenState
     _socketService.setTrackingImei(widget.imei);
 
     _isTracking = true;
+
+    // Start timer to update "last data" display every second
+    _lastUpdateTimer?.cancel();
+    _lastUpdateTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+      if (!mounted || !_isTracking) {
+        timer.cancel();
+        return;
+      }
+      if (_lastCalculationTimestamp != null) {
+        setState(() {
+          lastUpdateTime = TimeAgo.timeAgo(_lastCalculationTimestamp!);
+        });
+      }
+    });
 
     // Status updates listener - now filtered at socket level
     _statusWorker = ever(_socketService.statusUpdates, (
@@ -311,26 +301,24 @@ class _VehicleLiveTrackingShowScreenState
         imageState: VehicleImageState.live,
       );
 
+      // Only call setState if still mounted
+      if (!mounted) return;
+
       setState(() {
         vehicle = updatedVehicle;
         _currentStatus = newStatus;
         vehicleState = newVehicleState;
         vehicleImage = newVehicleImage;
 
-        // Update last update time using unified logic
-        final newTimestamp = newStatus.createdAt;
-        if (newTimestamp != null) {
-          if (_lastCalculationTimestamp == null ||
-              newTimestamp.isAfter(_lastCalculationTimestamp!)) {
-            _lastCalculationTimestamp = newTimestamp;
-            _lastCalculatedTime = TimeAgo.timeAgo(newTimestamp);
-            lastUpdateTime = _lastCalculatedTime;
-          }
-        }
+        // Reset timestamp to NOW when socket arrives
+        _lastCalculationTimestamp = DateTime.now();
+        lastUpdateTime = TimeAgo.timeAgo(_lastCalculationTimestamp!);
       });
 
       _loadCustomMarker();
-    } catch (e) {}
+    } catch (e) {
+      debugPrint('Error updating status from socket: $e');
+    }
   }
 
   // Update location from socket with smooth animation
@@ -361,138 +349,113 @@ class _VehicleLiveTrackingShowScreenState
           imageState: VehicleImageState.live,
         );
 
-        // Store previous position for animation
-        LatLng? previousPosition = _vehiclePosition;
+        // Only call setState if still mounted
+        if (!mounted) return;
 
         setState(() {
           vehicle = updatedVehicle;
           _currentLocation = newLocation;
-          // DON'T update _vehiclePosition here - let animation do it
-          // DON'T add to routePoints here - let animation do it
           vehicleState = newVehicleState;
           vehicleImage = newVehicleImage;
 
-          // Update last update time using unified logic
-          final newTimestamp = newLocation.createdAt;
-          if (newTimestamp != null) {
-            if (_lastCalculationTimestamp == null ||
-                newTimestamp.isAfter(_lastCalculationTimestamp!)) {
-              _lastCalculationTimestamp = newTimestamp;
-              _lastCalculatedTime = TimeAgo.timeAgo(newTimestamp);
-              lastUpdateTime = _lastCalculatedTime;
-            }
-          }
+          // Reset timestamp to NOW when socket arrives
+          _lastCalculationTimestamp = DateTime.now();
+          lastUpdateTime = TimeAgo.timeAgo(_lastCalculationTimestamp!);
 
           // Mark that we have new location data for altitude API
           _hasNewLocationData = true;
           _isAltitudeLoading = true; // Show loading for new data
 
-          _updateMarker();
-          // DON'T update polyline here - let animation draw it
           _updateMapRotation();
         });
 
-        // Start smooth animation from previous position to new position
-        if (previousPosition != null) {
-          _startOrQueueAnimation(previousPosition, newPosition, newLocation);
-        } else {
-          // First position - just center on vehicle
-          _centerOnVehicleWithRotation(newPosition, newLocation.course ?? 0.0);
-        }
+        // Start marker animation to new position
+        _startMarkerAnimation(newPosition, newLocation);
 
         _loadCustomMarker();
       }
-    } catch (e) {}
-  }
-
-  // Smart animation manager - handles GPS interruptions
-  void _startOrQueueAnimation(
-    LatLng fromPosition,
-    LatLng toPosition,
-    Location newLocation,
-  ) {
-    // Move camera immediately to the new GPS position
-    if (_mapController != null) {
-      double course = newLocation.course ?? 0.0;
-      _mapController!.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: toPosition,
-            zoom: 17.0,
-            bearing: course,
-            tilt: 0.0,
-          ),
-        ),
-      );
-    }
-
-    if (_isAnimating) {
-      // Animation in progress - queue the new destination
-      _pendingTargetPosition = toPosition;
-      // Speed up current animation to reach current target faster
-      _speedUpCurrentAnimation();
-    } else {
-      // No animation in progress - start fresh
-      _startMarkerAnimation(fromPosition, toPosition, newLocation);
+    } catch (e) {
+      debugPrint('Error updating location from socket: $e');
     }
   }
 
-  // Speed up current animation when new GPS point arrives
-  void _speedUpCurrentAnimation() {
-    int remainingSteps = _totalAnimationSteps - _currentAnimationStep;
+  // Start marker animation to new position
+  void _startMarkerAnimation(LatLng targetPosition, Location newLocation) {
+    // If animation is in progress, complete it first to avoid backtracking
+    if (_markerAnimationTimer != null && _markerAnimationTimer!.isActive) {
+      _markerAnimationTimer!.cancel();
+      // Jump to previous target position
+      if (_animationTargetPosition != null) {
+        _vehiclePosition = _animationTargetPosition;
+        routePoints.add(_animationTargetPosition!);
+        _updateMarker();
+        _updatePolyline();
+      }
+    }
 
-    // If more than 25% remaining, speed up to 50% of original duration
-    if (remainingSteps > (_totalAnimationSteps * 0.25)) {
-      _animationTimer?.cancel();
+    // Set animation parameters
+    _animationStartPosition = _vehiclePosition ?? targetPosition;
+    _animationTargetPosition = targetPosition;
 
-      // Store current marker position as new start
-      LatLng currentMarkerPosition = _vehiclePosition!;
-      LatLng targetPosition = _animationTargetPosition!;
+    // Start marker animation
+    const int totalSteps = 30; // 30 steps over 3 seconds = 100ms per step
+    const Duration stepDuration = Duration(milliseconds: 100);
+    int currentStep = 0;
 
-      // Calculate new animation from current position to target
-      const int speedUpSteps = 25; // Faster completion
-      const Duration fastStepDuration = Duration(milliseconds: 100);
-
-      int speedUpStep = 0;
-
-      _animationTimer = Timer.periodic(fastStepDuration, (timer) {
-        if (speedUpStep >= speedUpSteps || !_isTracking || !mounted) {
-          timer.cancel();
-          // Add final position when speed-up completes
-          if (!routePoints.contains(targetPosition)) {
-            routePoints.add(targetPosition);
-            _updatePolyline();
-          }
-          _onAnimationComplete();
-          return;
-        }
-
-        speedUpStep++;
-        double t = speedUpStep / speedUpSteps;
-
-        // Interpolate from CURRENT position to target
-        LatLng interpolatedPosition = LatLng(
-          currentMarkerPosition.latitude +
-              (targetPosition.latitude - currentMarkerPosition.latitude) * t,
-          currentMarkerPosition.longitude +
-              (targetPosition.longitude - currentMarkerPosition.longitude) * t,
+    _markerAnimationTimer = Timer.periodic(stepDuration, (timer) {
+      if (currentStep >= totalSteps || !_isTracking || !mounted) {
+        timer.cancel();
+        // Animation complete - set final position
+        _vehiclePosition = targetPosition;
+        routePoints.add(targetPosition);
+        _updateMarker();
+        _updatePolyline();
+        // Move camera to final position
+        _centerOnVehicleWithRotation(
+          targetPosition,
+          _toDouble(newLocation.course),
         );
+        return;
+      }
 
-        _vehiclePosition = interpolatedPosition;
-        _updateMarkerPositionSmooth(interpolatedPosition);
+      currentStep++;
+      double progress = currentStep / totalSteps;
 
-        // Add intermediate points during speed-up
-        if (speedUpStep % 5 == 0) {
-          routePoints.add(interpolatedPosition);
-          _updatePolyline();
-          setState(() {});
-        } else if (speedUpStep >= speedUpSteps) {
-          routePoints.add(targetPosition);
-          _updatePolyline();
-          setState(() {});
-        }
-      });
-    }
+      // Calculate interpolated position
+      LatLng interpolatedPosition = LatLng(
+        _animationStartPosition!.latitude +
+            (_animationTargetPosition!.latitude -
+                    _animationStartPosition!.latitude) *
+                progress,
+        _animationStartPosition!.longitude +
+            (_animationTargetPosition!.longitude -
+                    _animationStartPosition!.longitude) *
+                progress,
+      );
+
+      _vehiclePosition = interpolatedPosition;
+      _updateMarker();
+
+      // Rotate map at each step
+      if (_mapController != null) {
+        _mapController!.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: interpolatedPosition,
+              zoom: 17.0,
+              bearing: _toDouble(newLocation.course),
+              tilt: 0.0,
+            ),
+          ),
+        );
+      }
+
+      // Add intermediate points to polyline every 3 steps (every 300ms)
+      if (currentStep % 3 == 0) {
+        routePoints.add(interpolatedPosition);
+        _updatePolyline();
+      }
+    });
   }
 
   // Center on vehicle with map rotation
@@ -507,83 +470,6 @@ class _VehicleLiveTrackingShowScreenState
         ),
       ),
     );
-  }
-
-  // Start marker animation with reduced setState frequency to prevent shakiness
-  void _startMarkerAnimation(
-    LatLng fromPosition,
-    LatLng toPosition,
-    Location newLocation,
-  ) {
-    // Cancel any existing animation first
-    _animationTimer?.cancel();
-
-    const int totalSteps = 75;
-    const Duration stepDuration = Duration(milliseconds: 200);
-    const int setStateEveryNSteps = 5; // Reduced from 3 to 5
-
-    // Reset state
-    _isAnimating = true;
-    _currentAnimationStep = 0;
-    _totalAnimationSteps = totalSteps;
-    _animationTargetPosition = toPosition;
-
-    _animationTimer = Timer.periodic(stepDuration, (timer) {
-      if (_currentAnimationStep >= totalSteps || !_isTracking || !mounted) {
-        timer.cancel();
-        // Add final position to routePoints when animation completes
-        if (!routePoints.contains(toPosition)) {
-          routePoints.add(toPosition);
-          _updatePolyline();
-        }
-        _onAnimationComplete();
-        return;
-      }
-
-      _currentAnimationStep++;
-      double t = _currentAnimationStep / totalSteps;
-
-      // Calculate interpolated position
-      LatLng interpolatedPosition = LatLng(
-        fromPosition.latitude +
-            (toPosition.latitude - fromPosition.latitude) * t,
-        fromPosition.longitude +
-            (toPosition.longitude - fromPosition.longitude) * t,
-      );
-
-      _vehiclePosition = interpolatedPosition;
-      _updateMarkerPositionSmooth(interpolatedPosition);
-
-      // Add intermediate points to polyline every N steps
-      if (_currentAnimationStep % setStateEveryNSteps == 0) {
-        routePoints.add(interpolatedPosition);
-        _updatePolyline();
-        setState(() {
-          // Minimal UI update
-        });
-      } else if (_currentAnimationStep >= totalSteps) {
-        routePoints.add(toPosition);
-        _updatePolyline();
-        setState(() {
-          // Minimal UI update
-        });
-      }
-    });
-  }
-
-  // Handle animation completion and process queue
-  void _onAnimationComplete() {
-    _isAnimating = false;
-
-    // Check if there's a pending destination
-    if (_pendingTargetPosition != null) {
-      LatLng nextStart = _animationTargetPosition ?? _vehiclePosition!;
-      LatLng nextTarget = _pendingTargetPosition!;
-      _pendingTargetPosition = null;
-
-      // Start animation to pending destination
-      _startMarkerAnimation(nextStart, nextTarget, _currentLocation!);
-    }
   }
 
   // Load custom marker
@@ -630,35 +516,9 @@ class _VehicleLiveTrackingShowScreenState
     });
   }
 
-  // Update marker position smoothly during animation
-  void _updateMarkerPositionSmooth(LatLng newPosition) {
-    if (!mounted) return;
-
-    // Calculate marker rotation based on vehicle course
-    double markerRotation = _calculateMarkerRotation();
-
-    // Update markers set efficiently
-    _markers = {
-      Marker(
-        markerId: MarkerId(vehicle.imei),
-        position: newPosition,
-        icon:
-            _customMarkerIcon ??
-            BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-        infoWindow: InfoWindow(
-          title: vehicle.vehicleNo ?? 'Vehicle',
-          snippet: '${vehicle.vehicleType} - $vehicleState',
-        ),
-        rotation: markerRotation,
-        anchor: const Offset(0.5, 0.5), // Center the marker rotation
-      ),
-    };
-  }
-
-  // Calculate marker rotation - always keep marker pointing North (upward)
+  // Calculate marker rotation - always point North
   double _calculateMarkerRotation() {
-    // Marker always points North (0 degrees) regardless of vehicle course
-    // Only the map rotates, not the marker
+    // Marker always points North (0 degrees)
     return 0.0;
   }
 
@@ -1054,6 +914,8 @@ class _VehicleLiveTrackingShowScreenState
                   trafficEnabled: false,
                   buildingsEnabled: true,
                   indoorViewEnabled: true,
+                  zoomGesturesEnabled: false,
+                  zoomControlsEnabled: false,
                 ),
 
                 // Status Panel
@@ -1229,8 +1091,6 @@ class _VehicleLiveTrackingShowScreenState
   void dispose() {
     _stopTracking();
     _mapController?.dispose();
-    _cameraAnimationController.dispose();
-    _markerAnimationController.dispose();
     super.dispose();
   }
 }

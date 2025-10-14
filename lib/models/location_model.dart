@@ -55,12 +55,29 @@ class Location {
       realTimeGps: _parseBool(json['realTimeGps']),
       satellite: _parseInt(json['satellite']),
       createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
+          ? _parseDateTime(json['createdAt'])
           : null,
       updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
+          ? _parseDateTime(json['updatedAt'])
           : null,
     );
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    try {
+      final dateStr = value.toString();
+      // Parse as local time (Nepal time from server)
+      // If it has 'T' it's ISO format, otherwise add 'T' between date and time
+      final isoString = dateStr.contains('T')
+          ? dateStr
+          : dateStr.replaceFirst(' ', 'T');
+
+      // Server sends Nepal time, parse it as-is without timezone conversion
+      return DateTime.parse(isoString);
+    } catch (e) {
+      return null;
+    }
   }
 
   static double? _parseDouble(dynamic value) {

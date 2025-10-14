@@ -6,6 +6,7 @@ class Status {
   final bool? charging;
   final bool? relay;
   final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   Status({
     required this.imei,
@@ -15,6 +16,7 @@ class Status {
     this.charging,
     this.relay,
     this.createdAt,
+    this.updatedAt,
   });
 
   factory Status.fromJson(Map<String, dynamic> json) {
@@ -26,9 +28,29 @@ class Status {
       charging: _parseBool(json['charging']),
       relay: _parseBool(json['relay']),
       createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
+          ? _parseDateTime(json['createdAt'])
+          : null,
+      updatedAt: json['updatedAt'] != null
+          ? _parseDateTime(json['updatedAt'])
           : null,
     );
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    try {
+      final dateStr = value.toString();
+      // Parse as local time (Nepal time from server)
+      // If it has 'T' it's ISO format, otherwise add 'T' between date and time
+      final isoString = dateStr.contains('T')
+          ? dateStr
+          : dateStr.replaceFirst(' ', 'T');
+
+      // Server sends Nepal time, parse it as-is without timezone conversion
+      return DateTime.parse(isoString);
+    } catch (e) {
+      return null;
+    }
   }
 
   static int? _parseInt(dynamic value) {
@@ -64,6 +86,7 @@ class Status {
       'charging': charging,
       'relay': relay,
       'createdAt': createdAt?.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
     };
   }
 
@@ -75,6 +98,7 @@ class Status {
     bool? charging,
     bool? relay,
     DateTime? createdAt,
+    DateTime? updatedAt,
   }) {
     return Status(
       imei: imei ?? this.imei,
@@ -84,6 +108,7 @@ class Status {
       charging: charging ?? this.charging,
       relay: relay ?? this.relay,
       createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 }

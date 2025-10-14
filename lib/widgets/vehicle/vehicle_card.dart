@@ -28,11 +28,42 @@ class VehicleCard extends StatelessWidget {
     this.callback,
   });
 
+  // Helper function to safely convert int/double to double
+  double? _toDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      try {
+        return double.parse(value);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  // Helper function to safely convert int/double to int
+  int? _toInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) {
+      try {
+        return int.parse(value);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Obx(() {
       final socketService = Get.find<SocketService>();
       final statusData = socketService.getStatusForImei(givenVehicle.imei);
+      final locationData = socketService.locationUpdates[givenVehicle.imei];
 
       final vehicle = Vehicle(imei: givenVehicle.imei);
 
@@ -52,6 +83,33 @@ class VehicleCard extends StatelessWidget {
       vehicle.device = givenVehicle.device; // Copy the device field - FIXED!
 
       // Vehicle Status Data
+      DateTime? statusCreatedAt;
+      DateTime? statusUpdatedAt;
+
+      if (statusData?['createdAt'] != null) {
+        try {
+          statusCreatedAt = _parseSocketDateTime(statusData!['createdAt']);
+        } catch (e) {
+          statusCreatedAt =
+              givenVehicle.latestStatus?.createdAt ?? DateTime.now();
+        }
+      } else {
+        statusCreatedAt =
+            givenVehicle.latestStatus?.createdAt ?? DateTime.now();
+      }
+
+      if (statusData?['updatedAt'] != null) {
+        try {
+          statusUpdatedAt = _parseSocketDateTime(statusData!['updatedAt']);
+        } catch (e) {
+          statusUpdatedAt =
+              givenVehicle.latestStatus?.updatedAt ?? DateTime.now();
+        }
+      } else {
+        statusUpdatedAt =
+            givenVehicle.latestStatus?.updatedAt ?? DateTime.now();
+      }
+
       vehicle.latestStatus = Status(
         imei: givenVehicle.imei,
         battery:
@@ -67,32 +125,98 @@ class VehicleCard extends StatelessWidget {
             false,
         relay:
             statusData?['relay'] ?? givenVehicle.latestStatus?.relay ?? false,
-        createdAt:
-            (statusData?['createdAt'] != null
-                ? DateTime.parse(statusData!['createdAt'].toString())
-                : givenVehicle.latestStatus?.createdAt) ??
-            DateTime.now(),
+        createdAt: statusCreatedAt,
+        updatedAt: statusUpdatedAt,
       );
 
-      // Vehicle Location Data
-      vehicle.latestLocation = Location(
-        imei: givenVehicle.imei,
-        latitude: givenVehicle.latestLocation?.latitude ?? 0,
-        longitude: givenVehicle.latestLocation?.longitude ?? 0,
-        speed: givenVehicle.latestLocation?.speed ?? 0,
-        course: givenVehicle.latestLocation?.course ?? 0,
-        realTimeGps: givenVehicle.latestLocation?.realTimeGps ?? false,
-        satellite: givenVehicle.latestLocation?.satellite ?? 0,
-        createdAt: givenVehicle.latestLocation?.createdAt ?? DateTime.now(),
-      );
+      // Vehicle Location Data - Use socket data if available
+      DateTime? locationCreatedAt;
+      DateTime? locationUpdatedAt;
 
-      // FIXED: Use cached time that only updates when there's new data
-      final latestUpdateTime = _getCachedLastUpdateTime(
-        givenVehicle.imei,
-        statusData,
-      );
+      if (locationData?['createdAt'] != null) {
+        try {
+          locationCreatedAt = _parseSocketDateTime(locationData!['createdAt']);
+        } catch (e) {
+          locationCreatedAt =
+              givenVehicle.latestLocation?.createdAt ?? DateTime.now();
+        }
+      } else {
+        locationCreatedAt =
+            givenVehicle.latestLocation?.createdAt ?? DateTime.now();
+      }
+
+      if (locationData?['updatedAt'] != null) {
+        try {
+          locationUpdatedAt = _parseSocketDateTime(locationData!['updatedAt']);
+        } catch (e) {
+          locationUpdatedAt =
+              givenVehicle.latestLocation?.updatedAt ?? DateTime.now();
+        }
+      } else {
+        locationUpdatedAt =
+            givenVehicle.latestLocation?.updatedAt ?? DateTime.now();
+      }
+
+      // Only set latestLocation if we have valid coordinates
+      final latitude =
+          _toDouble(locationData?['latitude']) ??
+          givenVehicle.latestLocation?.latitude;
+      final longitude =
+          _toDouble(locationData?['longitude']) ??
+          givenVehicle.latestLocation?.longitude;
+
+      if (latitude != null &&
+          longitude != null &&
+          latitude != 0.0 &&
+          longitude != 0.0) {
+        vehicle.latestLocation = Location(
+          imei: givenVehicle.imei,
+          latitude: latitude,
+          longitude: longitude,
+          speed:
+              _toDouble(locationData?['speed']) ??
+              givenVehicle.latestLocation?.speed ??
+              0.0,
+          course:
+              _toDouble(locationData?['course']) ??
+              givenVehicle.latestLocation?.course ??
+              0.0,
+          realTimeGps:
+              locationData?['realTimeGps'] ??
+              givenVehicle.latestLocation?.realTimeGps ??
+              false,
+          satellite:
+              _toInt(locationData?['satellite']) ??
+              givenVehicle.latestLocation?.satellite ??
+              0,
+          createdAt: locationCreatedAt,
+          updatedAt: locationUpdatedAt,
+        );
+      } else {
+        // Keep the original location if no valid coordinates
+        vehicle.latestLocation = givenVehicle.latestLocation;
+      }
+
+      // Get last update time from socket or vehicle data
+      final latestUpdateTime = _getLastUpdateTime(statusData, locationData);
 
       final String vehicleState = VehicleService.getState(vehicle);
+
+      // Check for state change when socket data arrives
+      if (statusData != null || locationData != null) {
+        final imei = givenVehicle.imei;
+        final previousState = _lastVehicleState[imei];
+
+        if (previousState != null &&
+            previousState != vehicleState &&
+            vehicleState.isNotEmpty) {
+          // State changed - reset "Since" to now
+          _sinceStartTime[imei] = DateTime.now();
+        }
+
+        // Update the cached state
+        _lastVehicleState[imei] = vehicleState;
+      }
       final bool isInactive = !vehicle.isVehicleActive;
 
       return Padding(
@@ -241,25 +365,6 @@ class VehicleCard extends StatelessWidget {
                             // Gap
                             SizedBox(height: 5),
 
-                            // Vehicle No.
-                            SizedBox(
-                              width: 100,
-                              child: Text(
-                                vehicle.vehicleNo ?? '',
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                                maxLines: 1,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppTheme.titleColor,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-
-                            // Gap
-                            SizedBox(height: 2),
-
                             // Vehicle Name
                             SizedBox(
                               width: 100,
@@ -271,6 +376,25 @@ class VehicleCard extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 10,
                                   color: AppTheme.subTitleColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+
+                            // Gap
+                            SizedBox(height: 2),
+
+                            // Vehicle No.
+                            SizedBox(
+                              width: 100,
+                              child: Text(
+                                vehicle.vehicleNo ?? '',
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.titleColor,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -390,20 +514,57 @@ class VehicleCard extends StatelessWidget {
                       ],
                     ),
 
-                    // Last Data Update - Only show for active vehicles
+                    // Last Data and Since - Only show for active vehicles
                     if (!isInactive)
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Icon(
-                            Icons.update,
-                            color: AppTheme.titleColor,
-                            size: 12,
+                          // Last Data
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.update,
+                                color: AppTheme.titleColor,
+                                size: 12,
+                              ),
+                              Text(
+                                latestUpdateTime,
+                                style: TextStyle(
+                                  color: AppTheme.subTitleColor,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
                           ),
-                          Text(
-                            latestUpdateTime,
-                            style: TextStyle(
-                              color: AppTheme.subTitleColor,
-                              fontSize: 12,
+                          // Since
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.schedule,
+                                  color: AppTheme.titleColor,
+                                  size: 12,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Since: ${_getSince()}',
+                                  style: TextStyle(
+                                    color: AppTheme.titleColor,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -435,53 +596,109 @@ class VehicleCard extends StatelessWidget {
     });
   }
 
-  // Static cache to store time for each vehicle
-  static final Map<String, String> _timeCache = {};
-  static final Map<String, DateTime> _timestampCache = {};
+  // Static cache to store socket receive timestamps and detect changes
+  static final Map<String, DateTime> _socketReceiveTime = {};
+  static final Map<String, String> _lastSocketDataHash = {};
 
-  // Unified cached time calculation method
-  String _getCachedLastUpdateTime(
-    String imei,
+  // Static cache for state change detection and "Since" tracking
+  static final Map<String, String> _lastVehicleState = {};
+  static final Map<String, DateTime> _sinceStartTime = {};
+
+  // Timer-based time calculation with socket data change detection
+  String _getLastUpdateTime(
     Map<String, dynamic>? statusData,
+    Map<String, dynamic>? locationData,
   ) {
-    DateTime? socketTime;
+    final imei = givenVehicle.imei;
 
-    // Check if we have new socket data
-    if (statusData?['createdAt'] != null) {
-      try {
-        socketTime = DateTime.parse(statusData!['createdAt'].toString());
-      } catch (e) {
-        // If parsing fails, socketTime remains null
-      }
+    // Create hash of current socket data to detect changes
+    final currentHash = '${statusData?.hashCode}_${locationData?.hashCode}';
+
+    // Check if socket data changed
+    if (_lastSocketDataHash[imei] != currentHash &&
+        (statusData != null || locationData != null)) {
+      // Socket data changed - reset to now
+      _socketReceiveTime[imei] = DateTime.now();
+      _lastSocketDataHash[imei] = currentHash;
     }
 
-    // Use unified calculation method
-    final timeString = TimeAgo.calculateLastUpdateTime(
-      statusTime: givenVehicle.latestStatus?.createdAt,
-      locationTime: givenVehicle.latestLocation?.createdAt,
-      socketTime: socketTime,
+    // If we have socket receive time, use it
+    if (_socketReceiveTime.containsKey(imei)) {
+      return TimeAgo.timeAgo(_socketReceiveTime[imei]!);
+    }
+
+    // No socket data yet - use vehicle data updatedAt timestamp
+    final mostRecentTime = TimeAgo.getMostRecentTime(
+      givenVehicle.latestStatus?.updatedAt,
+      givenVehicle.latestLocation?.updatedAt,
     );
 
-    // Update cache if we have new socket data or no cache exists
-    if (socketTime != null) {
-      if (!_timestampCache.containsKey(imei) ||
-          socketTime.isAfter(_timestampCache[imei]!)) {
-        _timestampCache[imei] = socketTime;
-        _timeCache[imei] = timeString;
-      }
-    } else if (!_timeCache.containsKey(imei)) {
-      // Cache the calculated time from vehicle data
-      final mostRecentTime = TimeAgo.getMostRecentTime(
-        givenVehicle.latestStatus?.createdAt,
-        givenVehicle.latestLocation?.createdAt,
-      );
-      if (mostRecentTime != null) {
-        _timestampCache[imei] = mostRecentTime;
-      }
-      _timeCache[imei] = timeString;
+    if (mostRecentTime != null) {
+      return TimeAgo.timeAgo(mostRecentTime);
     }
 
-    return _timeCache[imei] ?? timeString;
+    return 'No data';
+  }
+
+  // Parse socket datetime with proper timezone handling
+  static DateTime _parseSocketDateTime(dynamic value) {
+    if (value == null) throw Exception('Null datetime value');
+
+    final dateStr = value.toString();
+    // Convert space to 'T' for ISO format if needed
+    final isoString = dateStr.contains('T')
+        ? dateStr
+        : dateStr.replaceFirst(' ', 'T');
+
+    // Parse as local time (socket sends Nepal time from server)
+    return DateTime.parse(isoString);
+  }
+
+  // Helper method to get "Since" time with state change detection
+  String _getSince() {
+    final imei = givenVehicle.imei;
+
+    // If we have socket-based since time (state changed), use it
+    if (_sinceStartTime.containsKey(imei)) {
+      return _timeAgoWithoutSeconds(_sinceStartTime[imei]!);
+    }
+
+    // No socket data yet - use vehicle data createdAt timestamp
+    final statusCreated = givenVehicle.latestStatus?.createdAt;
+    final locationCreated = givenVehicle.latestLocation?.createdAt;
+    final mostRecent = TimeAgo.getMostRecentTime(
+      statusCreated,
+      locationCreated,
+    );
+
+    return mostRecent != null ? _timeAgoWithoutSeconds(mostRecent) : 'No data';
+  }
+
+  // TimeAgo without seconds for "Since" display
+  String _timeAgoWithoutSeconds(DateTime dateTime) {
+    final now = DateTime.now();
+    final diff = now.difference(dateTime);
+
+    final int days = diff.inDays;
+    final int hours = diff.inHours % 24;
+    final int minutes = diff.inMinutes % 60;
+
+    // >= 24 hours: show days and hours
+    if (days > 0) {
+      return hours > 0 ? '$days days, $hours hrs ago' : '$days days ago';
+    }
+    // < 24 hours but >= 1 hour: show hours and minutes
+    else if (hours > 0) {
+      return minutes > 0 ? '$hours hrs, $minutes m ago' : '$hours hrs ago';
+    }
+    // < 1 hour but >= 1 minute: show minutes only
+    else if (minutes > 0) {
+      return '$minutes m ago';
+    }
+    // < 1 minute
+    else {
+      return 'Just now';
+    }
   }
 
   // Show bottom sheet
@@ -588,7 +805,7 @@ class _AltitudeWidgetState extends State<_AltitudeWidget> {
     if (_lastCoordinates != currentCoords ||
         (_cachedAltitude == null && !_isLoading && !_hasError)) {
       _lastCoordinates = currentCoords;
-      _cachedAltitude = null;
+      // DON'T clear cache - keep old value visible
       _isLoading = true;
       _hasError = false;
 
@@ -606,7 +823,11 @@ class _AltitudeWidgetState extends State<_AltitudeWidget> {
           .catchError((error) {
             if (mounted && _lastCoordinates == currentCoords) {
               setState(() {
-                _cachedAltitude = '0'; // Default value on error
+                // DON'T update cache on error - keep old value
+                // If no cache exists, set default
+                if (_cachedAltitude == null) {
+                  _cachedAltitude = '0';
+                }
                 _isLoading = false;
                 _hasError = true;
               });
@@ -616,7 +837,10 @@ class _AltitudeWidgetState extends State<_AltitudeWidget> {
 
     return StatsCard(
       title: 'Altitude',
-      value: _isLoading ? '...' : "${_cachedAltitude ?? '0'}m",
+      // Show "..." only if NO cached data exists
+      value: (_isLoading && _cachedAltitude == null)
+          ? '...'
+          : "${_cachedAltitude ?? '0'}m",
       icon: Icons.landscape,
       color: _hasError ? Colors.grey.shade800 : Colors.green.shade800,
     );
@@ -664,7 +888,7 @@ class _GeocodeWidgetState extends State<_GeocodeWidget> {
     if (_lastCoordinates != currentCoords ||
         (_cachedAddress == null && !_isLoading)) {
       _lastCoordinates = currentCoords;
-      _cachedAddress = null;
+      // DON'T clear cache - keep old value visible
       _isLoading = true;
 
       // Fetch geocode asynchronously
@@ -680,14 +904,19 @@ class _GeocodeWidgetState extends State<_GeocodeWidget> {
           .catchError((error) {
             if (mounted && _lastCoordinates == currentCoords) {
               setState(() {
-                _cachedAddress = 'Location unavailable';
+                // DON'T update cache on error - keep old value
+                // If no cache exists, set default
+                if (_cachedAddress == null) {
+                  _cachedAddress = 'Location unavailable';
+                }
                 _isLoading = false;
               });
             }
           });
     }
 
-    if (_isLoading) {
+    // Show loading indicator ONLY if no cached data
+    if (_isLoading && _cachedAddress == null) {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [

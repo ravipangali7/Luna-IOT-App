@@ -11,14 +11,24 @@ class TimeAgo {
     final now = DateTime.now();
     final diff = now.difference(baseTime);
 
-    final int hours = diff.inHours;
+    final int years = diff.inDays ~/ 365;
+    final int months = (diff.inDays % 365) ~/ 30;
+    final int days = diff.inDays % 30;
+    final int hours = diff.inHours % 24;
     final int minutes = diff.inMinutes % 60;
     final int seconds = diff.inSeconds % 60;
 
-    if (hours > 0 && minutes > 0) {
-      return '$hours hrs, $minutes m, $seconds sec ago';
-    } else if (hours == 0 && minutes > 0) {
-      return '$minutes m, $seconds sec ago';
+    // Show only 2 most significant units
+    if (years > 0) {
+      return months > 0 ? '$years yrs, $months mons ago' : '$years yrs ago';
+    } else if (months > 0) {
+      return days > 0 ? '$months mons, $days days ago' : '$months mons ago';
+    } else if (days > 0) {
+      return hours > 0 ? '$days days, $hours hrs ago' : '$days days ago';
+    } else if (hours > 0) {
+      return minutes > 0 ? '$hours hrs, $minutes m ago' : '$hours hrs ago';
+    } else if (minutes > 0) {
+      return seconds > 0 ? '$minutes m, $seconds sec ago' : '$minutes m ago';
     } else {
       return '$seconds sec ago';
     }

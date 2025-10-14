@@ -26,10 +26,47 @@ class VehicleService {
       return noData;
     }
 
-    if (vehicle.latestStatus?.createdAt != null) {
-      final now = DateTime.now();
-      final createdAt = vehicle.latestStatus!.createdAt!;
-      final difference = now.difference(createdAt);
+    // Check both status and location timestamps to find the most recent data
+    DateTime? mostRecentTimestamp;
+
+    if (vehicle.latestStatus?.updatedAt != null &&
+        vehicle.latestLocation?.updatedAt != null) {
+      // Both exist, use the more recent one
+      if (vehicle.latestStatus!.updatedAt!.isAfter(
+        vehicle.latestLocation!.updatedAt!,
+      )) {
+        mostRecentTimestamp = vehicle.latestStatus!.updatedAt!;
+      } else {
+        mostRecentTimestamp = vehicle.latestLocation!.updatedAt!;
+      }
+    } else if (vehicle.latestStatus?.updatedAt != null) {
+      // Only status exists
+      mostRecentTimestamp = vehicle.latestStatus!.updatedAt!;
+    } else if (vehicle.latestLocation?.updatedAt != null) {
+      // Only location exists
+      mostRecentTimestamp = vehicle.latestLocation!.updatedAt!;
+    }
+
+    if (mostRecentTimestamp != null) {
+      final now = DateTime.now().toUtc();
+      // Handle backend timestamp - if it's not UTC, treat as Nepal time (UTC+5:45)
+      DateTime updatedAt;
+      if (mostRecentTimestamp.isUtc) {
+        updatedAt = mostRecentTimestamp.toUtc();
+      } else {
+        final localTime = mostRecentTimestamp;
+        updatedAt = DateTime.utc(
+          localTime.year,
+          localTime.month,
+          localTime.day,
+          localTime.hour,
+          localTime.minute,
+          localTime.second,
+          localTime.millisecond,
+        ).subtract(Duration(hours: 5, minutes: 45));
+      }
+      final difference = now.difference(updatedAt);
+
       if (difference.inHours > 12) {
         return inactive;
       }

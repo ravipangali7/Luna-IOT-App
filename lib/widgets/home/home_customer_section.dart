@@ -65,52 +65,54 @@ class HomeCustomerSection extends StatelessWidget {
           const SizedBox(height: 10),
 
           // Section Title
-          HomeFeatureSectionTitle(title: 'Track Public'),
-          GridView.count(
-            crossAxisCount: 3,
-            crossAxisSpacing: 7,
-            mainAxisSpacing: 7,
-            physics: const NeverScrollableScrollPhysics(),
-            shrinkWrap: true,
-            children: [
-              HomeFeatureCard(
-                title: 'Public Vehicle',
-                subtitle: 'Track public vehicles',
-                icon: Icons.directions_train_outlined,
-                route: AppRoutes.vehicleHistoryIndex,
-              ),
-              HomeFeatureCard(
-                title: 'Garbage Vehicle',
-                subtitle: 'Track garbage vehicles',
-                icon: Icons.recycling,
-                route: AppRoutes.vehicleReportIndex,
-              ),
-              HomeFeatureCard(
-                title: 'School Vehicle',
-                subtitle: 'Track school vehicles',
-                icon: Icons.directions_bus,
-                route: AppRoutes.vehicle,
-              ),
-              HomeFeatureCard(
-                title: 'Flight Ticket',
-                subtitle: 'Book your flight',
-                icon: Icons.flight,
-                route: AppRoutes.vehicle,
-              ),
-              HomeFeatureCard(
-                title: 'Bus Ticket',
-                subtitle: 'Book your bus',
-                icon: Icons.directions_bus,
-                route: AppRoutes.vehicle,
-              ),
-              HomeFeatureCard(
-                title: 'Hotel Booking',
-                subtitle: 'Book your hotel',
-                icon: Icons.hotel,
-                route: AppRoutes.vehicle,
-              ),
-            ],
-          ),
+          if (Theme.of(context).platform == TargetPlatform.android) ...[
+            HomeFeatureSectionTitle(title: 'Track Public'),
+            GridView.count(
+              crossAxisCount: 3,
+              crossAxisSpacing: 7,
+              mainAxisSpacing: 7,
+              physics: const NeverScrollableScrollPhysics(),
+              shrinkWrap: true,
+              children: [
+                HomeFeatureCard(
+                  title: 'Public Vehicle',
+                  subtitle: 'Track public vehicles',
+                  icon: Icons.directions_train_outlined,
+                  route: AppRoutes.vehicleHistoryIndex,
+                ),
+                HomeFeatureCard(
+                  title: 'Garbage Vehicle',
+                  subtitle: 'Track garbage vehicles',
+                  icon: Icons.recycling,
+                  route: AppRoutes.vehicleReportIndex,
+                ),
+                HomeFeatureCard(
+                  title: 'School Vehicle',
+                  subtitle: 'Track school vehicles',
+                  icon: Icons.directions_bus,
+                  route: AppRoutes.vehicle,
+                ),
+                HomeFeatureCard(
+                  title: 'Flight Ticket',
+                  subtitle: 'Book your flight',
+                  icon: Icons.flight,
+                  route: AppRoutes.vehicle,
+                ),
+                HomeFeatureCard(
+                  title: 'Bus Ticket',
+                  subtitle: 'Book your bus',
+                  icon: Icons.directions_bus,
+                  route: AppRoutes.vehicle,
+                ),
+                HomeFeatureCard(
+                  title: 'Hotel Booking',
+                  subtitle: 'Book your hotel',
+                  icon: Icons.hotel,
+                  route: AppRoutes.vehicle,
+                ),
+              ],
+            ),
+          ],
 
           const SizedBox(height: 10),
 
