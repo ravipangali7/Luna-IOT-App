@@ -7,6 +7,7 @@ import 'package:luna_iot/services/popup_service.dart';
 import 'package:luna_iot/api/services/popup_api_service.dart';
 import 'package:luna_iot/api/api_client.dart';
 import 'package:luna_iot/controllers/auth_controller.dart';
+import 'package:luna_iot/bindings/sos_binding.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({Key? key}) : super(key: key);
@@ -59,6 +60,10 @@ class _MainScreenState extends State<MainScreen> {
     if (!Get.isRegistered<MainScreenController>()) {
       Get.put(MainScreenController());
     }
+    
+    // Initialize SOS binding for emergency functionality
+    SosBinding().dependencies();
+    
     return Scaffold(
       body: Obx(() => Get.find<MainScreenController>().getCurrentScreen()),
       bottomNavigationBar: const CustomBottomBar(),

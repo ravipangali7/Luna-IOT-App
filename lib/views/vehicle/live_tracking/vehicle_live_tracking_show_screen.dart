@@ -442,7 +442,7 @@ class _VehicleLiveTrackingShowScreenState
           CameraUpdate.newCameraPosition(
             CameraPosition(
               target: interpolatedPosition,
-              zoom: 17.0,
+              zoom: 16.0,
               bearing: _toDouble(newLocation.course),
               tilt: 0.0,
             ),
@@ -464,7 +464,7 @@ class _VehicleLiveTrackingShowScreenState
       CameraUpdate.newCameraPosition(
         CameraPosition(
           target: position,
-          zoom: 17.0,
+          zoom: 16.0,
           bearing: course,
           tilt: 0.0,
         ),
@@ -892,7 +892,7 @@ class _VehicleLiveTrackingShowScreenState
                   mapType: currentMapType,
                   initialCameraPosition: CameraPosition(
                     target: _vehiclePosition!,
-                    zoom: 17.0,
+                    zoom: 15.0,
                     bearing: _mapRotation,
                   ),
                   markers: _markers,

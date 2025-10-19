@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -50,21 +51,18 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
   List<History> historyData = [];
   List<Trip> trips = [];
 
-  // Animation controller for vehicle movement
-  late AnimationController _animationController;
-  late Animation<double> _animation;
+  // Cached location data for performance
+  List<History> _cachedLocationData = [];
+
+  // Simple vehicle playback state
+  int _currentIndex = 0;
+  bool _isPlaying = false;
+  int _animationSpeed = 300; // Milliseconds between updates
+  Timer? _animationTimer;
 
   // Current data during animation
   DateTime? _currentDateTime;
   double _currentSpeed = 0.0;
-
-  // Camera following optimization
-  LatLng? _lastCameraPosition;
-
-  // Add progress slider variables
-  double _sliderValue = 0.0;
-  bool _isSliderDragging = false;
-  bool _showProgressSlider = false;
 
   @override
   void initState() {
@@ -91,65 +89,26 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
   }
 
   void _setupAnimation() {
-    // Calculate duration based on number of route points
-    final duration = _calculateAnimationDuration();
-
-    _animationController = AnimationController(duration: duration, vsync: this);
-
-    // Use linear curve for smooth, consistent movement
-    _animation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.linear, // Linear animation for consistent movement
-      ),
-    );
-
-    _animation.addListener(() {
-      if (!_isSliderDragging) {
-        _updateVehiclePosition();
-        _updateSliderValue();
-      }
-    });
-
-    _animationController.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        setState(() {
-          isPlaying = false;
-        });
-
-        // Restore original polyline when animation completes
-        _restoreOriginalPolyline();
-      }
-    });
+    // Simple setup - no complex animation controller needed
+    // Animation will be handled by recursive timer
   }
 
-  // Calculate animation duration based on number of route points
-  Duration _calculateAnimationDuration() {
+  // Calculate animation speed based on route length
+  void _calculateAnimationSpeed() {
     if (routePoints.isEmpty) {
-      return Duration(seconds: 15); // Default duration if no points
+      _animationSpeed = 300; // Default speed
+      return;
     }
 
     final pointCount = routePoints.length;
 
-    // Base calculation: 300ms per point for slower, smoother movement
-    // This ensures more visible and smooth movement
-    final baseDurationMs = pointCount * 300; // 300ms = 0.3 seconds per point
-
-    // Apply minimum and maximum limits
-    final minDuration = Duration(seconds: 5); // Minimum 5 seconds
-    final maxDuration = Duration(
-      minutes: 5,
-    ); // Maximum 5 minutes for very long routes
-
-    final calculatedDuration = Duration(milliseconds: baseDurationMs);
-
-    // Clamp between min and max
-    if (calculatedDuration < minDuration) {
-      return minDuration;
-    } else if (calculatedDuration > maxDuration) {
-      return maxDuration;
+    // Adjust speed based on route length
+    if (pointCount < 10) {
+      _animationSpeed = 200; // Fast for short routes
+    } else if (pointCount < 50) {
+      _animationSpeed = 300; // Medium speed
     } else {
-      return calculatedDuration;
+      _animationSpeed = 400; // Slower for long routes
     }
   }
 
@@ -165,7 +124,7 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
     if (_mapController != null) {
       _mapController!.animateCamera(
         CameraUpdate.newCameraPosition(
-          CameraPosition(target: position, zoom: 15.0),
+          CameraPosition(target: position, zoom: 12.0),
         ),
       );
     }
@@ -334,6 +293,10 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
 
       setState(() {
         this.historyData = filteredHistoryData;
+        // Cache location data for performance
+        _cachedLocationData = filteredHistoryData
+            .where((data) => data.type == 'location')
+            .toList();
       });
 
       print('Fetched ${historyData.length} history records');
@@ -345,7 +308,7 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
           _markers = {};
           _polylines = {};
           trips = [];
-          _showProgressSlider = false;
+          // No slider to hide
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -376,7 +339,7 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
         _markers = {};
         _polylines = {};
         trips = [];
-        _showProgressSlider = false;
+        // No slider to hide
       });
     } finally {
       setState(() {
@@ -440,8 +403,7 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
 
     setState(() {
       isTripSelected = true; // Set flag when trip is selected
-      _showProgressSlider = true; // Show slider for trip
-      _sliderValue = 0.0; // Reset slider to start position
+      // No slider needed
 
       // Update route points to show only this trip
       routePoints = trip.tripPoints
@@ -472,7 +434,11 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
 
       // Add vehicle marker at start point
       if (routePoints.isNotEmpty) {
-        _addVehicleMarker(routePoints.first, true);
+        double initialBearing = 0.0;
+        if (routePoints.length > 1) {
+          initialBearing = _calculateBearing(routePoints.first, routePoints[1]);
+        }
+        _addVehicleMarker(routePoints.first, true, bearing: initialBearing);
       }
 
       // Add polyline
@@ -508,7 +474,7 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
         routePoints = [];
         _markers = {};
         _polylines = {};
-        _showProgressSlider = false;
+        // No slider to hide
       });
 
       print('No history data found - cleared map completely');
@@ -527,7 +493,7 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
         routePoints = [];
         _markers = {};
         _polylines = {};
-        _showProgressSlider = false;
+        // No slider to hide
       });
 
       print('No location data found - cleared map completely');
@@ -536,8 +502,7 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
 
     setState(() {
       isTripSelected = false; // Reset flag when showing all history
-      _showProgressSlider = true; // Show slider when there's data
-      _sliderValue = 0.0; // Reset slider to start position
+      // No slider needed
 
       routePoints = locationDataList
           .where((data) => data.latitude != null && data.longitude != null)
@@ -583,7 +548,11 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
 
       // Add vehicle marker at start point
       if (routePoints.isNotEmpty) {
-        _addVehicleMarker(routePoints.first, true);
+        double initialBearing = 0.0;
+        if (routePoints.length > 1) {
+          initialBearing = _calculateBearing(routePoints.first, routePoints[1]);
+        }
+        _addVehicleMarker(routePoints.first, true, bearing: initialBearing);
       }
 
       // Add stop point markers (only when no trip is selected)
@@ -699,7 +668,9 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
             'assets/images/stop_pin.png',
           );
 
-      // Add stop markers for all trips except the last one
+      // Collect all stop markers first, then add them in one setState
+      final List<Marker> stopMarkers = [];
+
       for (int i = 0; i < trips.length - 1; i++) {
         final trip = trips[i];
         final stopPosition = LatLng(trip.endLatitude, trip.endLongitude);
@@ -719,29 +690,36 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
 
         // Only show stop marker if duration is at least 1 minute
         if (stopDuration.inMinutes >= 1) {
-          setState(() {
-            _markers.add(
-              Marker(
-                markerId: MarkerId('stop_${trip.tripNumber}'),
-                position: stopPosition,
-                icon: stopPinIcon,
-                anchor: const Offset(
-                  0.5,
-                  1.0,
-                ), // Perfect alignment - center bottom
-                infoWindow: InfoWindow(
-                  title: 'Stop Point ${trip.tripNumber}',
-                  snippet:
-                      '${trip.endTime.hour}:${trip.endTime.minute.toString().padLeft(2, '0')}',
-                ),
-                onTap: () => _showStopPointModal(trip, i),
+          stopMarkers.add(
+            Marker(
+              markerId: MarkerId('stop_${trip.tripNumber}'),
+              position: stopPosition,
+              icon: stopPinIcon,
+              anchor: const Offset(
+                0.5,
+                1.0,
+              ), // Perfect alignment - center bottom
+              infoWindow: InfoWindow(
+                title: 'Stop Point ${trip.tripNumber}',
+                snippet:
+                    '${trip.endTime.hour}:${trip.endTime.minute.toString().padLeft(2, '0')}',
               ),
-            );
-          });
+              onTap: () => _showStopPointModal(trip, i),
+            ),
+          );
         }
       }
+
+      // Add all stop markers in one setState call
+      if (stopMarkers.isNotEmpty) {
+        setState(() {
+          _markers.addAll(stopMarkers);
+        });
+      }
     } catch (e) {
-      // Fallback to default marker if image loading fails
+      // Fallback to default marker if image loading fails - also batched
+      final List<Marker> fallbackMarkers = [];
+
       for (int i = 0; i < trips.length - 1; i++) {
         final trip = trips[i];
         final stopPosition = LatLng(trip.endLatitude, trip.endLongitude);
@@ -761,24 +739,29 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
 
         // Only show stop marker if duration is at least 1 minute
         if (stopDuration.inMinutes >= 1) {
-          setState(() {
-            _markers.add(
-              Marker(
-                markerId: MarkerId('stop_${trip.tripNumber}'),
-                position: stopPosition,
-                icon: BitmapDescriptor.defaultMarkerWithHue(
-                  BitmapDescriptor.hueRed,
-                ),
-                onTap: () => _showStopPointModal(trip, i),
-                infoWindow: InfoWindow(
-                  title: 'Stop Point',
-                  snippet:
-                      '${trip.endTime.hour}:${trip.endTime.minute.toString().padLeft(2, '0')}',
-                ),
+          fallbackMarkers.add(
+            Marker(
+              markerId: MarkerId('stop_${trip.tripNumber}'),
+              position: stopPosition,
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueRed,
               ),
-            );
-          });
+              onTap: () => _showStopPointModal(trip, i),
+              infoWindow: InfoWindow(
+                title: 'Stop Point',
+                snippet:
+                    '${trip.endTime.hour}:${trip.endTime.minute.toString().padLeft(2, '0')}',
+              ),
+            ),
+          );
         }
+      }
+
+      // Add all fallback markers in one setState call
+      if (fallbackMarkers.isNotEmpty) {
+        setState(() {
+          _markers.addAll(fallbackMarkers);
+        });
       }
     }
   }
@@ -865,7 +848,11 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
     );
   }
 
-  Future<void> _addVehicleMarker(LatLng position, bool isStopped) async {
+  Future<void> _addVehicleMarker(
+    LatLng position,
+    bool isStopped, {
+    double bearing = 0.0,
+  }) async {
     try {
       // Get vehicle image path for stopped state
       final vehicleImagePath = VehicleService.imagePath(
@@ -889,7 +876,7 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
             position: position, // This will be the current route position
             icon: vehicleIcon,
             rotation:
-                0.0, // Vehicle marker doesn't rotate - map rotates instead
+                bearing, // Rotate vehicle marker based on direction of travel
             anchor: Offset(0.5, 0.5), // Center the marker perfectly
             infoWindow: InfoWindow(
               title: 'Vehicle',
@@ -909,7 +896,7 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
               BitmapDescriptor.hueBlue,
             ),
             rotation:
-                0.0, // Vehicle marker doesn't rotate - map rotates instead
+                bearing, // Rotate vehicle marker based on direction of travel
             anchor: Offset(0.5, 0.5), // Center the marker perfectly
             infoWindow: InfoWindow(
               title: 'Vehicle',
@@ -921,80 +908,8 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
     }
   }
 
-  void _updateVehiclePosition() {
-    if (routePoints.isEmpty) return;
-
-    final progress = _animation.value;
-    final totalPoints = routePoints.length - 1;
-
-    // Calculate current segment and interpolation
-    final currentIndex = (progress * totalPoints).floor();
-    final nextIndex = (currentIndex + 1).clamp(0, totalPoints);
-
-    // Calculate smooth interpolation within the current segment
-    final segmentProgress = (progress * totalPoints) - currentIndex;
-
-    // Use smooth interpolation to reduce jumping
-    final smoothInterpolation = _applySmoothInterpolation(segmentProgress);
-
-    final currentPoint = routePoints[currentIndex];
-    final nextPoint = routePoints[nextIndex];
-
-    // Smooth interpolation between points
-    final lat =
-        currentPoint.latitude +
-        (nextPoint.latitude - currentPoint.latitude) * smoothInterpolation;
-    final lng =
-        currentPoint.longitude +
-        (nextPoint.longitude - currentPoint.longitude) * smoothInterpolation;
-
-    final newPosition = LatLng(lat, lng);
-
-    // Calculate bearing (rotation) for the map
-    double bearing = 0.0;
-    if (nextIndex > currentIndex) {
-      bearing = _calculateBearing(currentPoint, nextPoint);
-    }
-
-    // Update current data for display (this updates the bottom card)
-    _updateCurrentData(currentIndex, nextIndex, smoothInterpolation);
-
-    // Perform all visual updates in a single batched operation
-    _performFrameUpdate(newPosition, bearing, progress);
-  }
-
   // Cache for vehicle icon to avoid reloading
   BitmapDescriptor? _cachedVehicleIcon;
-
-  // Perform all visual updates in a single batched setState
-  void _performFrameUpdate(
-    LatLng newPosition,
-    double bearing,
-    double progress,
-  ) {
-    setState(() {
-      // Update vehicle marker position
-      _markers.removeWhere((marker) => marker.markerId == MarkerId('vehicle'));
-      _markers.add(
-        Marker(
-          markerId: MarkerId('vehicle'),
-          position: newPosition,
-          icon:
-              _cachedVehicleIcon ??
-              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-          rotation: 0.0,
-          anchor: Offset(0.5, 0.5),
-          infoWindow: InfoWindow(title: 'Vehicle', snippet: 'Moving'),
-        ),
-      );
-
-      // Update polyline for eating effect
-      _updatePolylineForAnimationInternal(progress);
-    });
-
-    // Update camera outside setState for better performance
-    _moveMapAroundVehicle(newPosition, bearing);
-  }
 
   // Cache vehicle icon for better performance
   Future<void> _cacheVehicleIcon() async {
@@ -1017,191 +932,9 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
     }
   }
 
-  // Move map around vehicle marker to keep it centered
-  void _moveMapAroundVehicle(LatLng position, double bearing) {
-    if (_mapController == null) return;
-
-    // Check if vehicle has moved significantly (smaller threshold for smoother following)
-    if (_lastCameraPosition != null) {
-      final distance = _calculateDistance(_lastCameraPosition!, position);
-      if (distance < 0.0000005) {
-        // ~0.05 meter in degrees for smoother visual updates
-        return;
-      }
-    }
-
-    _lastCameraPosition = position;
-
-    // Use animateCamera for smoother camera movement
-    _mapController!.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(
-          target: position, // Keep vehicle position in center
-          zoom: 16.0, // Closer zoom for slow movement
-          bearing: bearing, // Rotate map to match vehicle direction
-          // tilt: 45.0, // Slight tilt for better road view
-        ),
-      ),
-    );
-  }
-
-  // Calculate distance between two LatLng points
-  double _calculateDistance(LatLng point1, LatLng point2) {
-    final lat1 = point1.latitude * (pi / 180);
-    final lat2 = point2.latitude * (pi / 180);
-    final deltaLat = (point2.latitude - point1.latitude) * (pi / 180);
-    final deltaLng = (point2.longitude - point1.longitude) * (pi / 180);
-
-    final a =
-        sin(deltaLat / 2) * sin(deltaLat / 2) +
-        cos(lat1) * cos(lat2) * sin(deltaLng / 2) * sin(deltaLng / 2);
-    final c = 2 * asin(sqrt(a));
-
-    return c; // Distance in radians
-  }
-
-  // Apply smooth interpolation to reduce jumping
-  double _applySmoothInterpolation(double t) {
-    // Use smoother cubic easing for more natural movement
-    // This creates a more gradual acceleration and deceleration
-    return t * t * t * (t * (t * 6.0 - 15.0) + 10.0); // Smootherstep 5th order
-  }
+  // Apply simple linear interpolation for smooth performance
 
   // Internal polyline update method (called from batched setState)
-  void _updatePolylineForAnimationInternal(double progress) {
-    if (routePoints.length < 2) return;
-
-    // Calculate how many points the vehicle has passed with more precision
-    final totalPoints = routePoints.length - 1;
-    final currentPointIndex = (progress * totalPoints).floor();
-
-    // Get the current interpolated position
-    final segmentProgress = (progress * totalPoints) - currentPointIndex;
-    final currentPosition = _getInterpolatedPosition(
-      currentPointIndex,
-      segmentProgress,
-    );
-
-    // Create new polyline starting from current vehicle position
-    List<LatLng> remainingPoints = [];
-
-    // Add current interpolated position as first point
-    remainingPoints.add(currentPosition);
-
-    // Add all remaining route points after current position
-    if (currentPointIndex < routePoints.length - 1) {
-      remainingPoints.addAll(routePoints.skip(currentPointIndex + 1));
-    }
-
-    // Remove existing polyline and add new one
-    _polylines.removeWhere(
-      (polyline) => polyline.polylineId == PolylineId('route'),
-    );
-
-    // Always show polyline if there are at least 2 points (current + next)
-    if (remainingPoints.length >= 2) {
-      _polylines.add(
-        Polyline(
-          polylineId: PolylineId('route'),
-          points: remainingPoints,
-          color: Colors.blue,
-          width: 3,
-          geodesic: true,
-        ),
-      );
-    }
-  }
-
-  // Helper method to get interpolated position between two points
-  LatLng _getInterpolatedPosition(int currentIndex, double segmentProgress) {
-    if (currentIndex >= routePoints.length - 1) {
-      return routePoints.last;
-    }
-
-    final currentPoint = routePoints[currentIndex];
-    final nextPoint = routePoints[currentIndex + 1];
-
-    // Apply smooth interpolation
-    final smoothProgress = _applySmoothInterpolation(segmentProgress);
-
-    final lat =
-        currentPoint.latitude +
-        (nextPoint.latitude - currentPoint.latitude) * smoothProgress;
-    final lng =
-        currentPoint.longitude +
-        (nextPoint.longitude - currentPoint.longitude) * smoothProgress;
-
-    return LatLng(lat, lng);
-  }
-
-  // Restore original polyline when animation stops or completes
-  void _restoreOriginalPolyline() {
-    if (routePoints.length < 2) return;
-
-    setState(() {
-      _polylines.removeWhere(
-        (polyline) => polyline.polylineId == PolylineId('route'),
-      );
-
-      // Restore the full original polyline
-      _polylines.add(
-        Polyline(
-          polylineId: PolylineId('route'),
-          points: routePoints,
-          color: Colors.blue,
-          width: 3,
-          geodesic: true,
-        ),
-      );
-    });
-  }
-
-  void _updateCurrentData(
-    int currentIndex,
-    int nextIndex,
-    double interpolation,
-  ) {
-    if (historyData.isEmpty) return;
-
-    // Get location data for current and next points
-    final locationDataList = historyData
-        .where((data) => data.type == 'location')
-        .toList();
-
-    if (locationDataList.isEmpty) return;
-
-    if (currentIndex < locationDataList.length &&
-        nextIndex < locationDataList.length) {
-      final currentData = locationDataList[currentIndex];
-      final nextData = locationDataList[nextIndex];
-
-      // Interpolate date/time
-      if (currentData.createdAt != null && nextData.createdAt != null) {
-        final currentTime = currentData.createdAt!;
-        final nextTime = nextData.createdAt!;
-        final timeDiff = nextTime.difference(currentTime).inMilliseconds;
-        final interpolatedTime = currentTime.add(
-          Duration(milliseconds: (timeDiff * interpolation).round()),
-        );
-
-        setState(() {
-          _currentDateTime = interpolatedTime;
-        });
-      }
-
-      // Interpolate speed
-      if (currentData.speed != null && nextData.speed != null) {
-        final currentSpeed = currentData.speed!;
-        final nextSpeed = nextData.speed!;
-        final interpolatedSpeed =
-            currentSpeed + (nextSpeed - currentSpeed) * interpolation;
-
-        setState(() {
-          _currentSpeed = interpolatedSpeed;
-        });
-      }
-    }
-  }
 
   double _calculateBearing(LatLng start, LatLng end) {
     final double lat1 = start.latitude * (pi / 180);
@@ -1217,6 +950,51 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
     return bearing;
   }
 
+  // Check if vehicle position is within visible map bounds
+  Future<bool> _isVehicleInVisibleBounds(LatLng vehiclePosition) async {
+    if (_mapController == null) return true;
+
+    try {
+      final LatLngBounds visibleRegion = await _mapController!
+          .getVisibleRegion();
+
+      // Check if vehicle position is within bounds
+      final bool isInBounds =
+          vehiclePosition.latitude >= visibleRegion.southwest.latitude &&
+          vehiclePosition.latitude <= visibleRegion.northeast.latitude &&
+          vehiclePosition.longitude >= visibleRegion.southwest.longitude &&
+          vehiclePosition.longitude <= visibleRegion.northeast.longitude;
+
+      return isInBounds;
+    } catch (e) {
+      return true; // On error, assume in bounds
+    }
+  }
+
+  // Recenter camera on vehicle when it goes out of bounds
+  Future<void> _recenterCameraOnVehicle(LatLng vehiclePosition) async {
+    if (_mapController == null) return;
+
+    try {
+      // Only update position, preserve current zoom level and other camera properties
+      await _mapController!.animateCamera(
+        CameraUpdate.newLatLng(vehiclePosition),
+      );
+    } catch (e) {
+      print('Error recentering camera: $e');
+    }
+  }
+
+  // Check if vehicle is out of bounds and recenter if needed
+  Future<void> _checkAndRecenterIfNeeded(LatLng vehiclePosition) async {
+    final bool isInBounds = await _isVehicleInVisibleBounds(vehiclePosition);
+
+    if (!isInBounds) {
+      // Vehicle is out of frame, recenter camera
+      await _recenterCameraOnVehicle(vehiclePosition);
+    }
+  }
+
   void _playAnimation() {
     if (routePoints.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1228,64 +1006,110 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
       return;
     }
 
-    setState(() {
-      isPlaying = true;
-    });
-
-    // Check if slider has been moved from start position
-    if (_sliderValue > 0.0) {
-      // Play from current slider position
-      _playFromCurrentPosition();
+    if (_isPlaying) {
+      _stopAnimation();
     } else {
-      // Play from beginning (original behavior)
-      _playFromBeginning();
+      _startAnimation();
     }
   }
 
-  // Original play from beginning logic
-  void _playFromBeginning() {
-    // Recalculate animation duration based on current route points
-    final newDuration = _calculateAnimationDuration();
-    _animationController.duration = newDuration;
-
-    // Create stationary vehicle marker at start position (only once)
-    // This marker will never move - only the map moves around it
+  void _startAnimation() {
     setState(() {
-      _markers.removeWhere((marker) => marker.markerId == MarkerId('vehicle'));
+      _isPlaying = true;
+      _currentIndex = 0; // Start from beginning
     });
 
-    if (routePoints.isNotEmpty) {
-      _addVehicleMarker(routePoints.first, false);
-    }
-
-    // Set camera to road level zoom at start position
-    if (routePoints.isNotEmpty) {
-      _mapController?.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: routePoints.first,
-            zoom: 18.0, // Closer zoom for slow movement
-            tilt: 45.0, // Slight tilt for better road view
-          ),
-        ),
-      );
-    }
-
-    // Wait a bit for the camera to adjust, then start animation
-    Future.delayed(Duration(milliseconds: 300), () {
-      _animationController.reset();
-      _animationController.forward();
-    });
+    _calculateAnimationSpeed();
+    _animate();
   }
 
   void _stopAnimation() {
-    _animationController.stop();
     setState(() {
-      isPlaying = false;
+      _isPlaying = false;
     });
 
-    // Restore original polyline when animation stops
-    _restoreOriginalPolyline();
+    _animationTimer?.cancel();
+    _animationTimer = null;
+  }
+
+  // Core recursive animation function
+  void _animate() {
+    if (!_isPlaying) {
+      return; // Stop if paused
+    }
+
+    if (_currentIndex >= routePoints.length) {
+      // Reached end of route
+      _resetAnimation();
+      return;
+    }
+
+    // Get current position data
+    final currentPosition = routePoints[_currentIndex];
+
+    // Update marker position
+    setState(() {
+      _markers.removeWhere((marker) => marker.markerId == MarkerId('vehicle'));
+      _markers.add(
+        Marker(
+          markerId: MarkerId('vehicle'),
+          position: LatLng(currentPosition.latitude, currentPosition.longitude),
+          icon:
+              _cachedVehicleIcon ??
+              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+          rotation: _calculateBearingForIndex(_currentIndex),
+          anchor: Offset(0.5, 0.5),
+          infoWindow: InfoWindow(title: 'Vehicle', snippet: 'Moving'),
+        ),
+      );
+    });
+
+    // Update UI displays
+    if (_cachedLocationData.isNotEmpty &&
+        _currentIndex < _cachedLocationData.length) {
+      final currentData = _cachedLocationData[_currentIndex];
+      setState(() {
+        if (currentData.createdAt != null) {
+          _currentDateTime = currentData.createdAt!;
+        }
+        if (currentData.speed != null) {
+          _currentSpeed = currentData.speed!;
+        }
+      });
+    }
+
+    // Check if vehicle is out of bounds and recenter if needed
+    _checkAndRecenterIfNeeded(
+      LatLng(currentPosition.latitude, currentPosition.longitude),
+    );
+
+    // Move to next position
+    _currentIndex++;
+
+    // Schedule next update (creates smooth animation)
+    _animationTimer = Timer(Duration(milliseconds: _animationSpeed), _animate);
+  }
+
+  void _resetAnimation() {
+    setState(() {
+      _isPlaying = false;
+      _currentIndex = 0;
+      _currentSpeed = 0.0;
+      _currentDateTime = null;
+    });
+
+    _animationTimer?.cancel();
+    _animationTimer = null;
+  }
+
+  double _calculateBearingForIndex(int index) {
+    if (index >= routePoints.length - 1) {
+      return 0.0;
+    }
+
+    final currentPoint = routePoints[index];
+    final nextPoint = routePoints[index + 1];
+    return _calculateBearing(currentPoint, nextPoint);
   }
 
   // Add toggle map type function
@@ -1298,284 +1122,10 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
   }
 
   // Add method to update slider value based on animation progress
-  void _updateSliderValue() {
-    if (!_isSliderDragging && _animationController.isAnimating) {
-      setState(() {
-        _sliderValue = _animation.value;
-      });
-    }
-  }
 
   // Add method to handle slider changes
-  void _onSliderChanged(double value) {
-    if (routePoints.isEmpty) return;
-
-    setState(() {
-      _sliderValue = value;
-      _isSliderDragging = true;
-    });
-
-    // Stop current animation if playing
-    if (isPlaying) {
-      _animationController.stop();
-      setState(() {
-        isPlaying = false;
-      });
-    }
-
-    // Update vehicle position based on slider value
-    _updateVehiclePositionFromSlider(value);
-  }
-
-  // Add method to handle slider drag end
-  void _onSliderDragEnd() {
-    setState(() {
-      _isSliderDragging = false;
-    });
-  }
 
   // Add method to update vehicle position from slider
-  void _updateVehiclePositionFromSlider(double value) {
-    if (routePoints.isEmpty) return;
-
-    final progress = value.clamp(0.0, 1.0);
-    final totalPoints = routePoints.length - 1;
-
-    // Calculate current segment and interpolation
-    final currentIndex = (progress * totalPoints).floor();
-    final nextIndex = (currentIndex + 1).clamp(0, totalPoints);
-
-    // Calculate smooth interpolation within the current segment
-    final segmentProgress = (progress * totalPoints) - currentIndex;
-
-    // Use smooth interpolation to reduce jumping
-    final smoothInterpolation = _applySmoothInterpolation(segmentProgress);
-
-    final currentPoint = routePoints[currentIndex];
-    final nextPoint = routePoints[nextIndex];
-
-    // Smooth interpolation between points
-    final lat =
-        currentPoint.latitude +
-        (nextPoint.latitude - currentPoint.latitude) * smoothInterpolation;
-    final lng =
-        currentPoint.longitude +
-        (nextPoint.longitude - currentPoint.longitude) * smoothInterpolation;
-
-    final newPosition = LatLng(lat, lng);
-
-    // Calculate bearing (rotation) for the map
-    double bearing = 0.0;
-    if (nextIndex > currentIndex) {
-      bearing = _calculateBearing(currentPoint, nextPoint);
-    }
-
-    // Update current data for display
-    _updateCurrentDataFromSlider(currentIndex, nextIndex, smoothInterpolation);
-
-    // Update map and markers
-    _updateMapFromSlider(newPosition, bearing, progress);
-  }
-
-  // Add method to update current data from slider
-  void _updateCurrentDataFromSlider(
-    int currentIndex,
-    int nextIndex,
-    double interpolation,
-  ) {
-    if (historyData.isEmpty) return;
-
-    // Get location data for current and next points
-    final locationDataList = historyData
-        .where((data) => data.type == 'location')
-        .toList();
-
-    if (locationDataList.isEmpty) return;
-
-    if (currentIndex < locationDataList.length &&
-        nextIndex < locationDataList.length) {
-      final currentData = locationDataList[currentIndex];
-      final nextData = locationDataList[nextIndex];
-
-      // Interpolate date/time
-      if (currentData.createdAt != null && nextData.createdAt != null) {
-        final currentTime = currentData.createdAt!;
-        final nextTime = nextData.createdAt!;
-        final timeDiff = nextTime.difference(currentTime).inMilliseconds;
-        final interpolatedTime = currentTime.add(
-          Duration(milliseconds: (timeDiff * interpolation).round()),
-        );
-
-        setState(() {
-          _currentDateTime = interpolatedTime;
-        });
-      }
-
-      // Interpolate speed
-      if (currentData.speed != null && nextData.speed != null) {
-        final currentSpeed = currentData.speed!;
-        final nextSpeed = nextData.speed!;
-        final interpolatedSpeed =
-            currentSpeed + (nextSpeed - currentSpeed) * interpolation;
-
-        setState(() {
-          _currentSpeed = interpolatedSpeed;
-        });
-      }
-    }
-  }
-
-  // Add method to update map from slider
-  void _updateMapFromSlider(
-    LatLng newPosition,
-    double bearing,
-    double progress,
-  ) {
-    setState(() {
-      // Update vehicle marker position
-      _markers.removeWhere((marker) => marker.markerId == MarkerId('vehicle'));
-      _markers.add(
-        Marker(
-          markerId: MarkerId('vehicle'),
-          position: newPosition,
-          icon:
-              _cachedVehicleIcon ??
-              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-          rotation: 0.0,
-          anchor: Offset(0.5, 0.5),
-          infoWindow: InfoWindow(title: 'Vehicle', snippet: 'Positioned'),
-        ),
-      );
-
-      // Update polyline to show only remaining route
-      _updatePolylineFromSlider(progress);
-    });
-
-    // Update camera
-    _moveMapAroundVehicle(newPosition, bearing);
-  }
-
-  // Add method to update polyline from slider
-  void _updatePolylineFromSlider(double progress) {
-    if (routePoints.length < 2) return;
-
-    // Calculate how many points the vehicle has passed
-    final totalPoints = routePoints.length - 1;
-    final currentPointIndex = (progress * totalPoints).floor();
-
-    // Get the current interpolated position
-    final segmentProgress = (progress * totalPoints) - currentPointIndex;
-    final currentPosition = _getInterpolatedPosition(
-      currentPointIndex,
-      segmentProgress,
-    );
-
-    // Create new polyline starting from current vehicle position
-    List<LatLng> remainingPoints = [];
-
-    // Add current interpolated position as first point
-    remainingPoints.add(currentPosition);
-
-    // Add all remaining route points after current position
-    if (currentPointIndex < routePoints.length - 1) {
-      remainingPoints.addAll(routePoints.skip(currentPointIndex + 1));
-    }
-
-    // Remove existing polyline and add new one
-    _polylines.removeWhere(
-      (polyline) => polyline.polylineId == PolylineId('route'),
-    );
-
-    // Always show polyline if there are at least 2 points (current + next)
-    if (remainingPoints.length >= 2) {
-      _polylines.add(
-        Polyline(
-          polylineId: PolylineId('route'),
-          points: remainingPoints,
-          color: Colors.blue,
-          width: 3,
-          geodesic: true,
-        ),
-      );
-    }
-  }
-
-  // Add method to play animation from current slider position
-  void _playFromCurrentPosition() {
-    if (routePoints.length < 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('No route to animate'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    // Recalculate animation duration based on remaining route points
-    final remainingPoints = _getRemainingRoutePoints();
-    final newDuration = _calculateAnimationDurationFromPoints(remainingPoints);
-    _animationController.duration = newDuration;
-
-    // Start animation from current position
-    _animationController.value = _sliderValue;
-    _animationController.forward();
-  }
-
-  // Add method to get remaining route points from current position
-  List<LatLng> _getRemainingRoutePoints() {
-    if (routePoints.isEmpty) return [];
-
-    final progress = _sliderValue.clamp(0.0, 1.0);
-    final totalPoints = routePoints.length - 1;
-    final currentPointIndex = (progress * totalPoints).floor();
-
-    // Get the current interpolated position
-    final segmentProgress = (progress * totalPoints) - currentPointIndex;
-    final currentPosition = _getInterpolatedPosition(
-      currentPointIndex,
-      segmentProgress,
-    );
-
-    // Create remaining points starting from current position
-    List<LatLng> remainingPoints = [currentPosition];
-
-    // Add all remaining route points after current position
-    if (currentPointIndex < routePoints.length - 1) {
-      remainingPoints.addAll(routePoints.skip(currentPointIndex + 1));
-    }
-
-    return remainingPoints;
-  }
-
-  // Add method to calculate animation duration from specific points
-  Duration _calculateAnimationDurationFromPoints(List<LatLng> points) {
-    if (points.isEmpty) {
-      return Duration(seconds: 15); // Default duration if no points
-    }
-
-    final pointCount = points.length;
-
-    // Base calculation: 300ms per point for slower, smoother movement
-    final baseDurationMs = pointCount * 300; // 300ms = 0.3 seconds per point
-
-    // Apply minimum and maximum limits
-    final minDuration = Duration(seconds: 5); // Minimum 5 seconds
-    final maxDuration = Duration(
-      minutes: 5,
-    ); // Maximum 5 minutes for very long routes
-
-    final calculatedDuration = Duration(milliseconds: baseDurationMs);
-
-    // Clamp between min and max
-    if (calculatedDuration < minDuration) {
-      return minDuration;
-    } else if (calculatedDuration > maxDuration) {
-      return maxDuration;
-    } else {
-      return calculatedDuration;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1589,748 +1139,823 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
         ),
       ),
       drawer: TripDrawer(trips: trips, onTripSelected: _onTripSelected),
-      body: Stack(
+      body: Column(
         children: [
-          // Full screen map
-          GoogleMap(
-            mapType: currentMapType,
-            initialCameraPosition: CameraPosition(
-              target: LatLng(
-                widget.vehicle.latestLocation?.latitude ?? 0,
-                widget.vehicle.latestLocation?.longitude ?? 0,
-              ), // Default to Kathmandu
-              zoom: 15.0,
-            ),
-            markers: _markers,
-            polylines: _polylines,
-            onMapCreated: (GoogleMapController controller) {
-              _mapController = controller;
-            },
-            myLocationEnabled: true,
-            myLocationButtonEnabled: true,
-            zoomControlsEnabled: false,
-            mapToolbarEnabled: false,
-            compassEnabled: true,
-          ),
-
-          // Map Buttons
-          Positioned(
-            right: 10,
-            top: 20,
-            child: Column(
-              spacing: 10,
-              children: [
-                // Satellite button
-                InkWell(
-                  onTap: () => _toggleMapType(),
-                  child: Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.white, width: 4),
-                      borderRadius: BorderRadius.circular(300),
-                      boxShadow: [
-                        BoxShadow(
-                          offset: Offset(0, 0),
-                          spreadRadius: 1,
-                          blurRadius: 15,
-                          color: Colors.black12,
-                        ),
-                      ],
-                    ),
-                    child: CircleAvatar(
-                      backgroundImage: AssetImage(
-                        'assets/images/satellite_view_icon.png',
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Trip Button
-                InkWell(
-                  onTap: () => _scaffoldKey.currentState?.openDrawer(),
-                  child: Container(
-                    width: 45,
-                    height: 45,
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor,
-                      borderRadius: BorderRadius.circular(300),
-                      boxShadow: [
-                        BoxShadow(
-                          offset: Offset(0, 0),
-                          spreadRadius: 1,
-                          blurRadius: 15,
-                          color: Colors.black12,
-                        ),
-                      ],
-                    ),
-                    child: Icon(Icons.route, size: 25, color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Bottom control panel
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              padding: EdgeInsets.all(16),
+          // Data display row - only visible during playback
+          if (_isPlaying && _currentDateTime != null)
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black12,
-                    blurRadius: 8,
-                    offset: Offset(0, -2),
+                    blurRadius: 2,
+                    offset: Offset(0, 1),
                   ),
                 ],
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
-                ),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+              margin: EdgeInsets.all(8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  // Handle bar
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+                  _buildDataItem(
+                    icon: Icons.speed,
+                    label: 'Speed',
+                    value: '${_currentSpeed.toStringAsFixed(1)} km/h',
                   ),
+                  Container(width: 1, height: 30, color: Colors.grey.shade300),
+                  _buildDataItem(
+                    icon: Icons.calendar_today,
+                    label: 'Date',
+                    value: _currentDateTime != null
+                        ? '${_currentDateTime!.day}/${_currentDateTime!.month}/${_currentDateTime!.year}'
+                        : '--',
+                  ),
+                  Container(width: 1, height: 30, color: Colors.grey.shade300),
+                  _buildDataItem(
+                    icon: Icons.access_time,
+                    label: 'Time',
+                    value: _currentDateTime != null
+                        ? '${_currentDateTime!.hour.toString().padLeft(2, '0')}:${_currentDateTime!.minute.toString().padLeft(2, '0')}:${_currentDateTime!.second.toString().padLeft(2, '0')}'
+                        : '--',
+                  ),
+                ],
+              ),
+            ),
+          // Map widget
+          Expanded(
+            child: Stack(
+              children: [
+                // Full screen map
+                GoogleMap(
+                  mapType: currentMapType,
+                  initialCameraPosition: CameraPosition(
+                    target: LatLng(
+                      widget.vehicle.latestLocation?.latitude ?? 0,
+                      widget.vehicle.latestLocation?.longitude ?? 0,
+                    ), // Default to Kathmandu
+                    zoom: 12.0,
+                  ),
+                  markers: _markers,
+                  polylines: _polylines,
+                  onMapCreated: (GoogleMapController controller) {
+                    _mapController = controller;
+                  },
+                  myLocationEnabled: true,
+                  myLocationButtonEnabled: true,
+                  zoomControlsEnabled: false,
+                  mapToolbarEnabled: false,
+                  compassEnabled: true,
+                ),
 
-                  SizedBox(height: 16),
-
-                  // Date and Time pickers
-                  Column(
+                // Map Buttons
+                Positioned(
+                  right: 10,
+                  top: 20,
+                  child: Column(
+                    spacing: 10,
                     children: [
-                      // Date pickers row
-                      Row(
-                        children: [
-                          // Start Date
-                          Expanded(
-                            flex: 2,
-                            child: InkWell(
-                              onTap: _selectStartDate,
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  vertical: 12,
-                                  horizontal: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: AppTheme.secondaryColor,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.calendar_today,
-                                      color: AppTheme.primaryColor,
-                                      size: 18,
-                                    ),
-                                    SizedBox(width: 6),
-                                    Expanded(
-                                      child: Text(
-                                        startDate != null
-                                            ? '${startDate!.day}/${startDate!.month}/${startDate!.year}'
-                                            : 'Start Date',
-                                        style: TextStyle(
-                                          color: startDate != null
-                                              ? AppTheme.titleColor
-                                              : AppTheme.subTitleColor,
-                                          fontSize: 13,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                      // Satellite button
+                      InkWell(
+                        onTap: () => _toggleMapType(),
+                        child: Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.white, width: 4),
+                            borderRadius: BorderRadius.circular(300),
+                            boxShadow: [
+                              BoxShadow(
+                                offset: Offset(0, 0),
+                                spreadRadius: 1,
+                                blurRadius: 15,
+                                color: Colors.black12,
                               ),
+                            ],
+                          ),
+                          child: CircleAvatar(
+                            backgroundImage: AssetImage(
+                              'assets/images/satellite_view_icon.png',
                             ),
                           ),
-
-                          SizedBox(width: 8),
-
-                          // End Date
-                          Expanded(
-                            flex: 2,
-                            child: InkWell(
-                              onTap: _selectEndDate,
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  vertical: 12,
-                                  horizontal: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: startDate == null
-                                        ? AppTheme.secondaryColor.withOpacity(
-                                            0.5,
-                                          )
-                                        : AppTheme.secondaryColor,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.calendar_today,
-                                      color: startDate == null
-                                          ? AppTheme.subTitleColor
-                                          : AppTheme.primaryColor,
-                                      size: 18,
-                                    ),
-                                    SizedBox(width: 6),
-                                    Expanded(
-                                      child: Text(
-                                        endDate != null
-                                            ? '${endDate!.day}/${endDate!.month}/${endDate!.year}'
-                                            : 'End Date',
-                                        style: TextStyle(
-                                          color: endDate != null
-                                              ? AppTheme.titleColor
-                                              : AppTheme.subTitleColor,
-                                          fontSize: 13,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          SizedBox(width: 8),
-
-                          // Go Button
-                          SizedBox(
-                            width: 50,
-                            child: ElevatedButton(
-                              onPressed:
-                                  (startDate != null &&
-                                      endDate != null &&
-                                      !isLoading)
-                                  ? _fetchHistoryData
-                                  : null,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.primaryColor,
-                                foregroundColor: Colors.white,
-                                padding: EdgeInsets.symmetric(
-                                  vertical: 12,
-                                  horizontal: 8,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              child: isLoading
-                                  ? SizedBox(
-                                      height: 14,
-                                      width: 14,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                              Colors.white,
-                                            ),
-                                      ),
-                                    )
-                                  : Icon(Icons.search, size: 16),
-                            ),
-                          ),
-
-                          SizedBox(width: 8),
-
-                          // Play/Stop Button
-                          if (routePoints.length > 1)
-                            SizedBox(
-                              width: 50,
-                              child: ElevatedButton(
-                                onPressed: isPlaying
-                                    ? _stopAnimation
-                                    : _playAnimation,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: isPlaying
-                                      ? Colors.red
-                                      : AppTheme.primaryColor,
-                                  foregroundColor: Colors.white,
-                                  padding: EdgeInsets.symmetric(
-                                    vertical: 12,
-                                    horizontal: 8,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                child: Icon(
-                                  isPlaying ? Icons.stop : Icons.play_arrow,
-                                  size: 16,
-                                ),
-                              ),
-                            ),
-                        ],
+                        ),
                       ),
 
-                      SizedBox(height: 8),
-
-                      // Time pickers row
-                      Row(
-                        children: [
-                          // Start Time
-                          Expanded(
-                            flex: 2,
-                            child: InkWell(
-                              onTap: _selectStartTime,
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  vertical: 12,
-                                  horizontal: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: AppTheme.secondaryColor,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.access_time,
-                                      color: AppTheme.primaryColor,
-                                      size: 18,
-                                    ),
-                                    SizedBox(width: 6),
-                                    Expanded(
-                                      child: Text(
-                                        startTime != null
-                                            ? '${startTime!.format(context)}'
-                                            : 'Start Time',
-                                        style: TextStyle(
-                                          color: startTime != null
-                                              ? AppTheme.titleColor
-                                              : AppTheme.subTitleColor,
-                                          fontSize: 13,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                      // Trip Button
+                      InkWell(
+                        onTap: () => _scaffoldKey.currentState?.openDrawer(),
+                        child: Container(
+                          width: 45,
+                          height: 45,
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor,
+                            borderRadius: BorderRadius.circular(300),
+                            boxShadow: [
+                              BoxShadow(
+                                offset: Offset(0, 0),
+                                spreadRadius: 1,
+                                blurRadius: 15,
+                                color: Colors.black12,
                               ),
-                            ),
+                            ],
                           ),
-
-                          SizedBox(width: 8),
-
-                          // End Time
-                          Expanded(
-                            flex: 2,
-                            child: InkWell(
-                              onTap: _selectEndTime,
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  vertical: 12,
-                                  horizontal: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: AppTheme.secondaryColor,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.access_time,
-                                      color: AppTheme.primaryColor,
-                                      size: 18,
-                                    ),
-                                    SizedBox(width: 6),
-                                    Expanded(
-                                      child: Text(
-                                        endTime != null
-                                            ? '${endTime!.format(context)}'
-                                            : 'End Time',
-                                        style: TextStyle(
-                                          color: endTime != null
-                                              ? AppTheme.titleColor
-                                              : AppTheme.subTitleColor,
-                                          fontSize: 13,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                          child: Icon(
+                            Icons.route,
+                            size: 25,
+                            color: Colors.white,
                           ),
-
-                          SizedBox(width: 8),
-
-                          // Spacer to align with buttons above
-                          SizedBox(width: 50),
-                          SizedBox(width: 8),
-                          if (routePoints.length > 1) SizedBox(width: 50),
-                        ],
+                        ),
                       ),
                     ],
                   ),
+                ),
 
-                  // Animation info row (shown during animation)
-                  if (isPlaying && _currentDateTime != null)
-                    Padding(
-                      padding: EdgeInsets.only(top: 12),
-                      child: Container(
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: AppTheme.primaryColor.withOpacity(0.3),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            // Date and Time
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.calendar_today,
-                                        color: AppTheme.primaryColor,
-                                        size: 14,
-                                      ),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        '${_currentDateTime!.day}/${_currentDateTime!.month}/${_currentDateTime!.year}',
-                                        style: TextStyle(
-                                          color: AppTheme.titleColor,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(height: 2),
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.access_time,
-                                        color: AppTheme.primaryColor,
-                                        size: 14,
-                                      ),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        '${_currentDateTime!.hour.toString().padLeft(2, '0')}:${_currentDateTime!.minute.toString().padLeft(2, '0')}:${_currentDateTime!.second.toString().padLeft(2, '0')}',
-                                        style: TextStyle(
-                                          color: AppTheme.titleColor,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            // Speed
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.speed,
-                                        color: AppTheme.primaryColor,
-                                        size: 14,
-                                      ),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        'Speed',
-                                        style: TextStyle(
-                                          color: AppTheme.subTitleColor,
-                                          fontSize: 10,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(height: 2),
-                                  Text(
-                                    '${_currentSpeed.toStringAsFixed(1)} km/h',
-                                    style: TextStyle(
-                                      color: AppTheme.titleColor,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                  // Date range info (when not playing)
-                  if (startDate != null && endDate != null && !isPlaying)
-                    Padding(
-                      padding: EdgeInsets.only(top: 8),
-                      child: Text(
-                        'Range: ${startDate!.day}/${startDate!.month}/${startDate!.year} ${startTime?.format(context) ?? '12:00 AM'} - ${endDate!.day}/${endDate!.month}/${endDate!.year} ${endTime?.format(context) ?? '11:59 PM'}',
-                        style: TextStyle(
-                          color: AppTheme.subTitleColor,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-
-                  // Progress Slider (integrated in bottom UI)
-                  if (_showProgressSlider && routePoints.length > 1)
-                    Padding(
-                      padding: EdgeInsets.only(top: 12),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryColor.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: AppTheme.primaryColor.withOpacity(0.2),
-                            width: 1,
-                          ),
-                        ),
-                        child: SliderTheme(
-                          data: SliderTheme.of(context).copyWith(
-                            activeTrackColor: AppTheme.primaryColor,
-                            inactiveTrackColor: AppTheme.primaryColor
-                                .withOpacity(0.3),
-                            thumbColor: AppTheme.primaryColor,
-                            thumbShape: RoundSliderThumbShape(
-                              enabledThumbRadius: 6,
-                            ),
-                            trackHeight: 3,
-                            overlayShape: RoundSliderOverlayShape(
-                              overlayRadius: 12,
-                            ),
-                          ),
-                          child: Slider(
-                            value: _sliderValue,
-                            onChanged: _onSliderChanged,
-                            onChangeEnd: (value) => _onSliderDragEnd(),
-                            min: 0.0,
-                            max: 1.0,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-
-          // Map Buttons
-          if (_showStopModal && _selectedStopTrip != null)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black54,
-                child: Center(
+                // Bottom control panel
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
                   child: Container(
-                    margin: EdgeInsets.all(20),
-                    padding: EdgeInsets.all(20),
+                    padding: EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black26,
-                          blurRadius: 10,
-                          offset: Offset(0, 5),
+                          color: Colors.black12,
+                          blurRadius: 8,
+                          offset: Offset(0, -2),
                         ),
                       ],
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
+                      ),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Header
-                        Row(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.red.shade100,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(
-                                Icons.location_on,
-                                color: Colors.red.shade600,
-                                size: 24,
-                              ),
-                            ),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Stop Point',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppTheme.titleColor,
-                                    ),
-                                  ),
-                                  if (!_isLoadingAddress)
-                                    Text(
-                                      _address,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: AppTheme.subTitleColor,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: _closeStopModal,
-                              icon: Icon(
-                                Icons.close,
-                                color: AppTheme.subTitleColor,
-                              ),
-                            ),
-                          ],
+                        // Handle bar
+                        Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
                         ),
 
-                        SizedBox(height: 20),
+                        SizedBox(height: 8),
 
-                        // Get actual timestamps
-                        Builder(
-                          builder: (context) {
-                            final timestamps = _getStopPointTimestamps(
-                              _selectedStopTrip!,
-                              _nextTrip,
-                            );
-                            final arrivalTime = timestamps['arrival_time'];
-                            final departureTime = timestamps['departure_time'];
-
-                            return Column(
+                        // Date and Time pickers (always visible)
+                        Column(
+                          children: [
+                            // Date pickers row
+                            Row(
                               children: [
-                                // Arrival Time (when vehicle stopped)
-                                if (arrivalTime != null)
-                                  _buildTimeRow(
-                                    'Arrival Time',
-                                    _formatDateTime(arrivalTime),
-                                    Icons.arrow_forward,
-                                    Colors.orange,
+                                // Start Date
+                                Expanded(
+                                  flex: 2,
+                                  child: InkWell(
+                                    onTap: _selectStartDate,
+                                    child: Container(
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 12,
+                                        horizontal: 12,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          color: AppTheme.secondaryColor,
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.calendar_today,
+                                            color: AppTheme.primaryColor,
+                                            size: 18,
+                                          ),
+                                          SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              startDate != null
+                                                  ? '${startDate!.day}/${startDate!.month}/${startDate!.year}'
+                                                  : 'Start Date',
+                                              style: TextStyle(
+                                                color: startDate != null
+                                                    ? AppTheme.titleColor
+                                                    : AppTheme.subTitleColor,
+                                                fontSize: 13,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                                SizedBox(width: 8),
+
+                                // End Date
+                                Expanded(
+                                  flex: 2,
+                                  child: InkWell(
+                                    onTap: _selectEndDate,
+                                    child: Container(
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 12,
+                                        horizontal: 12,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          color: startDate == null
+                                              ? AppTheme.secondaryColor
+                                                    .withOpacity(0.5)
+                                              : AppTheme.secondaryColor,
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.calendar_today,
+                                            color: startDate == null
+                                                ? AppTheme.subTitleColor
+                                                : AppTheme.primaryColor,
+                                            size: 18,
+                                          ),
+                                          SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              endDate != null
+                                                  ? '${endDate!.day}/${endDate!.month}/${endDate!.year}'
+                                                  : 'End Date',
+                                              style: TextStyle(
+                                                color: endDate != null
+                                                    ? AppTheme.titleColor
+                                                    : AppTheme.subTitleColor,
+                                                fontSize: 13,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                                // Go Button (only when not playing)
+                                if (!isPlaying) ...[
+                                  SizedBox(width: 8),
+
+                                  SizedBox(
+                                    width: 50,
+                                    child: ElevatedButton(
+                                      onPressed:
+                                          (startDate != null &&
+                                              endDate != null &&
+                                              !isLoading)
+                                          ? _fetchHistoryData
+                                          : null,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppTheme.primaryColor,
+                                        foregroundColor: Colors.white,
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: 12,
+                                          horizontal: 8,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                      ),
+                                      child: isLoading
+                                          ? SizedBox(
+                                              height: 14,
+                                              width: 14,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                valueColor:
+                                                    AlwaysStoppedAnimation<
+                                                      Color
+                                                    >(Colors.white),
+                                              ),
+                                            )
+                                          : Icon(Icons.search, size: 16),
+                                    ),
                                   ),
 
-                                if (arrivalTime != null) SizedBox(height: 8),
+                                  SizedBox(width: 8),
+                                ],
 
-                                // Departure Time (when vehicle started next trip)
-                                if (departureTime != null) ...[
-                                  _buildTimeRow(
-                                    'Departure Time',
-                                    _formatDateTime(departureTime),
-                                    Icons.departure_board,
-                                    Colors.green,
-                                  ),
-
-                                  SizedBox(height: 8),
-
-                                  // Duration
-                                  _buildTimeRow(
-                                    'Stop Duration',
-                                    _formatDuration(_calculateStopDuration()),
-                                    Icons.timer,
-                                    Colors.blue,
+                                // Play/Stop Button (always visible when route points exist)
+                                if (routePoints.length > 1) ...[
+                                  SizedBox(
+                                    width: 50,
+                                    child: ElevatedButton(
+                                      onPressed: _playAnimation,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: _isPlaying
+                                            ? Colors.red
+                                            : AppTheme.primaryColor,
+                                        foregroundColor: Colors.white,
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: 12,
+                                          horizontal: 8,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        _isPlaying
+                                            ? Icons.stop
+                                            : Icons.play_arrow,
+                                        size: 18,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ],
-                            );
-                          },
-                        ),
-
-                        SizedBox(height: 16),
-
-                        // Action buttons
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: () {
-                                  _closeStopModal();
-                                  _showTripOnMap(_selectedStopTrip!);
-                                },
-                                icon: Icon(Icons.route, size: 16),
-                                label: Text('View Trip'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppTheme.primaryColor,
-                                  foregroundColor: Colors.white,
-                                  padding: EdgeInsets.symmetric(vertical: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                              ),
                             ),
-                            if (_nextTrip != null) ...[
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: () {
-                                    _closeStopModal();
-                                    _showTripOnMap(_nextTrip!);
-                                  },
-                                  icon: Icon(Icons.arrow_forward, size: 16),
-                                  label: Text('Next Trip'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.green,
-                                    foregroundColor: Colors.white,
-                                    padding: EdgeInsets.symmetric(vertical: 12),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
+
+                            SizedBox(height: 8),
+
+                            // Time pickers row
+                            Row(
+                              children: [
+                                // Start Time
+                                Expanded(
+                                  flex: 2,
+                                  child: InkWell(
+                                    onTap: _selectStartTime,
+                                    child: Container(
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 12,
+                                        horizontal: 12,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          color: AppTheme.secondaryColor,
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.access_time,
+                                            color: AppTheme.primaryColor,
+                                            size: 18,
+                                          ),
+                                          SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              startTime != null
+                                                  ? '${startTime!.format(context)}'
+                                                  : 'Start Time',
+                                              style: TextStyle(
+                                                color: startTime != null
+                                                    ? AppTheme.titleColor
+                                                    : AppTheme.subTitleColor,
+                                                fontSize: 13,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ],
+
+                                SizedBox(width: 8),
+
+                                // End Time
+                                Expanded(
+                                  flex: 2,
+                                  child: InkWell(
+                                    onTap: _selectEndTime,
+                                    child: Container(
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 12,
+                                        horizontal: 12,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          color: AppTheme.secondaryColor,
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.access_time,
+                                            color: AppTheme.primaryColor,
+                                            size: 18,
+                                          ),
+                                          SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              endTime != null
+                                                  ? '${endTime!.format(context)}'
+                                                  : 'End Time',
+                                              style: TextStyle(
+                                                color: endTime != null
+                                                    ? AppTheme.titleColor
+                                                    : AppTheme.subTitleColor,
+                                                fontSize: 13,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                                SizedBox(width: 8),
+
+                                // Spacer to align with buttons above
+                                SizedBox(width: 50),
+                                SizedBox(width: 8),
+                                if (routePoints.length > 1) SizedBox(width: 50),
+                              ],
+                            ),
                           ],
                         ),
+
+                        // Animation info row (shown during animation)
+                        if (isPlaying && _currentDateTime != null)
+                          Padding(
+                            padding: EdgeInsets.only(top: 12),
+                            child: Container(
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: AppTheme.primaryColor.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  // Date and Time
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.calendar_today,
+                                              color: AppTheme.primaryColor,
+                                              size: 14,
+                                            ),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              '${_currentDateTime!.day}/${_currentDateTime!.month}/${_currentDateTime!.year}',
+                                              style: TextStyle(
+                                                color: AppTheme.titleColor,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        SizedBox(height: 2),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.access_time,
+                                              color: AppTheme.primaryColor,
+                                              size: 14,
+                                            ),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              '${_currentDateTime!.hour.toString().padLeft(2, '0')}:${_currentDateTime!.minute.toString().padLeft(2, '0')}:${_currentDateTime!.second.toString().padLeft(2, '0')}',
+                                              style: TextStyle(
+                                                color: AppTheme.titleColor,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  // Speed
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.speed,
+                                              color: AppTheme.primaryColor,
+                                              size: 14,
+                                            ),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              'Speed',
+                                              style: TextStyle(
+                                                color: AppTheme.subTitleColor,
+                                                fontSize: 10,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        SizedBox(height: 2),
+                                        Text(
+                                          '${_currentSpeed.toStringAsFixed(1)} km/h',
+                                          style: TextStyle(
+                                            color: AppTheme.titleColor,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                        // Date range info (when not playing)
+                        if (startDate != null && endDate != null && !isPlaying)
+                          Padding(
+                            padding: EdgeInsets.only(top: 8),
+                            child: Text(
+                              'Range: ${startDate!.day}/${startDate!.month}/${startDate!.year} ${startTime?.format(context) ?? '12:00 AM'} - ${endDate!.day}/${endDate!.month}/${endDate!.year} ${endTime?.format(context) ?? '11:59 PM'}',
+                              style: TextStyle(
+                                color: AppTheme.subTitleColor,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
                 ),
-              ),
+
+                // Map Buttons
+                if (_showStopModal && _selectedStopTrip != null)
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      color: Colors.black54,
+                      child: Center(
+                        child: Container(
+                          margin: EdgeInsets.all(20),
+                          padding: EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 10,
+                                offset: Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Header
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.shade100,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(
+                                      Icons.location_on,
+                                      color: Colors.red.shade600,
+                                      size: 24,
+                                    ),
+                                  ),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Stop Point',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppTheme.titleColor,
+                                          ),
+                                        ),
+                                        if (!_isLoadingAddress)
+                                          Text(
+                                            _address,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: AppTheme.subTitleColor,
+                                            ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: _closeStopModal,
+                                    icon: Icon(
+                                      Icons.close,
+                                      color: AppTheme.subTitleColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              SizedBox(height: 20),
+
+                              // Get actual timestamps
+                              Builder(
+                                builder: (context) {
+                                  final timestamps = _getStopPointTimestamps(
+                                    _selectedStopTrip!,
+                                    _nextTrip,
+                                  );
+                                  final arrivalTime =
+                                      timestamps['arrival_time'];
+                                  final departureTime =
+                                      timestamps['departure_time'];
+
+                                  return Column(
+                                    children: [
+                                      // Arrival Time (when vehicle stopped)
+                                      if (arrivalTime != null)
+                                        _buildTimeRow(
+                                          'Arrival Time',
+                                          _formatDateTime(arrivalTime),
+                                          Icons.arrow_forward,
+                                          Colors.orange,
+                                        ),
+
+                                      if (arrivalTime != null)
+                                        SizedBox(height: 8),
+
+                                      // Departure Time (when vehicle started next trip)
+                                      if (departureTime != null) ...[
+                                        _buildTimeRow(
+                                          'Departure Time',
+                                          _formatDateTime(departureTime),
+                                          Icons.departure_board,
+                                          Colors.green,
+                                        ),
+
+                                        SizedBox(height: 8),
+
+                                        // Duration
+                                        _buildTimeRow(
+                                          'Stop Duration',
+                                          _formatDuration(
+                                            _calculateStopDuration(),
+                                          ),
+                                          Icons.timer,
+                                          Colors.blue,
+                                        ),
+                                      ],
+                                    ],
+                                  );
+                                },
+                              ),
+
+                              SizedBox(height: 8),
+
+                              // Action buttons
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      onPressed: () {
+                                        _closeStopModal();
+                                        _showTripOnMap(_selectedStopTrip!);
+                                      },
+                                      icon: Icon(Icons.route, size: 16),
+                                      label: Text('View Trip'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppTheme.primaryColor,
+                                        foregroundColor: Colors.white,
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: 8,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  if (_nextTrip != null) ...[
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: ElevatedButton.icon(
+                                        onPressed: () {
+                                          _closeStopModal();
+                                          _showTripOnMap(_nextTrip!);
+                                        },
+                                        icon: Icon(
+                                          Icons.arrow_forward,
+                                          size: 16,
+                                        ),
+                                        label: Text('Next Trip'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.green,
+                                          foregroundColor: Colors.white,
+                                          padding: EdgeInsets.symmetric(
+                                            vertical: 8,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
+          ),
         ],
       ),
+    );
+  }
+
+  // Helper method to build data items for the display row
+  Widget _buildDataItem({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: Colors.blue.shade700),
+            SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 2),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+      ],
     );
   }
 
@@ -2386,7 +2011,7 @@ class _VehicleHistoryShowState extends State<VehicleHistoryShowScreen>
   @override
   void dispose() {
     _mapController?.dispose();
-    _animationController.dispose();
+    _animationTimer?.cancel();
     super.dispose();
   }
 }

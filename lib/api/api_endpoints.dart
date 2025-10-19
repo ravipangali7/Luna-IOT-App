@@ -111,4 +111,12 @@ class ApiEndpoints {
   static const String biometricLogin = '/api/core/auth/biometric-login';
   static const String updateBiometricToken = '/api/core/auth/biometric-token';
   static const String removeBiometricToken = '/api/core/auth/biometric-token';
+
+  // Alert System - Django alert_system endpoints
+  static const String getAllAlertGeofences = '/api/alert-system/alert-geofence';
+  static const String getSosAlertGeofences =
+      '/api/alert-system/alert-geofence/sos';
+  static const String getAllAlertTypes = '/api/alert-system/alert-type';
+  static const String createAlertHistory =
+      '/api/alert-system/alert-history/create/';
 }

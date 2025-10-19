@@ -7,6 +7,7 @@ import 'package:luna_iot/bindings/geofence_binding.dart';
 import 'package:luna_iot/bindings/notification_binding.dart';
 import 'package:luna_iot/bindings/popup_binding.dart';
 import 'package:luna_iot/bindings/role_binding.dart';
+import 'package:luna_iot/bindings/sos_binding.dart';
 import 'package:luna_iot/bindings/user_binding.dart';
 import 'package:luna_iot/bindings/vehicle_binding.dart';
 import 'package:luna_iot/middleware/auth_middleware.dart';
@@ -393,6 +394,7 @@ class AppRoutes {
     GetPage(
       name: sos,
       page: () => const SosScreen(),
+      binding: SosBinding(),
       middlewares: [AuthMiddleware()],
     ),
     GetPage(
