@@ -72,7 +72,7 @@ class AlertDevice {
   String get deviceName {
     switch (type.toLowerCase()) {
       case 'buzzer':
-        return 'Buzzer';
+        return 'Siren';
       case 'sos':
         return 'Switch';
       default:

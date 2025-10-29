@@ -117,6 +117,13 @@ class HomeAdminSection extends StatelessWidget {
             shrinkWrap: true,
             children: [
               HomeFeatureCard(
+                title: 'Smart Community',
+                subtitle: 'smart_community_subtitle'.tr,
+                icon: Icons.people,
+                route: AppRoutes.home,
+                onTap: () {}, // Disabled - no action on tap
+              ),
+              HomeFeatureCard(
                 title: 'buzzers'.tr,
                 subtitle: 'manage_buzzers'.tr,
                 icon: Icons.campaign,

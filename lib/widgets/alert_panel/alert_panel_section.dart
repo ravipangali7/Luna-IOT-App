@@ -77,10 +77,12 @@ class _AlertPanelSectionState extends State<AlertPanelSection> {
         return _buildNoDevicesCard();
       }
 
-      // If we have both types, show both cards
+      // If we have both types, show Smart Community card, buzzer, and switch
       if (buzzerDevices.isNotEmpty && sosDevices.isNotEmpty) {
         return Row(
           children: [
+            Expanded(child: _buildSmartCommunityCard()),
+            const SizedBox(width: 10),
             Expanded(child: AlertDeviceCard(device: buzzerDevices.first)),
             const SizedBox(width: 10),
             Expanded(child: AlertDeviceCard(device: sosDevices.first)),
@@ -88,17 +90,62 @@ class _AlertPanelSectionState extends State<AlertPanelSection> {
         );
       }
 
-      // If only one type is available, show one card
+      // If only buzzer type is available, show Smart Community and buzzer
       if (buzzerDevices.isNotEmpty) {
-        return AlertDeviceCard(device: buzzerDevices.first);
+        return Row(
+          children: [
+            Expanded(child: _buildSmartCommunityCard()),
+            const SizedBox(width: 10),
+            Expanded(child: AlertDeviceCard(device: buzzerDevices.first)),
+          ],
+        );
       }
 
+      // If only switch type is available, show just the switch (no Smart Community)
       if (sosDevices.isNotEmpty) {
         return AlertDeviceCard(device: sosDevices.first);
       }
 
       return _buildNoDevicesCard();
     });
+  }
+
+  Widget _buildSmartCommunityCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.people_outline,
+            size: 40,
+            color: Colors.grey.shade600,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Smart Community',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade700,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildNoDevicesCard() {

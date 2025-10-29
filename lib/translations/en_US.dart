@@ -567,18 +567,19 @@ class EnUs {
 
     // Alert Panel
     'alert_panel': 'Alert Panel',
-    'buzzer': 'Buzzer',
+    'buzzer': 'Siren',
     'switch': 'Switch',
     'last_updated': 'Last Updated',
     'inactive_device': 'Inactive Device',
     'no_alert_devices': 'No alert devices assigned',
-    'buzzers': 'Buzzers',
+    'buzzers': 'Sirens',
     'sos_switches': 'SOS Switches',
-    'no_buzzer_devices': 'No buzzer devices found',
+    'no_buzzer_devices': 'No siren devices found',
     'no_sos_devices': 'No SOS switch devices found',
     'pull_to_refresh': 'Pull to refresh',
     'alert_system': 'Alert System',
-    'manage_buzzers': 'Manage Buzzers',
+    'smart_community_subtitle': 'Smart Community',
+    'manage_buzzers': 'Manage Sirens',
     'manage_sos_switches': 'Manage SOS Switches',
     'location_is_off': 'Location is Off',
     'please_turn_on_location': 'Please turn on location services',
@@ -587,5 +588,13 @@ class EnUs {
     'no_service_in_area': 'No emergency service available in your area',
     'checking_location': 'Checking location...',
     'matching_services': 'Matching services...',
+    
+    // Profile Edit
+    'enter_name': 'Enter name',
+    'enter_phone': 'Enter phone number',
+    'select_image_source': 'Select Image Source',
+    'gallery': 'Gallery',
+    'camera': 'Camera',
+    'remove_photo': 'Remove Photo',
   };
 }

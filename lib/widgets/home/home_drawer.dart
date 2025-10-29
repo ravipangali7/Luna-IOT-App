@@ -4,6 +4,7 @@ import 'package:luna_iot/app/app_theme.dart';
 import 'package:luna_iot/controllers/auth_controller.dart';
 import 'package:luna_iot/app/app_routes.dart';
 import 'package:luna_iot/widgets/language_switch_widget.dart';
+import 'package:luna_iot/utils/constants.dart';
 
 class HomeDrawer extends StatefulWidget {
   const HomeDrawer({super.key});
@@ -372,14 +373,31 @@ class _HomeDrawerState extends State<HomeDrawer> {
                       child: CircleAvatar(
                         radius: 40,
                         backgroundColor: Colors.white,
-                        child: Text(
-                          user?.name.substring(0, 1).toUpperCase() ?? 'U',
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.primaryColor,
-                          ),
-                        ),
+                        child: user != null && user.profilePicture != null
+                            ? ClipOval(
+                                child: Image.network(
+                                  '${Constants.baseUrl}${user.profilePicture}',
+                                  width: 80,
+                                  height: 80,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Text(
+                                    user.name.substring(0, 1).toUpperCase(),
+                                    style: TextStyle(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppTheme.primaryColor,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : Text(
+                                user?.name.substring(0, 1).toUpperCase() ?? 'U',
+                                style: TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.primaryColor,
+                                ),
+                              ),
                       ),
                     ),
                     const SizedBox(height: 15),

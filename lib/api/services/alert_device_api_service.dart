@@ -8,7 +8,7 @@ class AlertDeviceApiService {
 
   AlertDeviceApiService(this._apiClient);
 
-  /// Get alert devices (buzzer and sos) for current user with latest status
+  /// Get alert devices (siren and sos) for current user with latest status
   Future<List<AlertDevice>> getAlertDevices() async {
     try {
       final response = await _apiClient.dio.get(ApiEndpoints.getAlertDevices);

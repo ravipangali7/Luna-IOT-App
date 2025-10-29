@@ -571,18 +571,19 @@ class NeNp {
 
     // Alert Panel
     'alert_panel': 'चेतावनी प्यानल',
-    'buzzer': 'बजर',
+    'buzzer': 'साइरन',
     'switch': 'स्विच',
     'last_updated': 'अन्तिम अपडेट',
     'inactive_device': 'निष्क्रिय उपकरण',
     'no_alert_devices': 'कुनै चेतावनी उपकरण असाइन गरिएको छैन',
-    'buzzers': 'बजर्स',
+    'buzzers': 'साइरनहरू',
     'sos_switches': 'SOS स्विचहरू',
-    'no_buzzer_devices': 'कुनै बजर उपकरण फेला परेन',
+    'no_buzzer_devices': 'कुनै साइरन उपकरण फेला परेन',
     'no_sos_devices': 'कुनै SOS स्विच उपकरण फेला परेन',
     'pull_to_refresh': 'ताजा गर्न तान्नुहोस्',
     'alert_system': 'अलर्ट प्रणाली',
-    'manage_buzzers': 'बजर्स व्यवस्थापन',
+    'smart_community_subtitle': 'स्मार्ट सामुदायिक',
+    'manage_buzzers': 'साइरन व्यवस्थापन',
     'manage_sos_switches': 'SOS स्विच व्यवस्थापन',
     'location_is_off': 'स्थान बन्द छ',
     'please_turn_on_location': 'कृपया स्थान सेवाहरू खोल्नुहोस्',
@@ -591,5 +592,13 @@ class NeNp {
     'no_service_in_area': 'तपाईंको क्षेत्रमा कुनै आपतकालीन सेवा उपलब्ध छैन',
     'checking_location': 'स्थान जाँच गर्दै...',
     'matching_services': 'सेवाहरू मिलाउँदै...',
+    
+    // Profile Edit
+    'enter_name': 'नाम प्रविष्ट गर्नुहोस्',
+    'enter_phone': 'फोन नम्बर प्रविष्ट गर्नुहोस्',
+    'select_image_source': 'छवि स्रोत छान्नुहोस्',
+    'gallery': 'ग्यालेरी',
+    'camera': 'क्यामेरा',
+    'remove_photo': 'फोटो हटाउनुहोस्',
   };
 }

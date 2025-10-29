@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:luna_iot/app/app_theme.dart';
 import 'package:luna_iot/controllers/auth_controller.dart';
 import 'package:luna_iot/controllers/language_controller.dart';
-import 'package:luna_iot/views/home_screen.dart';
+import 'package:luna_iot/views/main_screen.dart';
 import 'package:luna_iot/widgets/loading_widget.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -42,7 +42,7 @@ class LoginScreenState extends State<LoginScreen> {
       );
 
       if (success) {
-        Get.offAll(() => HomeScreen());
+        Get.offAll(() => MainScreen());
       } else {
         debugPrint('Login failed');
       }
@@ -54,7 +54,7 @@ class LoginScreenState extends State<LoginScreen> {
       final success = await _authController.loginWithBiometric();
 
       if (success) {
-        Get.offAll(() => HomeScreen());
+        Get.offAll(() => MainScreen());
       }
     } catch (e) {
       Get.snackbar(

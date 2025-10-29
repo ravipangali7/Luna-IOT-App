@@ -9,16 +9,18 @@ class HomeFeatureCard extends StatelessWidget {
     required this.subtitle,
     required this.icon,
     required this.route,
+    this.onTap,
   });
 
   final String title, subtitle;
   final IconData icon;
   final String route;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () => Get.toNamed(route),
+      onTap: onTap ?? () => Get.toNamed(route),
       child: Container(
         height: 100,
         width: 108,

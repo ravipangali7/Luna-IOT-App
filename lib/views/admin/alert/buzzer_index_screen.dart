@@ -36,7 +36,7 @@ class BuzzerIndexScreen extends GetView<BuzzerController> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Error loading buzzers',
+                    'Error loading sirens',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,

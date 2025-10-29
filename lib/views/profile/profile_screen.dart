@@ -4,6 +4,8 @@ import 'package:luna_iot/app/app_theme.dart';
 import 'package:luna_iot/controllers/auth_controller.dart';
 import 'package:luna_iot/controllers/navigation_controller.dart';
 import 'package:luna_iot/widgets/language_switch_widget.dart';
+import 'package:luna_iot/utils/constants.dart';
+import 'package:luna_iot/app/app_routes.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -84,16 +86,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             backgroundColor: AppTheme.primaryColor.withOpacity(
                               0.1,
                             ),
-                            child: Text(
-                              (user?.name ?? 'User')
-                                  .substring(0, 1)
-                                  .toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.primaryColor,
-                              ),
-                            ),
+                            child: user != null && user.profilePicture != null
+                                ? ClipOval(
+                                    child: Image.network(
+                                      '${Constants.baseUrl}${user.profilePicture}',
+                                      width: 64,
+                                      height: 64,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Text(
+                                        (user.name)
+                                            .substring(0, 1)
+                                            .toUpperCase(),
+                                        style: TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppTheme.primaryColor,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : Text(
+                                    (user?.name ?? 'User')
+                                        .substring(0, 1)
+                                        .toUpperCase(),
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppTheme.primaryColor,
+                                    ),
+                                  ),
                           ),
                         ),
                         Positioned(
@@ -146,7 +167,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              user?.role?.name ?? 'no_role'.tr,
+                              user?.role.name ?? 'no_role'.tr,
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: Colors.white,
@@ -171,7 +192,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     title: 'edit_profile'.tr,
                     subtitle: 'update_personal_info'.tr,
                     onTap: () {
-                      // Navigate to edit profile
+                      Get.toNamed(AppRoutes.editProfile);
                     },
                   ),
                 ],
@@ -217,7 +238,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.logout,
                     title: 'logout'.tr,
                     subtitle: 'sign_out_of_your_account'.tr,
-                    isDestructive: false,
+                    isDestructive: true,
                     onTap: () {
                       _showLogoutConfirmation(authController);
                     },
@@ -333,7 +354,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         title: Row(
           children: [
-            Icon(Icons.logout, color: Colors.orange, size: 24),
+            Icon(Icons.logout, color: Colors.red, size: 24),
             const SizedBox(width: 10),
             const Text('Logout'),
           ],
@@ -353,7 +374,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               authController.logout();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
+              backgroundColor: Colors.red,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -366,85 +387,184 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showDeleteAccountConfirmation(AuthController authController) {
-    Get.dialog(
-      AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: Row(
-          children: [
-            Icon(Icons.warning, color: Colors.red, size: 24),
-            const SizedBox(width: 10),
-            const Text('Delete Account'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Are you sure you want to delete your account?',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+  void _showDeleteAccountConfirmation(AuthController authController) async {
+    // First show password verification dialog
+    final _passwordController = TextEditingController();
+    bool _obscurePassword = true;
+    bool _showPasswordError = false;
+
+    final result = await Get.dialog<bool>(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: StatefulBuilder(
+          builder: (context, setDialogState) => Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: Colors.white,
             ),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.withOpacity(0.3)),
-              ),
+            child: SingleChildScrollView(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.red, size: 16),
-                      const SizedBox(width: 5),
-                      const Text(
-                        'Important:',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                  // Icon
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.shield_outlined,
+                      size: 40,
+                      color: Colors.red,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Title
+                  Text(
+                    'confirm_password'.tr,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.titleColor,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Subtitle
+                  Text(
+                    'enter_password_to_continue'.tr,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Password field
+                  TextFormField(
+                    controller: _passwordController,
+                    obscureText: _obscurePassword,
+                    decoration: InputDecoration(
+                      labelText: 'password'.tr,
+                      prefixIcon: Icon(
+                        Icons.lock_outline,
+                        color: Colors.red,
+                      ),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
                           color: Colors.red,
+                        ),
+                        onPressed: () {
+                          setDialogState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                      ),
+                      errorText: _showPasswordError
+                          ? 'Incorrect password'
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.red, width: 2),
+                      ),
+                    ),
+                    autofocus: true,
+                    onChanged: (value) {
+                      if (_showPasswordError) {
+                        setDialogState(() {
+                          _showPasswordError = false;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 30),
+
+                  // Action buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Get.back(result: false),
+                        child: Text(
+                          'cancel'.tr,
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Obx(
+                        () => ElevatedButton(
+                          onPressed: authController.isLoading.value
+                              ? null
+                              : () async {
+                                  if (_passwordController.text.isEmpty) {
+                                    Get.snackbar(
+                                      'Error',
+                                      'password_required'.tr,
+                                      backgroundColor: Colors.red,
+                                      colorText: Colors.white,
+                                    );
+                                    return;
+                                  }
+
+                                  final isValid = await authController
+                                      .verifyPassword(_passwordController.text);
+
+                                  if (isValid) {
+                                    Get.back(result: true);
+                                  } else {
+                                    setDialogState(() {
+                                      _showPasswordError = true;
+                                    });
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: authController.isLoading.value
+                              ? SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text('confirm'.tr),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 5),
-                  const Text(
-                    '• Your account will be deactivated immediately\n'
-                    '• You will be logged out automatically\n'
-                    '• Contact administration to reactivate your account\n'
-                    '• This action cannot be undone',
-                    style: TextStyle(fontSize: 13, color: Colors.red),
-                  ),
                 ],
               ),
             ),
-          ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Get.back();
-              _confirmDeleteAccount(authController);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text('Delete Account'),
-          ),
-        ],
       ),
     );
+
+    // If password is correct, show delete confirmation
+    if (result == true) {
+      _confirmDeleteAccount(authController);
+    }
   }
 
   void _confirmDeleteAccount(AuthController authController) {

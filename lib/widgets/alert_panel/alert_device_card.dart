@@ -2,28 +2,43 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:luna_iot/app/app_theme.dart';
 import 'package:luna_iot/models/alert_device_model.dart';
+import 'package:luna_iot/services/vehicle_service.dart';
 
 class AlertDeviceCard extends StatelessWidget {
   final AlertDevice device;
 
   const AlertDeviceCard({super.key, required this.device});
 
+  // Helper methods for battery and signal percentage conversion
+  int _getBatteryPercentage(int rawValue) {
+    // Battery uses 0-6 scale where 6 = 100%
+    if (rawValue <= 0) return 0;
+    if (rawValue >= 6) return 100;
+    return ((rawValue / 6) * 100).round();
+  }
+
+  int _getSignalPercentage(int rawValue) {
+    // Signal uses 0-4 scale where 4 = 100%
+    if (rawValue <= 0) return 0;
+    if (rawValue >= 4) return 100;
+    return ((rawValue / 4) * 100).round();
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Determine theme colors based on inactive status
+    // Determine theme colors - white theme for all devices (both siren and switch)
+    // Use white background for both siren and switch cards to match design
     final isInactive = device.isInactive;
-    final cardColor = isInactive
-        ? AppTheme.inactiveColor
-        : AppTheme.successColor;
-    final iconColor = isInactive ? Colors.grey : Colors.white;
-    final textColor = isInactive ? Colors.grey : Colors.white;
+    final cardColor = Colors.white; // Always white background for both siren and switch
+    final textColor = isInactive ? Colors.grey.shade600 : AppTheme.titleColor;
 
     return Column(
       children: [
-        // Institute Badge (positioned above card like vehicle ownership badge)
-        if (device.institute != null)
-          Row(
-            children: [
+        // Badges Row (similar to vehicle card)
+        Row(
+          children: [
+            // Institute Badge (positioned above card like vehicle ownership badge)
+            if (device.institute != null)
               Container(
                 margin: const EdgeInsets.only(left: 10),
                 padding: const EdgeInsets.symmetric(
@@ -32,7 +47,7 @@ class AlertDeviceCard extends StatelessWidget {
                 ),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: isInactive ? Colors.grey.shade300 : Colors.white,
+                  color: Colors.white, // Always white for both siren and switch
                   boxShadow: [
                     BoxShadow(
                       offset: const Offset(0, 0),
@@ -58,9 +73,7 @@ class AlertDeviceCard extends StatelessWidget {
                           errorBuilder: (_, __, ___) => Icon(
                             Icons.business,
                             size: 12,
-                            color: isInactive
-                                ? Colors.grey.shade600
-                                : AppTheme.subTitleColor,
+                            color: AppTheme.subTitleColor,
                           ),
                         ),
                       ),
@@ -69,9 +82,7 @@ class AlertDeviceCard extends StatelessWidget {
                     Text(
                       device.institute!.name,
                       style: TextStyle(
-                        color: isInactive
-                            ? Colors.grey.shade600
-                            : AppTheme.subTitleColor,
+                        color: AppTheme.subTitleColor,
                         fontWeight: FontWeight.bold,
                         fontSize: 10,
                       ),
@@ -79,8 +90,9 @@ class AlertDeviceCard extends StatelessWidget {
                   ],
                 ),
               ),
-            ],
-          ),
+
+          ],
+        ),
 
         // Main Card
         GestureDetector(
@@ -95,10 +107,13 @@ class AlertDeviceCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: cardColor,
               borderRadius: BorderRadius.circular(12),
+              border: isInactive 
+                  ? null 
+                  : Border.all(color: Colors.grey.shade200, width: 1),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 4,
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
               ],
@@ -126,23 +141,32 @@ class AlertDeviceCard extends StatelessWidget {
                           device.phone,
                           style: TextStyle(
                             fontSize: 12,
-                            color: textColor.withOpacity(0.8),
+                            color: textColor.withOpacity(0.7),
                           ),
                         ),
                       ],
                     ),
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: iconColor.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
+                        color: device.type.toLowerCase() == 'buzzer' && device.relay
+                            ? Colors.green.withOpacity(0.15)
+                            : (device.type.toLowerCase() == 'buzzer'
+                                ? Colors.orange.withOpacity(0.15)
+                                : Colors.red.withOpacity(0.15)),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
                         device.type.toLowerCase() == 'buzzer'
                             ? Icons.campaign
                             : Icons.emergency,
-                        color: iconColor,
-                        size: 24,
+                        // Change siren icon color when relay is ON
+                        color: device.type.toLowerCase() == 'buzzer' && device.relay
+                            ? Colors.green.shade700
+                            : (device.type.toLowerCase() == 'buzzer'
+                                ? Colors.orange.shade700
+                                : Colors.red.shade700),
+                        size: 28,
                       ),
                     ),
                   ],
@@ -150,22 +174,58 @@ class AlertDeviceCard extends StatelessWidget {
 
                 const SizedBox(height: 12),
 
-                // Status Indicators
+                // Status Indicators - Using VehicleService for proper icons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Battery
-                    _buildStatusIndicator(
-                      icon: Icons.battery_charging_full,
-                      label: '${device.battery}%',
-                      color: textColor,
+                    // Battery - Convert 0-6 scale to percentage
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.withOpacity(0.3), width: 1),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          VehicleService.getBattery(value: device.battery, size: 18),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${_getBatteryPercentage(device.battery)}%',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: textColor,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
 
-                    // Signal
-                    _buildStatusIndicator(
-                      icon: Icons.signal_cellular_alt,
-                      label: '${device.signal}',
-                      color: textColor,
+                    // Signal - Convert 0-4 scale to percentage
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.purple.withOpacity(0.3), width: 1),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          VehicleService.getSignal(value: device.signal, size: 18),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${_getSignalPercentage(device.signal)}%',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: textColor,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -176,18 +236,17 @@ class AlertDeviceCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Ignition
-                    _buildBoolIndicator(
+                    // Ignition - with proper colors
+                    _buildIgnitionIndicator(
                       label: 'Ignition',
                       isOn: device.ignition,
-                      color: textColor,
+                      baseColor: textColor,
                     ),
 
-                    // Charging
-                    _buildBoolIndicator(
-                      label: 'Charging',
-                      isOn: device.charging,
-                      color: textColor,
+                    // Power Connected/Disconnected (based on charging value)
+                    _buildPowerIndicator(
+                      isConnected: device.charging,
+                      baseColor: textColor,
                     ),
 
                     // Relay
@@ -228,25 +287,93 @@ class AlertDeviceCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusIndicator({
-    required IconData icon,
+  Widget _buildIgnitionIndicator({
     required String label,
-    required Color color,
+    required bool isOn,
+    required Color baseColor,
   }) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: color, size: 16),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: color,
-          ),
+    // Use proper colors for ignition: red when off (stopped), green when on (idle/running)
+    final ignitionColor = isOn 
+        ? VehicleService.runningColor 
+        : VehicleService.stoppedColor;
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: isOn ? ignitionColor.withOpacity(0.15) : ignitionColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: ignitionColor,
+          width: 1.5,
         ),
-      ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: isOn ? ignitionColor : Colors.transparent,
+              shape: BoxShape.circle,
+              border: Border.all(color: ignitionColor, width: 2),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label, 
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: ignitionColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPowerIndicator({
+    required bool isConnected,
+    required Color baseColor,
+  }) {
+    // Power Connected = green, Power Disconnected = red
+    final indicatorColor = isConnected ? Colors.green : Colors.red;
+    final label = isConnected ? 'Power Connected' : 'Power Disconnected';
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: indicatorColor.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: indicatorColor,
+          width: 1.5,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: indicatorColor,
+              shape: BoxShape.circle,
+              border: Border.all(color: indicatorColor, width: 2),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label, 
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: indicatorColor,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -255,30 +382,42 @@ class AlertDeviceCard extends StatelessWidget {
     required bool isOn,
     required Color color,
   }) {
+    // Use different colors for different indicators
+    final indicatorColor = label == 'Relay'
+        ? (isOn ? Colors.red : Colors.grey)
+        : color;
+    
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: isOn ? color.withOpacity(0.2) : color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
+        color: isOn ? indicatorColor.withOpacity(0.15) : indicatorColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isOn ? color : color.withOpacity(0.3),
-          width: 1,
+          color: indicatorColor,
+          width: 1.5,
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 8,
-            height: 8,
+            width: 10,
+            height: 10,
             decoration: BoxDecoration(
-              color: isOn ? color : Colors.transparent,
+              color: isOn ? indicatorColor : Colors.transparent,
               shape: BoxShape.circle,
-              border: Border.all(color: color, width: 1),
+              border: Border.all(color: indicatorColor, width: 2),
             ),
           ),
-          const SizedBox(width: 4),
-          Text(label, style: TextStyle(fontSize: 10, color: color)),
+          const SizedBox(width: 6),
+          Text(
+            label, 
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: indicatorColor,
+            ),
+          ),
         ],
       ),
     );

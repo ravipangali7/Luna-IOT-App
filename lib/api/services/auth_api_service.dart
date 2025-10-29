@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:luna_iot/api/api_client.dart';
+import 'dart:io';
 
 class AuthApiService {
   final ApiClient _apiClient;
@@ -318,6 +319,69 @@ class AuthApiService {
     } catch (e) {
       print('Delete account error: $e');
       throw Exception('Failed to delete account: ${e.toString()}');
+    }
+  }
+
+  // Update profile (always uses multipart form data for consistency)
+  Future<Map<String, dynamic>> updateProfile({
+    String? name,
+    String? phone,
+    File? profilePicture,
+  }) async {
+    try {
+      // Prepare fields - always include name and phone
+      Map<String, String> fields = {};
+      if (name != null && name.isNotEmpty) {
+        fields['name'] = name;
+      }
+      if (phone != null && phone.isNotEmpty) {
+        fields['phone'] = phone;
+      }
+
+      // Prepare files
+      Map<String, File> files = {};
+      if (profilePicture != null) {
+        files['profile_picture'] = profilePicture;
+      }
+
+      // Always use multipart request for consistency (Django handles multipart better than JSON for PUT)
+      final response = await _apiClient.putMultipart(
+        '/api/core/auth/update-profile',
+        fields,
+        files,
+      );
+
+      // Parse Django response format
+      if (response is Map<String, dynamic>) {
+        if (response.containsKey('success') && response['success'] == true) {
+          if (response.containsKey('data') &&
+              response['data'] is Map<String, dynamic>) {
+            return response['data'] as Map<String, dynamic>;
+          }
+        }
+        return response;
+      }
+      return response;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 400) {
+        final errorData = e.response?.data;
+        if (errorData is Map<String, dynamic>) {
+          throw Exception(errorData['message'] ?? 'Invalid request');
+        } else {
+          throw Exception('Invalid request: ${e.message}');
+        }
+      } else if (e.response?.statusCode == 401) {
+        throw Exception('Authentication required');
+      } else if (e.response?.statusCode == 404) {
+        throw Exception('User not found');
+      } else if (e.response?.statusCode == 500) {
+        throw Exception('Server error. Please try again later.');
+      } else {
+        throw Exception('Failed to update profile: ${e.message}');
+      }
+    } catch (e) {
+      debugPrint('Update profile error: $e');
+      throw Exception('Failed to update profile: ${e.toString()}');
     }
   }
 }

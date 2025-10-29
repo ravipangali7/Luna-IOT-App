@@ -5,6 +5,7 @@ class User {
   final String status;
   final Role role;
   final List<String> permissions; // Direct user permissions
+  final String? profilePicture;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -15,6 +16,7 @@ class User {
     required this.status,
     required this.role,
     this.permissions = const [],
+    this.profilePicture,
     this.createdAt,
     this.updatedAt,
   });
@@ -56,6 +58,7 @@ class User {
       status: json['status'] ?? 'ACTIVE',
       role: role,
       permissions: permissions,
+      profilePicture: json['profilePicture'],
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : null,
@@ -73,6 +76,7 @@ class User {
       'status': status,
       'role': role.toJson(),
       'permissions': permissions,
+      'profilePicture': profilePicture,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
     };
