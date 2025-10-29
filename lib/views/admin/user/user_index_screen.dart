@@ -5,6 +5,7 @@ import 'package:luna_iot/app/app_theme.dart';
 import 'package:luna_iot/controllers/user_controller.dart';
 import 'package:luna_iot/models/search_filter_model.dart';
 import 'package:luna_iot/widgets/confirm_dialouge.dart';
+import 'package:luna_iot/widgets/language_switch_widget.dart';
 import 'package:luna_iot/widgets/loading_widget.dart';
 import 'package:luna_iot/widgets/search_filter_bottom_sheet.dart';
 
@@ -21,7 +22,7 @@ class UserIndexScreen extends GetView<UserController> {
     final filterOptions = [
       FilterOption(
         key: 'role',
-        label: 'Role',
+        label: 'role'.tr,
         values: roles,
         selectedValue: controller.currentFilters['role'],
       ),
@@ -29,7 +30,7 @@ class UserIndexScreen extends GetView<UserController> {
 
     Get.bottomSheet(
       SearchFilterBottomSheet(
-        title: 'Search & Filter Users',
+        title: 'search_filter_users'.tr,
         filterOptions: filterOptions,
         searchQuery: controller.searchQuery.value,
         currentFilters: controller.currentFilters,
@@ -48,14 +49,16 @@ class UserIndexScreen extends GetView<UserController> {
       // AppBar
       appBar: AppBar(
         title: Text(
-          'Users',
+          'users'.tr,
           style: TextStyle(color: AppTheme.titleColor, fontSize: 14),
         ),
         actions: [
+          const LanguageSwitchWidget(),
+          SizedBox(width: 10),
           IconButton(
             onPressed: _showSearchFilterBottomSheet,
             icon: Icon(Icons.search, color: AppTheme.titleColor),
-            tooltip: 'Search & Filter',
+            tooltip: 'search_filter'.tr,
           ),
         ],
       ),
@@ -66,7 +69,7 @@ class UserIndexScreen extends GetView<UserController> {
           Get.toNamed(AppRoutes.userCreate);
         },
         backgroundColor: AppTheme.primaryColor,
-        tooltip: 'Add User',
+        tooltip: 'add_user'.tr,
         child: const Icon(Icons.add, color: Colors.white),
       ),
 
@@ -79,7 +82,7 @@ class UserIndexScreen extends GetView<UserController> {
         if (controller.users.isEmpty) {
           return Center(
             child: Text(
-              'No users found',
+              'no_users_found'.tr,
               style: TextStyle(color: AppTheme.subTitleColor),
             ),
           );
@@ -119,7 +122,7 @@ class UserIndexScreen extends GetView<UserController> {
                       child: Icon(Icons.person, color: AppTheme.primaryColor),
                     ),
                     title: Text(
-                      user['name'] ?? 'Unknown',
+                      user['name'] ?? 'unknown'.tr,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: AppTheme.titleColor,
@@ -186,7 +189,7 @@ class UserIndexScreen extends GetView<UserController> {
                           child: IconButton(
                             padding: EdgeInsets.zero,
                             constraints: BoxConstraints(),
-                            tooltip: 'Edit User',
+                            tooltip: 'edit_user'.tr,
                             iconSize: 16,
                             onPressed: () {
                               Get.toNamed(
@@ -215,7 +218,7 @@ class UserIndexScreen extends GetView<UserController> {
                           child: IconButton(
                             padding: EdgeInsets.zero,
                             constraints: BoxConstraints(),
-                            tooltip: 'Manage Permissions',
+                            tooltip: 'manage_permissions'.tr,
                             iconSize: 16,
                             onPressed: () {
                               Get.toNamed(
@@ -244,15 +247,14 @@ class UserIndexScreen extends GetView<UserController> {
                           child: IconButton(
                             padding: EdgeInsets.zero,
                             constraints: BoxConstraints(),
-                            tooltip: 'Delete User',
+                            tooltip: 'delete_user'.tr,
                             iconSize: 16,
                             onPressed: () {
                               showDialog(
                                 context: context,
                                 builder: (context) => ConfirmDialouge(
-                                  title: 'Confirm Delete User',
-                                  message:
-                                      'Are you sure you want to delete this user?',
+                                  title: 'confirm_delete_user'.tr,
+                                  message: 'confirm_delete_user_message'.tr,
                                   onConfirm: () {
                                     controller.deleteUser(user['phone']);
                                   },

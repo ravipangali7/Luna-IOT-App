@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:luna_iot/app/app_theme.dart';
 import 'package:luna_iot/controllers/user_controller.dart';
+import 'package:luna_iot/widgets/language_switch_widget.dart';
 import 'package:luna_iot/widgets/loading_widget.dart';
 
 class UserCreateScreen extends StatelessWidget {
@@ -22,9 +23,10 @@ class UserCreateScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Add User',
+          'add_user'.tr,
           style: TextStyle(color: AppTheme.titleColor, fontSize: 14),
         ),
+        actions: [const LanguageSwitchWidget(), SizedBox(width: 10)],
       ),
       body: Obx(() {
         if (controller.isLoading.value) {
@@ -41,28 +43,28 @@ class UserCreateScreen extends StatelessWidget {
                   // Name
                   TextFormField(
                     controller: _nameController,
-                    decoration: InputDecoration(labelText: 'Name'),
+                    decoration: InputDecoration(labelText: 'name'.tr),
                     validator: (value) =>
-                        value!.isEmpty ? 'Name is required' : null,
+                        value!.isEmpty ? 'name_required'.tr : null,
                   ),
                   const SizedBox(height: 16),
 
                   // Phone
                   TextFormField(
                     controller: _phoneController,
-                    decoration: InputDecoration(labelText: 'Phone'),
+                    decoration: InputDecoration(labelText: 'phone'.tr),
                     validator: (value) =>
-                        value!.isEmpty ? 'Phone is required' : null,
+                        value!.isEmpty ? 'phone_required'.tr : null,
                   ),
                   const SizedBox(height: 16),
 
                   // Password
                   TextFormField(
                     controller: _passwordController,
-                    decoration: InputDecoration(labelText: 'Password'),
+                    decoration: InputDecoration(labelText: 'password'.tr),
                     obscureText: true,
                     validator: (value) =>
-                        value!.isEmpty ? 'Password is required' : null,
+                        value!.isEmpty ? 'password_required'.tr : null,
                   ),
                   const SizedBox(height: 16),
 
@@ -83,9 +85,9 @@ class UserCreateScreen extends StatelessWidget {
                       onChanged: (value) => {
                         if (value != null) {selectedRoleId.value = value},
                       },
-                      decoration: InputDecoration(labelText: 'Role'),
+                      decoration: InputDecoration(labelText: 'role'.tr),
                       validator: (value) =>
-                          value == null ? 'Role is required' : null,
+                          value == null ? 'role_required'.tr : null,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -93,7 +95,7 @@ class UserCreateScreen extends StatelessWidget {
                   // Status
                   Obx(
                     () => SwitchListTile(
-                      title: Text('Active'),
+                      title: Text('active'.tr),
                       value: isActive.value,
                       onChanged: (value) => isActive.value = value,
                       activeColor: AppTheme.primaryColor,
@@ -124,7 +126,7 @@ class UserCreateScreen extends StatelessWidget {
                         borderRadius: BorderRadius.all(Radius.circular(8)),
                       ),
                       child: Text(
-                        'Submit',
+                        'submit'.tr,
                         style: TextStyle(color: Colors.white),
                       ),
                     ),

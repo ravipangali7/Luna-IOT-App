@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:luna_iot/app/app_theme.dart';
 import 'package:luna_iot/controllers/auth_controller.dart';
 import 'package:luna_iot/controllers/navigation_controller.dart';
+import 'package:luna_iot/widgets/language_switch_widget.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -31,7 +32,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         title: Text(
-          'Profile',
+          'profile'.tr,
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -40,6 +41,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         centerTitle: true,
         elevation: 0,
+        actions: [const LanguageSwitchWidget(), SizedBox(width: 10)],
       ),
       backgroundColor: AppTheme.backgroundColor,
       body: Obx(() {
@@ -118,7 +120,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            user?.name ?? 'User',
+                            user?.name ?? 'user'.tr,
                             style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
@@ -127,7 +129,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            user?.phone ?? 'No phone',
+                            user?.phone ?? 'no_phone'.tr,
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.white.withOpacity(0.9),
@@ -144,7 +146,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              user?.role?.name ?? 'No role',
+                              user?.role?.name ?? 'no_role'.tr,
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: Colors.white,
@@ -162,12 +164,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               // Profile Options with improved design
               _buildProfileSection(
-                title: 'Account',
+                title: 'account'.tr,
                 children: [
                   _buildProfileOption(
                     icon: Icons.person_outline,
-                    title: 'Edit Profile',
-                    subtitle: 'Update your personal information',
+                    title: 'edit_profile'.tr,
+                    subtitle: 'update_personal_info'.tr,
                     onTap: () {
                       // Navigate to edit profile
                     },
@@ -179,7 +181,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Obx(() {
                 if (authController.isBiometricAvailable.value) {
                   return _buildProfileSection(
-                    title: 'Security',
+                    title: 'security'.tr,
                     children: [_buildBiometricOption(authController)],
                   );
                 }
@@ -187,20 +189,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
               }),
 
               _buildProfileSection(
-                title: 'Support',
+                title: 'support'.tr,
                 children: [
                   _buildProfileOption(
                     icon: Icons.help_outline,
-                    title: 'Help & Support',
-                    subtitle: 'Get help and contact support',
+                    title: 'help_support'.tr,
+                    subtitle: 'get_help_contact_support'.tr,
                     onTap: () {
                       // Navigate to help
                     },
                   ),
                   _buildProfileOption(
                     icon: Icons.info_outline,
-                    title: 'About',
-                    subtitle: 'App version and information',
+                    title: 'about'.tr,
+                    subtitle: 'app_version_info'.tr,
                     onTap: () {
                       // Navigate to about
                     },
@@ -209,12 +211,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
 
               _buildProfileSection(
-                title: 'Account Actions',
+                title: 'account_actions'.tr,
                 children: [
                   _buildProfileOption(
                     icon: Icons.logout,
-                    title: 'Logout',
-                    subtitle: 'Sign out of your account',
+                    title: 'logout'.tr,
+                    subtitle: 'sign_out_of_your_account'.tr,
                     isDestructive: false,
                     onTap: () {
                       _showLogoutConfirmation(authController);
@@ -222,8 +224,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   _buildProfileOption(
                     icon: Icons.delete_forever_outlined,
-                    title: 'Delete Account',
-                    subtitle: 'Permanently deactivate your account',
+                    title: 'delete_account'.tr,
+                    subtitle: 'permanently_deactivate_your_account'.tr,
                     isDestructive: true,
                     onTap: () {
                       _showDeleteAccountConfirmation(authController);
@@ -514,13 +516,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         title: Text(
-          '${authController.getBiometricDisplayName()} Login',
+          '${authController.getBiometricDisplayName()} ${'login'.tr}',
           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
         ),
         subtitle: Text(
           authController.isBiometricEnabled.value
-              ? 'Enabled - Use ${authController.getBiometricDisplayName().toLowerCase()} to log in quickly'
-              : 'Disabled - Enable for faster and more secure login',
+              ? 'biometric_enabled_subtitle'.tr
+              : 'biometric_disabled_subtitle'.tr,
           style: TextStyle(color: Colors.grey[600], fontSize: 14),
         ),
         trailing: Obx(
@@ -553,8 +555,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (success) {
         Get.snackbar(
-          'Biometric Login Enabled',
-          'You can now use ${authController.getBiometricDisplayName().toLowerCase()} to log in quickly and securely.',
+          'biometric_login_enabled'.tr,
+          'biometric_enabled_message'.tr,
           backgroundColor: Colors.green,
           colorText: Colors.white,
           duration: const Duration(seconds: 3),
@@ -562,7 +564,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (e) {
       Get.snackbar(
-        'Setup Failed',
+        'setup_failed'.tr,
         e.toString(),
         backgroundColor: Colors.red,
         colorText: Colors.white,
@@ -575,14 +577,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // Show confirmation dialog
     final confirmed = await Get.dialog<bool>(
       AlertDialog(
-        title: const Text('Disable Biometric Login'),
-        content: Text(
-          'Are you sure you want to disable ${authController.getBiometricDisplayName().toLowerCase()} login? You will need to use your password to log in.',
-        ),
+        title: Text('disable_biometric_login'.tr),
+        content: Text('biometric_disabled_message'.tr),
         actions: [
           TextButton(
             onPressed: () => Get.back(result: false),
-            child: const Text('Cancel'),
+            child: Text('cancel'.tr),
           ),
           ElevatedButton(
             onPressed: () => Get.back(result: true),
@@ -590,7 +590,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Disable'),
+            child: Text('disable'.tr),
           ),
         ],
       ),
@@ -601,15 +601,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         await authController.disableBiometric();
 
         Get.snackbar(
-          'Biometric Login Disabled',
-          'You will now need to use your password to log in.',
+          'biometric_login_disabled'.tr,
+          'biometric_disabled_success_message'.tr,
           backgroundColor: Colors.orange,
           colorText: Colors.white,
           duration: const Duration(seconds: 3),
         );
       } catch (e) {
         Get.snackbar(
-          'Error',
+          'error'.tr,
           e.toString(),
           backgroundColor: Colors.red,
           colorText: Colors.white,

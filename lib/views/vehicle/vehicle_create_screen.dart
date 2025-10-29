@@ -4,6 +4,7 @@ import 'package:luna_iot/app/app_theme.dart';
 import 'package:luna_iot/controllers/vehicle_controller.dart';
 import 'package:luna_iot/models/enums.dart';
 import 'package:luna_iot/services/qr_scanner_service.dart';
+import 'package:luna_iot/widgets/language_switch_widget.dart';
 
 class VehicleCreateScreen extends StatelessWidget {
   VehicleCreateScreen({super.key});
@@ -26,9 +27,10 @@ class VehicleCreateScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Add New Vehicle',
+          'add_new_vehicle'.tr,
           style: TextStyle(color: AppTheme.titleColor, fontSize: 14),
         ),
+        actions: [const LanguageSwitchWidget(), SizedBox(width: 10)],
       ),
       body: Obx(
         () => AbsorbPointer(
@@ -46,7 +48,7 @@ class VehicleCreateScreen extends StatelessWidget {
                       keyboardType: TextInputType.numberWithOptions(),
                       controller: _imeiController,
                       decoration: InputDecoration(
-                        labelText: 'IMEI',
+                        labelText: 'imei'.tr,
                         suffixIcon: IconButton(
                           onPressed: () async {
                             final result = await QrScannerService.scanQrCode(
@@ -61,23 +63,23 @@ class VehicleCreateScreen extends StatelessWidget {
                         ),
                       ),
                       validator: (value) =>
-                          value!.isEmpty ? 'IMEI is required' : null,
+                          value!.isEmpty ? 'imei_required'.tr : null,
                     ),
 
                     // Vehicle Name
                     TextFormField(
                       controller: _nameController,
-                      decoration: InputDecoration(labelText: 'Vehicle Name'),
+                      decoration: InputDecoration(labelText: 'vehicle_name'.tr),
                       validator: (value) =>
-                          value!.isEmpty ? 'Vehicle Name is required' : null,
+                          value!.isEmpty ? 'vehicle_name_required'.tr : null,
                     ),
 
                     // Vehicle No.
                     TextFormField(
                       controller: _vehicleNoController,
-                      decoration: InputDecoration(labelText: 'Vehicle no.'),
+                      decoration: InputDecoration(labelText: 'vehicle_no'.tr),
                       validator: (value) =>
-                          value!.isEmpty ? 'Vehicle no. is required' : null,
+                          value!.isEmpty ? 'vehicle_no_required'.tr : null,
                     ),
 
                     // Vehicle Type
@@ -93,9 +95,9 @@ class VehicleCreateScreen extends StatelessWidget {
                       onChanged: (value) => {
                         if (value != null) {selectedVehicleType.value = value},
                       },
-                      decoration: InputDecoration(labelText: 'Vehicle Type'),
+                      decoration: InputDecoration(labelText: 'vehicle_type'.tr),
                       validator: (value) =>
-                          value!.isEmpty ? 'Vehicle Type is required' : null,
+                          value!.isEmpty ? 'vehicle_type_required'.tr : null,
                     ),
 
                     // Odometer & Mileage
@@ -105,7 +107,9 @@ class VehicleCreateScreen extends StatelessWidget {
                         Expanded(
                           child: TextFormField(
                             controller: _odometerController,
-                            decoration: InputDecoration(labelText: 'Odometer'),
+                            decoration: InputDecoration(
+                              labelText: 'odometer'.tr,
+                            ),
                           ),
                         ),
 
@@ -116,7 +120,9 @@ class VehicleCreateScreen extends StatelessWidget {
                         Expanded(
                           child: TextFormField(
                             controller: _mileageController,
-                            decoration: InputDecoration(labelText: 'Mileage'),
+                            decoration: InputDecoration(
+                              labelText: 'mileage'.tr,
+                            ),
                           ),
                         ),
                       ],
@@ -130,7 +136,7 @@ class VehicleCreateScreen extends StatelessWidget {
                           child: TextFormField(
                             controller: _minimumFuelController,
                             decoration: InputDecoration(
-                              labelText: 'Minimum Fuel',
+                              labelText: 'minimum_fuel'.tr,
                             ),
                           ),
                         ),
@@ -143,7 +149,7 @@ class VehicleCreateScreen extends StatelessWidget {
                           child: TextFormField(
                             controller: _speedLimitController,
                             decoration: InputDecoration(
-                              labelText: 'Speed Limit',
+                              labelText: 'speed_limit'.tr,
                             ),
                           ),
                         ),
@@ -176,7 +182,7 @@ class VehicleCreateScreen extends StatelessWidget {
                           borderRadius: BorderRadius.all(Radius.circular(8)),
                         ),
                         child: Text(
-                          'Submit',
+                          'submit'.tr,
                           style: TextStyle(color: Colors.white),
                         ),
                       ),

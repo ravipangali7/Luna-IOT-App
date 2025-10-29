@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:luna_iot/app/app_theme.dart';
 import 'package:luna_iot/controllers/auth_controller.dart';
+import 'package:luna_iot/widgets/language_switch_widget.dart';
 import 'package:luna_iot/widgets/loading_widget.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -88,7 +89,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             children: [
                               const SizedBox(height: 10),
                               Text(
-                                'Forgot Password',
+                                'forgot_password_title'.tr,
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 16,
@@ -98,7 +99,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Enter your phone number to receive a verification code',
+                                'forgot_password_subtitle'.tr,
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 12,
@@ -112,7 +113,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                 controller: _phoneController,
                                 keyboardType: TextInputType.phone,
                                 decoration: InputDecoration(
-                                  labelText: 'Phone Number',
+                                  labelText: 'phone_number'.tr,
                                   prefixIcon: Icon(
                                     Icons.phone,
                                     color: AppTheme.primaryColor,
@@ -120,7 +121,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'Please enter your phone number';
+                                    return 'please_enter_phone'.tr;
                                   }
                                   final cleanPhone = value.replaceAll(
                                     RegExp(r'[^\d]'),
@@ -128,10 +129,10 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                   );
                                   if (cleanPhone.length != 10 &&
                                       cleanPhone.length != 12) {
-                                    return 'Please enter a valid 10-digit phone number';
+                                    return 'please_enter_valid_phone'.tr;
                                   }
                                   if (!cleanPhone.startsWith('9')) {
-                                    return 'Phone number should start with 9';
+                                    return 'phone_should_start_with_9'.tr;
                                   }
                                   return null;
                                 },
@@ -160,7 +161,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                           child: LoadingWidget(size: 30),
                                         )
                                       : Text(
-                                          'Send OTP',
+                                          'send_otp'.tr,
                                           style: TextStyle(
                                             color: Colors.white,
                                             fontSize: 16,
@@ -176,7 +177,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Text(
-                                    "Remember your password? ",
+                                    'remember_password'.tr,
                                     style: TextStyle(
                                       color: AppTheme.subTitleColor,
                                     ),
@@ -184,7 +185,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                   TextButton(
                                     onPressed: () => Get.back(),
                                     child: Text(
-                                      'Login',
+                                      'login'.tr,
                                       style: TextStyle(
                                         color: AppTheme.primaryColor,
                                         fontWeight: FontWeight.bold,

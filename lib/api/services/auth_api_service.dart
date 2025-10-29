@@ -274,6 +274,30 @@ class AuthApiService {
     }
   }
 
+  // Verify password for sensitive operations
+  Future<Map<String, dynamic>> verifyPassword(String password) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/api/core/auth/verify-password',
+        data: {'password': password},
+      );
+      return response.data;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        throw Exception('Incorrect password');
+      } else if (e.response?.statusCode == 400) {
+        throw Exception('Password is required');
+      } else if (e.response?.statusCode == 500) {
+        throw Exception('Server error. Please try again later.');
+      } else {
+        throw Exception('Failed to verify password: ${e.message}');
+      }
+    } catch (e) {
+      print('Verify password error: $e');
+      throw Exception('Failed to verify password: ${e.toString()}');
+    }
+  }
+
   // Delete account (deactivate account)
   Future<Map<String, dynamic>> deleteAccount() async {
     try {

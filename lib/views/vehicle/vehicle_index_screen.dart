@@ -8,6 +8,7 @@ import 'package:luna_iot/controllers/relay_controller.dart';
 import 'package:luna_iot/controllers/vehicle_controller.dart';
 import 'package:luna_iot/models/search_filter_model.dart';
 import 'package:luna_iot/models/vehicle_model.dart';
+import 'package:luna_iot/widgets/language_switch_widget.dart';
 import 'package:luna_iot/widgets/loading_widget.dart';
 import 'package:luna_iot/widgets/pagination_widget.dart';
 import 'package:luna_iot/widgets/satellite_connection_status_widget.dart';
@@ -42,19 +43,19 @@ class VehicleIndexScreen extends GetView<VehicleController> {
     final filterOptions = [
       FilterOption(
         key: 'vehicleType',
-        label: 'Vehicle Type',
+        label: 'vehicle_type'.tr,
         values: vehicleTypes,
         selectedValue: controller.currentFilters['vehicleType'],
       ),
       FilterOption(
         key: 'customerName',
-        label: 'Customer Name',
+        label: 'customer_name'.tr,
         values: customerNames,
         selectedValue: controller.currentFilters['customerName'],
       ),
       FilterOption(
         key: 'customerPhone',
-        label: 'Customer Phone',
+        label: 'customer_phone'.tr,
         values: customerPhones,
         selectedValue: controller.currentFilters['customerPhone'],
       ),
@@ -62,7 +63,7 @@ class VehicleIndexScreen extends GetView<VehicleController> {
 
     Get.bottomSheet(
       SearchFilterBottomSheet(
-        title: 'Search & Filter Vehicles',
+        title: 'search_filter_vehicles'.tr,
         filterOptions: filterOptions,
         searchQuery: controller.searchQuery.value,
         currentFilters: controller.currentFilters,
@@ -90,18 +91,20 @@ class VehicleIndexScreen extends GetView<VehicleController> {
       // Appbar
       appBar: AppBar(
         title: Text(
-          'Vehicles',
+          'vehicles'.tr,
           style: TextStyle(color: AppTheme.titleColor, fontSize: 14),
         ),
         actions: [
+          const LanguageSwitchWidget(),
+          SizedBox(width: 10),
           SatelliteConnectionStatusWidget(
-            tooltip: 'Connection Status',
+            tooltip: 'connection_status'.tr,
             onTap: () {},
           ),
           IconButton(
             onPressed: _showSearchFilterBottomSheet,
             icon: Icon(Icons.search, color: AppTheme.titleColor),
-            tooltip: 'Search & Filter',
+            tooltip: 'search_filter'.tr,
           ),
         ],
       ),
@@ -114,7 +117,7 @@ class VehicleIndexScreen extends GetView<VehicleController> {
             Get.toNamed(AppRoutes.vehicleCreate);
           },
           backgroundColor: AppTheme.primaryColor,
-          tooltip: 'Add Vehicle',
+          tooltip: 'add_vehicle'.tr,
           child: const Icon(Icons.add, color: Colors.white),
         ),
       ),
@@ -222,8 +225,8 @@ class VehicleIndexScreen extends GetView<VehicleController> {
                       const SizedBox(height: 16),
                       Text(
                         controller.selectedFilter.value == 'All'
-                            ? 'No vehicles found'
-                            : 'No ${controller.selectedFilter.value.toLowerCase()} vehicles found',
+                            ? 'no_vehicles_found'.tr
+                            : '${'no'.tr} ${controller.selectedFilter.value.toLowerCase()} ${'vehicles_found'.tr}',
                         style: TextStyle(
                           color: AppTheme.subTitleColor,
                           fontSize: 16,
@@ -234,7 +237,7 @@ class VehicleIndexScreen extends GetView<VehicleController> {
                         TextButton(
                           onPressed: () => controller.setFilter('All'),
                           child: Text(
-                            'Show All Vehicles',
+                            'show_all_vehicles'.tr,
                             style: TextStyle(color: AppTheme.primaryColor),
                           ),
                         ),
@@ -267,7 +270,7 @@ class VehicleIndexScreen extends GetView<VehicleController> {
                         if (controller.paginationLoading.value)
                           Container(
                             color: Colors.white.withOpacity(0.7),
-                            child: const Center(
+                            child: Center(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -278,7 +281,7 @@ class VehicleIndexScreen extends GetView<VehicleController> {
                                   ),
                                   SizedBox(height: 16),
                                   Text(
-                                    'Loading...',
+                                    'loading'.tr,
                                     style: TextStyle(
                                       color: Colors.blue,
                                       fontSize: 16,

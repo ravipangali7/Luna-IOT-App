@@ -629,6 +629,36 @@ class AuthController extends GetxController {
   List<String> getAllUserPermissions() =>
       currentUser.value?.getAllPermissions() ?? [];
 
+  // Verify password for sensitive operations
+  Future<bool> verifyPassword(String password) async {
+    try {
+      isLoading.value = true;
+      final response = await _authApiService.verifyPassword(password);
+
+      if (response['success'] == true) {
+        return true;
+      } else {
+        Get.snackbar(
+          'Error',
+          response['message'] ?? 'Password verification failed',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+        return false;
+      }
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        e.toString(),
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   // Delete account (deactivate account)
   Future<bool> deleteAccount() async {
     try {

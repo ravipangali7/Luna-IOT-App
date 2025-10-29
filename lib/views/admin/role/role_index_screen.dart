@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:luna_iot/app/app_routes.dart';
 import 'package:luna_iot/app/app_theme.dart';
 import 'package:luna_iot/controllers/role_controller.dart';
+import 'package:luna_iot/widgets/language_switch_widget.dart';
 import 'package:luna_iot/widgets/loading_widget.dart';
 
 class RoleIndexScreen extends GetView<RoleController> {
@@ -13,9 +14,10 @@ class RoleIndexScreen extends GetView<RoleController> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Roles',
+          'roles'.tr,
           style: TextStyle(color: AppTheme.titleColor, fontSize: 14),
         ),
+        actions: [const LanguageSwitchWidget(), SizedBox(width: 10)],
       ),
       body: Obx(() {
         if (controller.isLoading.value) {
@@ -25,7 +27,7 @@ class RoleIndexScreen extends GetView<RoleController> {
         if (controller.roles.isEmpty) {
           return Center(
             child: Text(
-              'No roles found',
+              'no_roles_found'.tr,
               style: TextStyle(color: AppTheme.subTitleColor),
             ),
           );
@@ -68,7 +70,7 @@ class RoleIndexScreen extends GetView<RoleController> {
                       ),
                     ),
                     title: Text(
-                      role['name'] ?? 'Unknown',
+                      role['name'] ?? 'unknown'.tr,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: AppTheme.titleColor,
@@ -102,7 +104,7 @@ class RoleIndexScreen extends GetView<RoleController> {
                                 ),
                                 SizedBox(width: 4),
                                 Text(
-                                  '${role['permissions'].length} permissions',
+                                  '${role['permissions'].length} ${'permissions'.tr}',
                                   style: TextStyle(
                                     color: AppTheme.subTitleColor,
                                     fontSize: 13,
@@ -119,7 +121,7 @@ class RoleIndexScreen extends GetView<RoleController> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: IconButton(
-                        tooltip: 'Edit Role',
+                        tooltip: 'edit_role'.tr,
                         onPressed: () {
                           Get.toNamed(
                             AppRoutes.roleEdit.replaceAll(

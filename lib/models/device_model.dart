@@ -7,6 +7,7 @@ class Device {
   final String? iccid;
   final String? model;
   final String? status;
+  final String? type;
   final Map<String, dynamic>? subscriptionPlan;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -22,6 +23,7 @@ class Device {
     this.iccid,
     this.model,
     this.status,
+    this.type,
     this.subscriptionPlan,
     this.createdAt,
     this.updatedAt,
@@ -39,6 +41,7 @@ class Device {
       iccid: json['iccid'],
       model: json['model'],
       status: json['status'],
+      type: json['type'],
       subscriptionPlan: json['subscription_plan'],
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
@@ -65,6 +68,7 @@ class Device {
       'iccid': iccid,
       'model': model,
       'status': status,
+      'type': type,
       'subscription_plan': subscriptionPlan,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
@@ -82,6 +86,7 @@ class Device {
     String? iccid,
     String? model,
     String? status,
+    String? type,
     Map<String, dynamic>? subscriptionPlan,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -97,6 +102,7 @@ class Device {
       iccid: iccid ?? this.iccid,
       model: model ?? this.model,
       status: status ?? this.status,
+      type: type ?? this.type,
       subscriptionPlan: subscriptionPlan ?? this.subscriptionPlan,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

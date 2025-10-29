@@ -10,6 +10,9 @@ import 'package:luna_iot/bindings/role_binding.dart';
 import 'package:luna_iot/bindings/sos_binding.dart';
 import 'package:luna_iot/bindings/user_binding.dart';
 import 'package:luna_iot/bindings/vehicle_binding.dart';
+import 'package:luna_iot/bindings/alert_history_binding.dart';
+import 'package:luna_iot/bindings/buzzer_binding.dart';
+import 'package:luna_iot/bindings/sos_switch_binding.dart';
 import 'package:luna_iot/middleware/auth_middleware.dart';
 import 'package:luna_iot/views/admin/device/device_assignment_screen.dart';
 import 'package:luna_iot/views/admin/device/device_create_screen.dart';
@@ -54,6 +57,9 @@ import 'package:luna_iot/views/vehicle_tag/vehicle_tag_screen.dart';
 import 'package:luna_iot/views/sos/sos_screen.dart';
 import 'package:luna_iot/views/ev_charge/ev_charge_screen.dart';
 import 'package:luna_iot/views/profile/profile_screen.dart';
+import 'package:luna_iot/views/admin/alert/alert_history_screen.dart';
+import 'package:luna_iot/views/admin/alert/buzzer_index_screen.dart';
+import 'package:luna_iot/views/admin/alert/sos_switch_index_screen.dart';
 
 class AppRoutes {
   static const String splash = '/splash';
@@ -115,6 +121,11 @@ class AppRoutes {
   static const String popup = '/popup';
   static const String popupCreate = '/popup/create';
   static const String popupEdit = '/popup/edit/:id';
+
+  // Alert Routes
+  static const String alertHistory = '/alert-history';
+  static const String buzzer = '/alert/buzzer';
+  static const String sosSwitch = '/alert/sos-switch';
 
   // Bottom Navigation Routes
   static const String vehicleTag = '/vehicle-tag';
@@ -405,6 +416,30 @@ class AppRoutes {
     GetPage(
       name: profile,
       page: () => const ProfileScreen(),
+      middlewares: [AuthMiddleware()],
+    ),
+
+    // ---- Alert History Route ----
+    GetPage(
+      name: alertHistory,
+      page: () => const AlertHistoryScreen(),
+      binding: AlertHistoryBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+
+    // ---- Buzzer Route ----
+    GetPage(
+      name: buzzer,
+      page: () => const BuzzerIndexScreen(),
+      binding: BuzzerBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+
+    // ---- SOS Switch Route ----
+    GetPage(
+      name: sosSwitch,
+      page: () => const SosSwitchIndexScreen(),
+      binding: SosSwitchBinding(),
       middlewares: [AuthMiddleware()],
     ),
   ];

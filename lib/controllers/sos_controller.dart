@@ -1,4 +1,5 @@
 import 'dart:math' show cos, sqrt, asin, sin, pi, min, max;
+import 'package:audioplayers/audioplayers.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:luna_iot/api/services/alert_system_api_service.dart';
@@ -8,6 +9,8 @@ import 'package:luna_iot/controllers/auth_controller.dart';
 
 class SosController extends GetxController {
   final AlertSystemApiService _alertSystemApiService;
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  AudioPlayer? _countdownPlayer; // Track countdown audio player
 
   SosController(this._alertSystemApiService);
 
@@ -21,6 +24,7 @@ class SosController extends GetxController {
   final RxList<AlertGeofence> allGeofences = <AlertGeofence>[].obs;
   final RxList<AlertType> availableAlertTypes = <AlertType>[].obs;
   final RxList<AlertGeofence> matchingGeofences = <AlertGeofence>[].obs;
+  final RxString selectedInstituteName = ''.obs;
 
   // Current user location
   final RxDouble currentLatitude = 0.0.obs;
@@ -28,11 +32,11 @@ class SosController extends GetxController {
 
   // SOS Process Stages
   static const List<String> progressStages = [
-    'Getting your location...',
-    'Checking service availability...',
-    'Loading emergency services...',
-    'Calculating nearest facility...',
-    'Sending alert...',
+    'getting_your_location',
+    'checking_service_availability',
+    'loading_emergency_services',
+    'calculating_nearest_facility',
+    'sending_alert',
   ];
 
   // Initialize SOS process
@@ -42,24 +46,22 @@ class SosController extends GetxController {
       errorMessage.value = '';
 
       // Stage 1: Get location (0-20%)
-      await _updateProgress(0.0, progressStages[0]);
+      await _updateProgress(0.0, progressStages[0].tr);
       await _getCurrentLocation();
 
       // Stage 2: Check service availability (20-40%)
-      await _updateProgress(0.2, progressStages[1]);
-      await _fetchAlertGeofences();
+      await _updateProgress(0.2, progressStages[1].tr);
+      await fetchAlertGeofences();
 
       // Stage 3: Check if location is in any geofence (40-60%)
-      await _updateProgress(0.4, progressStages[2]);
+      await _updateProgress(0.4, progressStages[2].tr);
       final matchingGeofences = _findMatchingGeofences(
         currentLatitude.value,
         currentLongitude.value,
       );
 
       if (matchingGeofences.isEmpty) {
-        throw Exception(
-          'No emergency service available in your area. Please contact authorities directly.',
-        );
+        throw Exception('no_emergency_service_available'.tr);
       }
 
       this.matchingGeofences.value = matchingGeofences;
@@ -84,7 +86,7 @@ class SosController extends GetxController {
       errorMessage.value = '';
 
       // Stage 4: Calculate nearest facility (60-80%)
-      await _updateProgress(0.6, progressStages[3]);
+      await _updateProgress(0.6, progressStages[3].tr);
       final filteredGeofences = _filterGeofencesByAlertType(selectedAlertType);
       final nearestInstitute = _findNearestInstitute(
         currentLatitude.value,
@@ -93,10 +95,10 @@ class SosController extends GetxController {
       );
 
       // Stage 5: Send alert (80-100%)
-      await _updateProgress(0.8, progressStages[4]);
+      await _updateProgress(0.8, progressStages[4].tr);
       await _createSosAlert(selectedAlertType, nearestInstitute);
 
-      await _updateProgress(1.0, 'Alert sent successfully!');
+      await _updateProgress(1.0, 'alert_sent_successfully'.tr);
 
       // Set loading to false - UI will handle cleanup
       isLoading.value = false;
@@ -113,9 +115,7 @@ class SosController extends GetxController {
       // Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        throw Exception(
-          'Location services are disabled. Please enable location services in your device settings.',
-        );
+        throw Exception('location_services_disabled'.tr);
       }
 
       // Check location permission
@@ -123,16 +123,12 @@ class SosController extends GetxController {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          throw Exception(
-            'Location permission denied. Please grant location permission to use SOS feature.',
-          );
+          throw Exception('location_permission_denied'.tr);
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        throw Exception(
-          'Location permissions are permanently denied. Please enable location permission in app settings.',
-        );
+        throw Exception('location_permission_permanently_denied'.tr);
       }
 
       // Get current position
@@ -144,16 +140,18 @@ class SosController extends GetxController {
       currentLatitude.value = position.latitude;
       currentLongitude.value = position.longitude;
     } catch (e) {
-      throw Exception('Failed to get location: ${e.toString()}');
+      throw Exception('${'failed_to_get_location'.tr}: ${e.toString()}');
     }
   }
 
   // Fetch all alert geofences from backend
-  Future<void> _fetchAlertGeofences() async {
+  Future<void> fetchAlertGeofences() async {
     try {
       allGeofences.value = await _alertSystemApiService.getAlertGeofences();
     } catch (e) {
-      throw Exception('Failed to load emergency services: ${e.toString()}');
+      throw Exception(
+        '${'failed_to_load_emergency_services'.tr}: ${e.toString()}',
+      );
     }
   }
 
@@ -219,9 +217,7 @@ class SosController extends GetxController {
     List<AlertGeofence> geofences,
   ) {
     if (geofences.isEmpty) {
-      throw Exception(
-        'No emergency services available for the selected alert type.',
-      );
+      throw Exception('no_emergency_services_for_alert_type'.tr);
     }
 
     AlertGeofence nearest = geofences.first;
@@ -277,9 +273,7 @@ class SosController extends GetxController {
       final currentUser = authController.currentUser.value;
 
       if (currentUser == null) {
-        throw Exception(
-          'User not logged in. Please log in to use SOS feature.',
-        );
+        throw Exception('user_not_logged_in'.tr);
       }
 
       await _alertSystemApiService.createSosAlert(
@@ -291,7 +285,7 @@ class SosController extends GetxController {
         institute: nearestInstitute.institute,
       );
     } catch (e) {
-      throw Exception('Failed to send alert: ${e.toString()}');
+      throw Exception('${'failed_to_send_alert'.tr}: ${e.toString()}');
     }
   }
 
@@ -334,4 +328,233 @@ class SosController extends GetxController {
 
   // Get matching geofences count
   int get matchingGeofencesCount => matchingGeofences.length;
+
+  // NEW FLOW: Process SOS with alert type from 0-99%
+  Future<Map<String, dynamic>> processSosToNinetyNine(
+    AlertType alertType,
+  ) async {
+    try {
+      isLoading.value = true;
+      errorMessage.value = '';
+
+      // Stage 1: Get location (0-20%)
+      await _updateProgress(0.0, progressStages[0].tr);
+      await _getCurrentLocation();
+
+      // Stage 2: Check service availability (20-40%)
+      await _updateProgress(0.2, progressStages[1].tr);
+      await fetchAlertGeofences();
+
+      // Stage 3: Check if location is in any geofence (40-60%)
+      await _updateProgress(0.4, progressStages[2].tr);
+      final matchingGeofences = _findMatchingGeofences(
+        currentLatitude.value,
+        currentLongitude.value,
+      );
+
+      if (matchingGeofences.isEmpty) {
+        throw Exception('no_emergency_service_available'.tr);
+      }
+
+      this.matchingGeofences.value = matchingGeofences;
+
+      // Stage 4: Calculate nearest facility (60-80%)
+      await _updateProgress(
+        0.6,
+        '${'finding_nearest_facility'.tr} ${alertType.name}...',
+      );
+      final filteredGeofences = _filterGeofencesByAlertType(alertType);
+      final nearestInstitute = _findNearestInstitute(
+        currentLatitude.value,
+        currentLongitude.value,
+        filteredGeofences,
+      );
+
+      // Store institute name for display
+      selectedInstituteName.value = nearestInstitute.instituteName;
+
+      // Stage 5: Prepare for sending (80-99%)
+      await _updateProgress(
+        0.7,
+        '${'found_institute'.tr}: ${nearestInstitute.instituteName}',
+      );
+      await Future.delayed(Duration(milliseconds: 500)); // Brief pause
+      await _updateProgress(0.8, 'preparing_to_send_alert'.tr);
+      await Future.delayed(Duration(milliseconds: 500)); // Brief pause
+      await _updateProgress(0.99, 'ready_to_send_alert'.tr);
+
+      // Return data needed for final send
+      return {
+        'nearestInstitute': nearestInstitute,
+        'alertType': alertType,
+        'latitude': currentLatitude.value,
+        'longitude': currentLongitude.value,
+      };
+    } catch (e) {
+      isLoading.value = false;
+      errorMessage.value = e.toString();
+      rethrow;
+    }
+  }
+
+  // NEW FLOW: Send final alert at 100%
+  Future<void> sendFinalAlert(Map<String, dynamic> data) async {
+    try {
+      isLoading.value = true;
+
+      // Stage 6: Send alert (99-100%)
+      await _updateProgress(0.99, progressStages[4].tr);
+      await _createSosAlert(
+        data['alertType'] as AlertType,
+        data['nearestInstitute'] as AlertGeofence,
+      );
+
+      await _updateProgress(1.0, 'alert_sent_successfully'.tr);
+      isLoading.value = false;
+    } catch (e) {
+      isLoading.value = false;
+      errorMessage.value = e.toString();
+      rethrow;
+    }
+  }
+
+  // Check if location services are enabled
+  Future<bool> checkLocationServices() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      return serviceEnabled;
+    } catch (e) {
+      print('Error checking location services: $e');
+      return false;
+    }
+  }
+
+  // Fetch all alert types from database (excluding "Help")
+  Future<List<AlertType>> getAllAlertTypes() async {
+    try {
+      final alertTypes = await _alertSystemApiService.getAlertTypes();
+      // Filter out "Help" alert type
+      return alertTypes
+          .where((type) => type.name.toLowerCase() != 'help')
+          .toList();
+    } catch (e) {
+      print('Error fetching alert types: $e');
+      return [];
+    }
+  }
+
+  // Process location and match with geofences after alert type selection
+  Future<Map<String, dynamic>> processLocationAndMatchGeofence(
+    AlertType selectedAlertType,
+  ) async {
+    try {
+      isLoading.value = true;
+      errorMessage.value = '';
+
+      // Stage 1: Get location
+      await _updateProgress(0.1, 'checking_location'.tr);
+      await _getCurrentLocation();
+
+      // Stage 2: Check service availability
+      await _updateProgress(0.3, 'checking_service_availability'.tr);
+      await fetchAlertGeofences();
+
+      // Stage 3: Match with geofences
+      await _updateProgress(0.5, 'matching_services'.tr);
+      final matchingGeofences = _findMatchingGeofences(
+        currentLatitude.value,
+        currentLongitude.value,
+      );
+
+      if (matchingGeofences.isEmpty) {
+        throw Exception('no_service_in_area'.tr);
+      }
+
+      this.matchingGeofences.value = matchingGeofences;
+
+      // Stage 4: Filter by alert type and find nearest facility
+      await _updateProgress(0.7, 'calculating_nearest_facility'.tr);
+      final filteredGeofences = _filterGeofencesByAlertType(selectedAlertType);
+
+      if (filteredGeofences.isEmpty) {
+        throw Exception('no_emergency_services_for_alert_type'.tr);
+      }
+
+      final nearestInstitute = _findNearestInstitute(
+        currentLatitude.value,
+        currentLongitude.value,
+        filteredGeofences,
+      );
+
+      // Store institute name for display
+      selectedInstituteName.value = nearestInstitute.instituteName;
+
+      // Stage 5: Prepare for sending (set without delay for immediate countdown)
+      progress.value = 0.9;
+      progressMessage.value = 'ready_to_send_alert'.tr;
+
+      // Return data needed for final send
+      return {
+        'nearestInstitute': nearestInstitute,
+        'alertType': selectedAlertType,
+        'latitude': currentLatitude.value,
+        'longitude': currentLongitude.value,
+      };
+    } catch (e) {
+      isLoading.value = false;
+      errorMessage.value = e.toString();
+      rethrow;
+    }
+  }
+
+  // Play countdown beep (single play, not loop)
+  Future<void> playCountdownBeep() async {
+    try {
+      // Stop and dispose previous player if exists
+      await _countdownPlayer?.stop();
+      await _countdownPlayer?.dispose();
+
+      // Create and store new player
+      _countdownPlayer = AudioPlayer();
+      await _countdownPlayer!.play(AssetSource('sounds/sos.mp3'));
+      // await _countdownPlayer!.play(AssetSource('sounds/sos.m4a'));
+    } catch (e) {
+      print('Error playing countdown beep: $e');
+      // Continue without sound if there's an error
+    }
+  }
+
+  // Stop countdown sound
+  Future<void> stopCountdownSound() async {
+    try {
+      await _audioPlayer.stop();
+      await _countdownPlayer?.stop();
+      await _countdownPlayer?.dispose();
+      _countdownPlayer = null;
+    } catch (e) {
+      print('Error stopping countdown sound: $e');
+    }
+  }
+
+  // Helper method to clean error messages (remove "Exception: " prefix)
+  String _cleanErrorMessage(dynamic error) {
+    final errorStr = error.toString();
+    if (errorStr.startsWith('Exception: ')) {
+      return errorStr.substring(11); // Remove "Exception: " prefix
+    }
+    return errorStr;
+  }
+
+  // Get cleaned error message for display
+  String getCleanErrorMessage(dynamic error) {
+    return _cleanErrorMessage(error);
+  }
+
+  // Dispose audio player
+  @override
+  void onClose() {
+    _audioPlayer.dispose();
+    _countdownPlayer?.dispose();
+    super.onClose();
+  }
 }

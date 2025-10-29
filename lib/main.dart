@@ -1,17 +1,23 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
 import 'package:luna_iot/api/api_client.dart';
+import 'package:luna_iot/api/services/alert_device_api_service.dart';
 import 'package:luna_iot/api/services/auth_api_service.dart';
 import 'package:luna_iot/api/services/share_track_api_service.dart';
 import 'package:luna_iot/app/app_routes.dart';
 import 'package:luna_iot/app/app_theme.dart';
+import 'package:luna_iot/controllers/alert_panel_controller.dart';
 import 'package:luna_iot/controllers/auth_controller.dart';
+import 'package:luna_iot/controllers/language_controller.dart';
 import 'package:luna_iot/controllers/main_screen_controller.dart';
 import 'package:luna_iot/controllers/navigation_controller.dart';
 import 'package:luna_iot/services/firebase_service.dart';
+import 'package:luna_iot/services/language_service.dart';
 import 'package:luna_iot/services/socket_service.dart';
+import 'package:luna_iot/translations/app_translations.dart';
 import 'package:luna_iot/views/splash_screen.dart';
 import 'package:upgrader/upgrader.dart';
 
@@ -29,34 +35,55 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GetMaterialApp(
-      title: 'Luna IOT',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      getPages: AppRoutes.routes,
-      home: UpgradeAlert(
-        showIgnore: false,
-        showLater: false,
-        showReleaseNotes: true,
-        barrierDismissible: false,
-        onIgnore: () => false,
-        onLater: () => false,
-        child: SplashScreen(),
-      ),
-      initialBinding: BindingsBuilder(() {
-        Get.lazyPut(() => SocketService());
-        Get.lazyPut(() => ApiClient());
-        Get.lazyPut(() => AuthApiService(Get.find<ApiClient>()));
-        Get.lazyPut(() => ShareTrackApiService(Get.find<ApiClient>()));
-        Get.lazyPut(() => AuthController(Get.find<AuthApiService>()));
-        Get.put(NavigationController());
-        Get.put(MainScreenController());
+    return GetBuilder<LanguageController>(
+      init: LanguageController(),
+      builder: (languageController) {
+        return GetMaterialApp(
+          title: 'Luna IOT',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
 
-        // Schedule FCM token update after auth check
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _scheduleFcmTokenUpdate();
-        });
-      }),
+          // Translation configuration
+          translations: AppTranslations(),
+          locale: languageController.currentLocale.value,
+          fallbackLocale: const Locale('en', 'US'),
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: LanguageService.getSupportedLocales(),
+
+          getPages: AppRoutes.routes,
+          home: UpgradeAlert(
+            showIgnore: false,
+            showLater: false,
+            showReleaseNotes: true,
+            barrierDismissible: false,
+            onIgnore: () => false,
+            onLater: () => false,
+            child: SplashScreen(),
+          ),
+          initialBinding: BindingsBuilder(() {
+            Get.lazyPut(() => SocketService());
+            Get.lazyPut(() => ApiClient());
+            Get.lazyPut(() => AuthApiService(Get.find<ApiClient>()));
+            Get.lazyPut(() => ShareTrackApiService(Get.find<ApiClient>()));
+            Get.lazyPut(() => AlertDeviceApiService(Get.find<ApiClient>()));
+            Get.lazyPut(() => AuthController(Get.find<AuthApiService>()));
+            Get.lazyPut(
+              () => AlertPanelController(Get.find<AlertDeviceApiService>()),
+            );
+            Get.put(NavigationController());
+            Get.put(MainScreenController());
+
+            // Schedule FCM token update after auth check
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _scheduleFcmTokenUpdate();
+            });
+          }),
+        );
+      },
     );
   }
 }

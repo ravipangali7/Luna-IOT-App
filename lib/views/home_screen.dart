@@ -8,6 +8,7 @@ import 'package:luna_iot/widgets/home/home_admin_section.dart';
 import 'package:luna_iot/widgets/home/home_dealer_section.dart';
 import 'package:luna_iot/widgets/home/home_drawer.dart';
 import 'package:luna_iot/widgets/home/home_customer_section.dart';
+import 'package:luna_iot/widgets/language_switch_widget.dart';
 import 'package:luna_iot/widgets/loading_widget.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -33,11 +34,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final hour = DateTime.now().hour;
 
     if (hour < 12) {
-      return 'Good Morning';
+      return 'good_morning'.tr;
     } else if (hour < 17) {
-      return 'Good Afternoon';
+      return 'good_afternoon'.tr;
     } else {
-      return 'Good Evening';
+      return 'good_evening'.tr;
     }
   }
 
@@ -55,7 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           Icon(Icons.qr_code_scanner_rounded, color: AppTheme.subTitleColor),
           SizedBox(width: 10),
-          Icon(Icons.g_translate_outlined, color: AppTheme.subTitleColor),
+          const LanguageSwitchWidget(),
           SizedBox(width: 10),
           InkWell(
             onTap: () {

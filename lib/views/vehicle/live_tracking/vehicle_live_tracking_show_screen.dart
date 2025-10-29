@@ -914,8 +914,8 @@ class _VehicleLiveTrackingShowScreenState
                   trafficEnabled: false,
                   buildingsEnabled: true,
                   indoorViewEnabled: true,
-                  zoomGesturesEnabled: false,
-                  zoomControlsEnabled: false,
+                  zoomGesturesEnabled: true,
+                  zoomControlsEnabled: true,
                 ),
 
                 // Status Panel

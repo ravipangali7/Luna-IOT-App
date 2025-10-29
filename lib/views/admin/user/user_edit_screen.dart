@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:luna_iot/app/app_theme.dart';
 import 'package:luna_iot/controllers/user_controller.dart';
+import 'package:luna_iot/widgets/language_switch_widget.dart';
 
 class UserEditScreen extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -59,9 +60,10 @@ class _UserEditScreenState extends State<UserEditScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Edit User: ${widget.user['name']}',
+          '${'edit_user'.tr}: ${widget.user['name']}',
           style: TextStyle(color: AppTheme.titleColor, fontSize: 14),
         ),
+        actions: [const LanguageSwitchWidget(), SizedBox(width: 10)],
       ),
       body: Obx(
         () => AbsorbPointer(
@@ -76,18 +78,18 @@ class _UserEditScreenState extends State<UserEditScreen> {
                     // Name
                     TextFormField(
                       controller: _nameController,
-                      decoration: InputDecoration(labelText: 'Name'),
+                      decoration: InputDecoration(labelText: 'name'.tr),
                       validator: (value) =>
-                          value!.isEmpty ? 'Name is required' : null,
+                          value!.isEmpty ? 'name_required'.tr : null,
                     ),
                     const SizedBox(height: 16),
 
                     // Phone
                     TextFormField(
                       controller: _phoneController,
-                      decoration: InputDecoration(labelText: 'Phone'),
+                      decoration: InputDecoration(labelText: 'phone'.tr),
                       validator: (value) =>
-                          value!.isEmpty ? 'Phone is required' : null,
+                          value!.isEmpty ? 'phone_required'.tr : null,
                     ),
                     const SizedBox(height: 16),
 
@@ -108,9 +110,9 @@ class _UserEditScreenState extends State<UserEditScreen> {
                         onChanged: (value) => {
                           if (value != null) {selectedRoleId.value = value},
                         },
-                        decoration: InputDecoration(labelText: 'Role'),
+                        decoration: InputDecoration(labelText: 'role'.tr),
                         validator: (value) =>
-                            value == null ? 'Role is required' : null,
+                            value == null ? 'role_required'.tr : null,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -118,7 +120,7 @@ class _UserEditScreenState extends State<UserEditScreen> {
                     // Status
                     Obx(
                       () => SwitchListTile(
-                        title: Text('Active'),
+                        title: Text('active'.tr),
                         value: isActive.value,
                         onChanged: (value) => isActive.value = value,
                         activeColor: AppTheme.primaryColor,
@@ -148,7 +150,7 @@ class _UserEditScreenState extends State<UserEditScreen> {
                           borderRadius: BorderRadius.all(Radius.circular(8)),
                         ),
                         child: Text(
-                          'Submit',
+                          'submit'.tr,
                           style: TextStyle(color: Colors.white),
                         ),
                       ),

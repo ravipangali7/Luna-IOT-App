@@ -6,6 +6,7 @@ import 'package:luna_iot/controllers/device_controller.dart';
 import 'package:luna_iot/models/device_model.dart';
 import 'package:luna_iot/models/search_filter_model.dart';
 import 'package:luna_iot/widgets/confirm_dialouge.dart';
+import 'package:luna_iot/widgets/language_switch_widget.dart';
 import 'package:luna_iot/widgets/loading_widget.dart';
 import 'package:luna_iot/widgets/pagination_widget.dart';
 import 'package:luna_iot/widgets/role_based_widget.dart';
@@ -45,39 +46,39 @@ class DeviceIndexScreen extends GetView<DeviceController> {
     final filterOptions = [
       FilterOption(
         key: 'dealerName',
-        label: 'Dealer Name',
+        label: 'dealer_name'.tr,
         values: dealerNames,
         selectedValue: controller.currentFilters['dealerName'],
       ),
       FilterOption(
         key: 'dealerPhone',
-        label: 'Dealer Phone',
+        label: 'dealer_phone'.tr,
         values: dealerPhones,
         selectedValue: controller.currentFilters['dealerPhone'],
       ),
       FilterOption(
         key: 'customerName',
-        label: 'Customer Name',
+        label: 'customer_name'.tr,
         values: customerNames,
         selectedValue: controller.currentFilters['customerName'],
       ),
       FilterOption(
         key: 'customerPhone',
-        label: 'Customer Phone',
+        label: 'customer_phone'.tr,
         values: customerPhones,
         selectedValue: controller.currentFilters['customerPhone'],
       ),
       FilterOption(
         key: 'isAssigned',
-        label: 'Assignment Status',
-        values: ['Assigned', 'Not Assigned'],
+        label: 'assignment_status'.tr,
+        values: ['assigned'.tr, 'not_assigned'.tr],
         selectedValue: controller.currentFilters['isAssigned'],
       ),
     ];
 
     Get.bottomSheet(
       SearchFilterBottomSheet(
-        title: 'Search & Filter Devices',
+        title: 'search_filter_devices'.tr,
         filterOptions: filterOptions,
         searchQuery: controller.searchQuery.value,
         currentFilters: controller.currentFilters,
@@ -113,14 +114,16 @@ class DeviceIndexScreen extends GetView<DeviceController> {
       // AppBar
       appBar: AppBar(
         title: Text(
-          'Devices',
+          'devices'.tr,
           style: TextStyle(color: AppTheme.titleColor, fontSize: 14),
         ),
         actions: [
+          const LanguageSwitchWidget(),
+          SizedBox(width: 10),
           IconButton(
             onPressed: _showSearchFilterBottomSheet,
             icon: Icon(Icons.search, color: AppTheme.titleColor),
-            tooltip: 'Search & Filter',
+            tooltip: 'search_filter'.tr,
           ),
         ],
       ),
@@ -137,7 +140,7 @@ class DeviceIndexScreen extends GetView<DeviceController> {
                 Get.toNamed(AppRoutes.deviceAssignment);
               },
               backgroundColor: AppTheme.primaryColor,
-              tooltip: 'Assign Devices',
+              tooltip: 'assign_devices'.tr,
               child: const Icon(Icons.assignment, color: Colors.white),
             ),
             const SizedBox(height: 8),
@@ -147,7 +150,7 @@ class DeviceIndexScreen extends GetView<DeviceController> {
                 Get.toNamed(AppRoutes.deviceCreate);
               },
               backgroundColor: AppTheme.primaryColor,
-              tooltip: 'Add Device',
+              tooltip: 'add_device'.tr,
               child: const Icon(Icons.add, color: Colors.white),
             ),
           ],
@@ -163,7 +166,7 @@ class DeviceIndexScreen extends GetView<DeviceController> {
         if (controller.devices.isEmpty) {
           return Center(
             child: Text(
-              'No devices found',
+              'no_devices_found'.tr,
               style: TextStyle(color: AppTheme.subTitleColor),
             ),
           );

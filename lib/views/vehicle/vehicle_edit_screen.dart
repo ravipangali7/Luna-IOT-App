@@ -6,6 +6,7 @@ import 'package:luna_iot/controllers/vehicle_controller.dart';
 import 'package:luna_iot/models/vehicle_model.dart';
 import 'package:luna_iot/models/enums.dart';
 import 'package:luna_iot/services/qr_scanner_service.dart';
+import 'package:luna_iot/widgets/language_switch_widget.dart';
 
 class VehicleEditScreen extends StatefulWidget {
   final Vehicle vehicle;
@@ -61,9 +62,10 @@ class _VehicleEditScreenState extends State<VehicleEditScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Edit Vehicle: ${widget.vehicle.imei}',
+          '${'edit_vehicle'.tr}: ${widget.vehicle.imei}',
           style: TextStyle(color: AppTheme.titleColor, fontSize: 14),
         ),
+        actions: [const LanguageSwitchWidget(), SizedBox(width: 10)],
       ),
       body: Obx(
         () => AbsorbPointer(
@@ -82,7 +84,7 @@ class _VehicleEditScreenState extends State<VehicleEditScreen> {
                       controller: _imeiController,
                       enabled: authController.isSuperAdmin,
                       decoration: InputDecoration(
-                        labelText: 'IMEI',
+                        labelText: 'imei'.tr,
                         suffixIcon: IconButton(
                           onPressed: () async {
                             final result = await QrScannerService.scanQrCode(
@@ -97,23 +99,23 @@ class _VehicleEditScreenState extends State<VehicleEditScreen> {
                         ),
                       ),
                       validator: (value) =>
-                          value!.isEmpty ? 'IMEI is required' : null,
+                          value!.isEmpty ? 'imei_required'.tr : null,
                     ),
 
                     // Vehicle Name
                     TextFormField(
                       controller: _nameController,
-                      decoration: InputDecoration(labelText: 'Vehicle Name'),
+                      decoration: InputDecoration(labelText: 'vehicle_name'.tr),
                       validator: (value) =>
-                          value!.isEmpty ? 'Vehicle Name is required' : null,
+                          value!.isEmpty ? 'vehicle_name_required'.tr : null,
                     ),
 
                     // Vehicle No.
                     TextFormField(
                       controller: _vehicleNoController,
-                      decoration: InputDecoration(labelText: 'Vehicle No.'),
+                      decoration: InputDecoration(labelText: 'vehicle_no'.tr),
                       validator: (value) =>
-                          value!.isEmpty ? 'Vehicle No. is required' : null,
+                          value!.isEmpty ? 'vehicle_no_required'.tr : null,
                     ),
 
                     // Vehicle Type
@@ -135,15 +137,15 @@ class _VehicleEditScreenState extends State<VehicleEditScreen> {
                               }
                             : null, // disables dropdown if not superadmin
                         decoration: InputDecoration(
-                          labelText: 'Vehicle Type',
+                          labelText: 'vehicle_type'.tr,
                           // visually indicate disabled if not superadmin
                           enabled: authController.isSuperAdmin,
                         ),
                         validator: (value) => value == null || value.isEmpty
-                            ? 'Vehicle Type is required'
+                            ? 'vehicle_type_required'.tr
                             : null,
                         disabledHint: selectedVehicleType.value.isEmpty
-                            ? Text('Select Vehicle Type')
+                            ? Text('select_vehicle_type'.tr)
                             : Text(selectedVehicleType.value),
                       ),
                     ),
@@ -154,14 +156,18 @@ class _VehicleEditScreenState extends State<VehicleEditScreen> {
                         Expanded(
                           child: TextFormField(
                             controller: _odometerController,
-                            decoration: InputDecoration(labelText: 'Odometer'),
+                            decoration: InputDecoration(
+                              labelText: 'odometer'.tr,
+                            ),
                           ),
                         ),
                         SizedBox(width: 10),
                         Expanded(
                           child: TextFormField(
                             controller: _mileageController,
-                            decoration: InputDecoration(labelText: 'Mileage'),
+                            decoration: InputDecoration(
+                              labelText: 'mileage'.tr,
+                            ),
                           ),
                         ),
                       ],
@@ -174,7 +180,7 @@ class _VehicleEditScreenState extends State<VehicleEditScreen> {
                           child: TextFormField(
                             controller: _minimumFuelController,
                             decoration: InputDecoration(
-                              labelText: 'Minimum Fuel',
+                              labelText: 'minimum_fuel'.tr,
                             ),
                           ),
                         ),
@@ -183,7 +189,7 @@ class _VehicleEditScreenState extends State<VehicleEditScreen> {
                           child: TextFormField(
                             controller: _speedLimitController,
                             decoration: InputDecoration(
-                              labelText: 'Speed Limit',
+                              labelText: 'speed_limit'.tr,
                             ),
                           ),
                         ),
@@ -217,7 +223,7 @@ class _VehicleEditScreenState extends State<VehicleEditScreen> {
                           borderRadius: BorderRadius.all(Radius.circular(8)),
                         ),
                         child: Text(
-                          'Submit',
+                          'submit'.tr,
                           style: TextStyle(color: Colors.white),
                         ),
                       ),

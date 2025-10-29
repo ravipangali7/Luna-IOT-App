@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:luna_iot/app/app_theme.dart';
 import 'package:luna_iot/controllers/auth_controller.dart';
+import 'package:luna_iot/widgets/language_switch_widget.dart';
 import 'package:luna_iot/widgets/loading_widget.dart';
 
 class VerifyForgotPasswordOTPScreen extends StatefulWidget {
@@ -47,7 +48,7 @@ class VerifyForgotPasswordOTPScreenState
   Future<void> _handleResendOTP() async {
     final success = await _authController.resendForgotPasswordOTP(phone);
     if (success) {
-      Get.snackbar('Success', 'OTP resent successfully');
+      Get.snackbar('success'.tr, 'otp_resent_successfully'.tr);
     }
   }
 
@@ -97,7 +98,7 @@ class VerifyForgotPasswordOTPScreenState
                             children: [
                               const SizedBox(height: 10),
                               Text(
-                                'Verify OTP',
+                                'verify_otp'.tr,
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 16,
@@ -107,7 +108,7 @@ class VerifyForgotPasswordOTPScreenState
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Enter the OTP sent to $phone',
+                                '${'otp_sent_to'.tr} $phone',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 12,
@@ -122,7 +123,7 @@ class VerifyForgotPasswordOTPScreenState
                                 keyboardType: TextInputType.number,
                                 maxLength: 6,
                                 decoration: InputDecoration(
-                                  labelText: 'OTP',
+                                  labelText: 'otp'.tr,
                                   prefixIcon: Icon(
                                     Icons.security,
                                     color: AppTheme.primaryColor,
@@ -131,10 +132,10 @@ class VerifyForgotPasswordOTPScreenState
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'Please enter OTP';
+                                    return 'please_enter_otp'.tr;
                                   }
                                   if (value.length != 6) {
-                                    return 'OTP must be 6 digits';
+                                    return 'otp_must_be_6_digits'.tr;
                                   }
                                   return null;
                                 },
@@ -163,7 +164,7 @@ class VerifyForgotPasswordOTPScreenState
                                           child: LoadingWidget(size: 30),
                                         )
                                       : Text(
-                                          'Verify OTP',
+                                          'verify_otp'.tr,
                                           style: TextStyle(
                                             color: Colors.white,
                                             fontSize: 16,
@@ -179,7 +180,7 @@ class VerifyForgotPasswordOTPScreenState
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Text(
-                                    "Didn't receive OTP? ",
+                                    'didnt_receive_otp'.tr,
                                     style: TextStyle(
                                       color: AppTheme.subTitleColor,
                                     ),
@@ -196,8 +197,8 @@ class VerifyForgotPasswordOTPScreenState
                                         _authController
                                                 .canResendForgotPasswordOtp
                                                 .value
-                                            ? 'Resend'
-                                            : 'Resend in ${_authController.forgotPasswordCountdown.value}s',
+                                            ? 'resend'.tr
+                                            : '${'resend_in'.tr} ${_authController.forgotPasswordCountdown.value}s',
                                         style: TextStyle(
                                           color: AppTheme.primaryColor,
                                           fontWeight: FontWeight.bold,
@@ -213,7 +214,7 @@ class VerifyForgotPasswordOTPScreenState
                               TextButton(
                                 onPressed: () => Get.back(),
                                 child: Text(
-                                  'Back to Forgot Password',
+                                  'back_to_forgot_password'.tr,
                                   style: TextStyle(
                                     color: AppTheme.subTitleColor,
                                     fontWeight: FontWeight.w500,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:luna_iot/app/app_theme.dart';
 import 'package:luna_iot/controllers/auth_controller.dart';
+import 'package:luna_iot/controllers/language_controller.dart';
 import 'package:luna_iot/views/home_screen.dart';
 import 'package:luna_iot/widgets/loading_widget.dart';
 
@@ -89,7 +90,7 @@ class LoginScreenState extends State<LoginScreen> {
                   SizedBox(height: 20),
 
                   Text(
-                    'Login Into System',
+                    'login_into_system'.tr,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
@@ -134,12 +135,12 @@ class LoginScreenState extends State<LoginScreen> {
                                 contentPadding: EdgeInsets.symmetric(
                                   vertical: 20,
                                 ),
-                                labelText: 'Mobile No:',
+                                labelText: 'mobile_no'.tr,
                                 prefixIcon: Icon(
                                   Icons.person,
                                   color: AppTheme.subTitleColor,
                                 ),
-                                hintText: 'Enter mobile no:',
+                                hintText: 'enter_mobile_no'.tr,
                                 hintStyle: TextStyle(
                                   color: AppTheme.primaryColor.withOpacity(0.6),
                                   fontSize: 12,
@@ -170,7 +171,7 @@ class LoginScreenState extends State<LoginScreen> {
                               ),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
-                                  return 'Please enter your phone number';
+                                  return 'please_enter_phone'.tr;
                                 }
                                 return null;
                               },
@@ -188,7 +189,7 @@ class LoginScreenState extends State<LoginScreen> {
                                 contentPadding: EdgeInsets.symmetric(
                                   vertical: 20,
                                 ),
-                                labelText: 'Password',
+                                labelText: 'password'.tr,
                                 prefixIcon: Icon(
                                   Icons.lock,
                                   color: AppTheme.subTitleColor,
@@ -246,7 +247,7 @@ class LoginScreenState extends State<LoginScreen> {
                                     // Password visibility toggle
                                   ],
                                 ),
-                                hintText: 'Enter password',
+                                hintText: 'enter_password'.tr,
                                 hintStyle: TextStyle(
                                   color: AppTheme.primaryColor.withOpacity(0.6),
                                   fontSize: 12,
@@ -277,7 +278,7 @@ class LoginScreenState extends State<LoginScreen> {
                               ),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
-                                  return 'Please enter your password';
+                                  return 'please_enter_password'.tr;
                                 }
                                 return null;
                               },
@@ -290,7 +291,7 @@ class LoginScreenState extends State<LoginScreen> {
                                 onPressed: () =>
                                     Get.toNamed('/forgot-password'),
                                 child: Text(
-                                  'Forgot Password?',
+                                  'forgot_password'.tr,
                                   style: TextStyle(
                                     color: AppTheme.primaryColor,
                                     fontSize: 14,
@@ -323,7 +324,7 @@ class LoginScreenState extends State<LoginScreen> {
                                         child: LoadingWidget(size: 30),
                                       )
                                     : Text(
-                                        'Login',
+                                        'login'.tr,
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontSize: 16,
@@ -335,31 +336,75 @@ class LoginScreenState extends State<LoginScreen> {
                             const SizedBox(height: 24),
 
                             // Register Link
-                            TextButton(
-                              onPressed: () => Get.toNamed('/register'),
-                              child: Text(
-                                'Create New Account',
-                                style: TextStyle(color: AppTheme.subTitleColor),
+                            Container(
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: AppTheme.primaryColor,
+                                  width: 1,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                            ),
-                            Text(
-                              'Change Language (भाषा छनोट)',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: AppTheme.subTitleColor,
-                                fontWeight: FontWeight.w500,
+                              child: TextButton(
+                                onPressed: () => Get.toNamed('/register'),
+                                child: Text(
+                                  'create_new_account'.tr,
+                                  style: TextStyle(
+                                    color: AppTheme.subTitleColor,
+                                  ),
+                                ),
                               ),
                             ),
 
-                            SizedBox(height: 8),
+                            SizedBox(height: 5),
 
-                            Text(
-                              'Change Your Country',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: AppTheme.subTitleColor,
-                                fontWeight: FontWeight.w500,
-                              ),
+                            // Unified Language Switch Button
+                            GetBuilder<LanguageController>(
+                              builder: (controller) {
+                                return InkWell(
+                                  onTap: () => controller.toggleLanguage(),
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: AppTheme.primaryColor,
+                                        width: 1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          'change_language'.tr,
+                                          style: TextStyle(
+                                            color: AppTheme.subTitleColor,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          controller.getCurrentLanguageFlag(),
+                                          style: const TextStyle(fontSize: 20),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          controller
+                                              .getCurrentLanguageDisplayName(),
+                                          style: TextStyle(
+                                            color: AppTheme.subTitleColor,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
 
                             const SizedBox(height: 2),

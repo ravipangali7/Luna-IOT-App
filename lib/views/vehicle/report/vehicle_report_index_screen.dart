@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:luna_iot/app/app_routes.dart';
 import 'package:luna_iot/app/app_theme.dart';
 import 'package:luna_iot/controllers/vehicle_controller.dart';
+import 'package:luna_iot/widgets/language_switch_widget.dart';
 import 'package:luna_iot/widgets/loading_widget.dart';
 import 'package:luna_iot/widgets/vehicle/vehicle_card.dart';
 
@@ -15,9 +16,10 @@ class VehicleReportIndexScreen extends GetView<VehicleController> {
       // Appbar
       appBar: AppBar(
         title: Text(
-          'Report',
+          'report'.tr,
           style: TextStyle(color: AppTheme.titleColor, fontSize: 14),
         ),
+        actions: [const LanguageSwitchWidget(), SizedBox(width: 10)],
       ),
 
       // Main Body Start
@@ -29,7 +31,7 @@ class VehicleReportIndexScreen extends GetView<VehicleController> {
         if (controller.vehicles.isEmpty) {
           return Center(
             child: Text(
-              'No vehicles found',
+              'no_vehicles_found'.tr,
               style: TextStyle(color: AppTheme.subTitleColor),
             ),
           );

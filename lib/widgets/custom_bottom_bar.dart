@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:luna_iot/app/app_routes.dart';
 import 'package:luna_iot/app/app_theme.dart';
@@ -6,6 +8,7 @@ import 'package:luna_iot/controllers/main_screen_controller.dart';
 import 'package:luna_iot/controllers/navigation_controller.dart';
 import 'package:luna_iot/controllers/sos_controller.dart';
 import 'package:luna_iot/models/alert_type_model.dart';
+import 'package:luna_iot/widgets/slide_to_cancel_widget.dart';
 import 'package:stylish_bottom_bar/stylish_bottom_bar.dart';
 
 class CustomBottomBar extends StatelessWidget {
@@ -33,7 +36,7 @@ class CustomBottomBar extends StatelessWidget {
             icon: Icon(Icons.home, color: AppTheme.subTitleColor),
             selectedIcon: Icon(Icons.home, color: AppTheme.primaryColor),
             title: Text(
-              'Home',
+              'home'.tr,
               style: TextStyle(color: AppTheme.subTitleColor),
             ),
             backgroundColor: Colors.transparent,
@@ -43,7 +46,7 @@ class CustomBottomBar extends StatelessWidget {
             icon: Icon(Icons.local_offer, color: AppTheme.subTitleColor),
             selectedIcon: Icon(Icons.local_offer, color: AppTheme.primaryColor),
             title: Text(
-              'Vehicle Tag',
+              'vehicle_tag'.tr,
               style: TextStyle(color: AppTheme.subTitleColor),
             ),
             backgroundColor: Colors.transparent,
@@ -56,7 +59,7 @@ class CustomBottomBar extends StatelessWidget {
               color: AppTheme.primaryColor,
             ),
             title: Text(
-              'EV Charge',
+              'ev_charge'.tr,
               style: TextStyle(color: AppTheme.subTitleColor),
             ),
             backgroundColor: Colors.transparent,
@@ -66,7 +69,7 @@ class CustomBottomBar extends StatelessWidget {
             icon: Icon(Icons.person, color: AppTheme.subTitleColor),
             selectedIcon: Icon(Icons.person, color: AppTheme.primaryColor),
             title: Text(
-              'Profile',
+              'profile'.tr,
               style: TextStyle(color: AppTheme.subTitleColor),
             ),
             backgroundColor: Colors.transparent,
@@ -102,10 +105,10 @@ class CustomBottomBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildFallbackItem(Icons.home, 'Home', 0),
-          _buildFallbackItem(Icons.local_offer, 'Vehicle Tag', 1),
-          _buildFallbackItem(Icons.electric_bolt, 'EV Charge', 2),
-          _buildFallbackItem(Icons.person, 'Profile', 3),
+          _buildFallbackItem(Icons.home, 'home'.tr, 0),
+          _buildFallbackItem(Icons.local_offer, 'vehicle_tag'.tr, 1),
+          _buildFallbackItem(Icons.electric_bolt, 'ev_charge'.tr, 2),
+          _buildFallbackItem(Icons.person, 'profile'.tr, 3),
         ],
       ),
     );
@@ -151,7 +154,7 @@ class SosFab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => _showSosConfirmationDialog(context),
+      onTap: () => _handleSosButtonPress(context),
       child: Container(
         width: 70,
         height: 70,
@@ -191,96 +194,66 @@ class SosFab extends StatelessWidget {
     );
   }
 
-  void _showSosConfirmationDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              Icon(Icons.emergency, color: Colors.red, size: 28),
-              SizedBox(width: 12),
-              Text(
-                'Emergency Alert',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          content: Text(
-            'Do you want to send an emergency alert? This will notify nearby authorities.',
-            style: TextStyle(fontSize: 16),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                // Do nothing - just close dialog
-              },
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.grey[700],
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              ),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                // Start the SOS process
-                _handleSosButtonPress(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text(
-                'Send Alert',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   void _handleSosButtonPress(BuildContext context) async {
+    if (!context.mounted) return;
+
     final sosController = Get.find<SosController>();
 
     try {
-      // Reset progress at the START of new SOS process
-      sosController.resetProgress();
+      // Step 1: Check if location is enabled first
+      final isLocationEnabled = await sosController.checkLocationServices();
 
-      _showProgressDialog(context, sosController);
-      await sosController.startSosProcess();
-
-      // Close progress dialog using Navigator (since we used showDialog)
-      if (context.mounted && Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
+      if (!isLocationEnabled) {
+        // Show location OFF dialog
+        final shouldOpenSettings = await _showLocationOffDialog(context);
+        if (shouldOpenSettings == true) {
+          await Geolocator.openLocationSettings();
+        }
+        return;
       }
 
-      // Wait for dialog to fully close before showing next dialog
-      await Future.delayed(Duration(milliseconds: 300));
+      // Step 2: Show alert type selection
+      final selectedAlertType = await _showAlertTypeSelectionFirst(context);
 
-      if (sosController.isReadyForAlertTypeSelection) {
-        _showAlertTypeSelectionDialog(context, sosController);
+      if (selectedAlertType == null) return; // User cancelled
+
+      // Step 3: Show progress and process location + geofence matching
+      final sosData = await _processLocationAndGeofence(
+        context,
+        sosController,
+        selectedAlertType,
+      );
+
+      // Step 4: Show countdown with sound
+      final shouldSend = await _showFinalCountdownWithSound(
+        context,
+        selectedAlertType,
+        sosController,
+      );
+
+      if (shouldSend) {
+        // Step 5: Send API and show 100%
+        await _sendSosAlert(context, sosController, sosData);
+      } else {
+        // User cancelled, clean up
+        await sosController.stopCountdownSound();
+        sosController.resetProgress();
       }
     } catch (e) {
+      // Stop sound if playing
+      await sosController.stopCountdownSound();
+
       if (context.mounted && Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
       }
       await Future.delayed(Duration(milliseconds: 300));
-      _showErrorDialog(context, e.toString(), sosController);
+
+      if (!context.mounted) return;
+      _showErrorDialog(
+        context,
+        sosController.getCleanErrorMessage(e),
+        sosController,
+      );
     }
   }
 
@@ -290,147 +263,153 @@ class SosFab extends StatelessWidget {
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
         return Obx(
-          () => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: Row(
-              children: [
-                Icon(Icons.emergency, color: Colors.red, size: 28),
-                SizedBox(width: 12),
-                Text(
-                  'Emergency Alert',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: 80,
-                  height: 80,
-                  child: CircularProgressIndicator(
-                    value: sosController.progress.value,
-                    backgroundColor: Colors.grey[300],
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      sosController.progress.value >= 1.0
-                          ? Colors.green
-                          : Colors.red,
+          () => Material(
+            color: Colors.black.withOpacity(0.85),
+            child: SafeArea(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Large circular progress indicator with centered icon
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        SizedBox(
+                          width: 200,
+                          height: 200,
+                          child: CircularProgressIndicator(
+                            value: sosController.progress.value,
+                            backgroundColor: Colors.white.withOpacity(0.2),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              sosController.progress.value >= 1.0
+                                  ? Colors.green
+                                  : Colors.red,
+                            ),
+                            strokeWidth: 12,
+                          ),
+                        ),
+                        // Emergency icon centered in progress indicator
+                        Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.red.withOpacity(0.2),
+                            border: Border.all(color: Colors.red, width: 3),
+                          ),
+                          child: Icon(
+                            Icons.emergency,
+                            size: 50,
+                            color: Colors.red,
+                          ),
+                        ),
+                      ],
                     ),
-                    strokeWidth: 8,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  sosController.progressMessage.value,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  '${sosController.progressPercentage}%',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: sosController.progress.value >= 1.0
-                        ? Colors.green
-                        : Colors.red,
-                  ),
-                ),
-              ],
-            ),
-            // Show Close button ONLY at 100%
-            actions: sosController.progress.value >= 1.0
-                ? [
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(dialogContext).pop();
-                        sosController.resetProgress();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: const Text(
-                        'Close',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    const SizedBox(height: 30),
+                    // Progress percentage
+                    Text(
+                      '${sosController.progressPercentage}%',
+                      style: TextStyle(
+                        fontSize: 80,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
-                  ]
-                : null,
+                    const SizedBox(height: 20),
+                    // Progress message
+                    Text(
+                      sosController.progressMessage.value,
+                      style: TextStyle(
+                        fontSize: 20,
+                        color: Colors.white.withOpacity(0.8),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    // Show Close button ONLY at 100%
+                    if (sosController.progress.value >= 1.0) ...[
+                      const SizedBox(height: 40),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(dialogContext).pop();
+                          sosController.resetProgress();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 40,
+                            vertical: 15,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                        ),
+                        child: Text(
+                          'close'.tr,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
           ),
         );
       },
     );
   }
 
-  void _showAlertTypeSelectionDialog(
-    BuildContext context,
-    SosController sosController,
-  ) {
-    showDialog(
+  // Show location OFF dialog
+  Future<bool?> _showLocationOffDialog(BuildContext context) async {
+    return await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text(
-            'Select Emergency Type',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: Obx(
-              () => ListView.builder(
-                shrinkWrap: true,
-                itemCount: sosController.alertTypesForSelection.length,
-                itemBuilder: (context, index) {
-                  final alertType = sosController.alertTypesForSelection[index];
-                  return ListTile(
-                    leading: Icon(
-                      _getAlertTypeIcon(alertType.name),
-                      color: Colors.red,
-                    ),
-                    title: Text(alertType.name),
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      _continueSosProcess(context, alertType, sosController);
-                    },
-                  );
-                },
+          title: Row(
+            children: [
+              Icon(Icons.location_off, color: Colors.red, size: 32),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'location_is_off'.tr,
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
               ),
-            ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'location_required_for_sos'.tr,
+                style: TextStyle(fontSize: 16),
+              ),
+              SizedBox(height: 12),
+              Text(
+                'please_turn_on_location'.tr,
+                style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+              ),
+            ],
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                sosController.resetProgress(); // Reset state when canceling
-              },
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.grey[700],
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text('cancel'.tr, style: TextStyle(fontSize: 16)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
               ),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+              child: Text('open_settings'.tr),
             ),
           ],
         );
@@ -438,30 +417,382 @@ class SosFab extends StatelessWidget {
     );
   }
 
-  void _continueSosProcess(
+  // Show alert type selection FIRST
+  Future<AlertType?> _showAlertTypeSelectionFirst(BuildContext context) async {
+    final sosController = Get.find<SosController>();
+
+    // Get available alert types from database (excluding Help)
+    final alertTypes = await sosController.getAllAlertTypes();
+
+    return await showDialog<AlertType>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Material(
+          color: Colors.black.withOpacity(0.85),
+          child: SafeArea(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Title
+                  Text(
+                    'select_emergency_type'.tr,
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 40),
+
+                  // Alert type grid
+                  Container(
+                    width: MediaQuery.of(context).size.width * 0.8,
+                    child: GridView.builder(
+                      shrinkWrap: true,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 20,
+                        mainAxisSpacing: 20,
+                        childAspectRatio: 1.2,
+                      ),
+                      itemCount: alertTypes.length,
+                      itemBuilder: (context, index) {
+                        final alertType = alertTypes[index];
+                        return GestureDetector(
+                          onTap: () => Navigator.of(context).pop(alertType),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.red, width: 2),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Builder(
+                                  builder: (context) {
+                                    if (alertType.icon == null ||
+                                        alertType.icon!.isEmpty) {
+                                      return Icon(
+                                        Icons.emergency,
+                                        size: 40,
+                                        color: Colors.red,
+                                      );
+                                    }
+
+                                    final iconPath = _getIconPath(
+                                      alertType.icon,
+                                    );
+
+                                    if (iconPath.isEmpty) {
+                                      return Icon(
+                                        Icons.emergency,
+                                        size: 40,
+                                        color: Colors.red,
+                                      );
+                                    }
+
+                                    return Image.asset(
+                                      iconPath,
+                                      width: 40,
+                                      height: 40,
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
+                                            return Icon(
+                                              Icons.emergency,
+                                              size: 40,
+                                              color: Colors.red,
+                                            );
+                                          },
+                                    );
+                                  },
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  alertType.name,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+                  SizedBox(height: 40),
+
+                  // Cancel button
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(null),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey[700],
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 40,
+                        vertical: 15,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                    ),
+                    child: Text(
+                      'cancel'.tr,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Process location and geofence matching with progress
+  Future<Map<String, dynamic>> _processLocationAndGeofence(
+    BuildContext context,
+    SosController sosController,
+    AlertType selectedAlertType,
+  ) async {
+    sosController.resetProgress();
+
+    if (!context.mounted) throw Exception('Context not mounted');
+    _showProgressDialog(context, sosController);
+
+    final sosData = await sosController.processLocationAndMatchGeofence(
+      selectedAlertType,
+    );
+
+    // Close progress dialog
+    if (context.mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+
+    return sosData;
+  }
+
+  // Show final countdown with sound
+  Future<bool> _showFinalCountdownWithSound(
     BuildContext context,
     AlertType selectedAlertType,
     SosController sosController,
   ) async {
-    try {
-      _showProgressDialog(context, sosController);
-      await sosController.continueSosProcess(selectedAlertType);
+    int countdown = 10;
+    Timer? countdownTimer;
+    bool isCancelled = false;
 
-      // Wait for isLoading to become false (indicates completion)
-      while (sosController.isLoading.value) {
-        await Future.delayed(Duration(milliseconds: 100));
-      }
+    // Play sound BEFORE showing dialog (for initial count 10)
+    await sosController.playCountdownBeep();
 
-      // That's it! Dialog stays open at 100% with "Close" button
-      // User will close it manually by clicking the button
-    } catch (e) {
-      if (context.mounted && Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-      }
-      // Reset on error is fine since we're showing error dialog next
-      sosController.resetProgress();
-      _showErrorDialog(context, e.toString(), sosController);
+    return await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return StatefulBuilder(
+              builder: (context, setState) {
+                // Start countdown timer
+                if (countdownTimer == null) {
+                  countdownTimer = Timer.periodic(
+                    Duration(milliseconds: 1000),
+                    (timer) {
+                      if (isCancelled) {
+                        timer.cancel();
+                        return;
+                      }
+
+                      countdown--;
+
+                      if (countdown > 0) {
+                        // Still counting down, just update UI
+                        setState(() {});
+                      } else {
+                        // Reached 0, close dialog
+                        timer.cancel();
+                        Navigator.of(context).pop(true); // Send alert
+                      }
+                    },
+                  );
+                }
+
+                return Material(
+                  color: Colors.black.withOpacity(0.85),
+                  child: SafeArea(
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // Emergency icon
+                                Container(
+                                  width: 120,
+                                  height: 120,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.red.withOpacity(0.2),
+                                    border: Border.all(
+                                      color: Colors.red,
+                                      width: 3,
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    Icons.emergency,
+                                    size: 60,
+                                    color: Colors.red,
+                                  ),
+                                ),
+                                SizedBox(height: 40),
+                                // Countdown number
+                                Text(
+                                  countdown.toString(),
+                                  style: TextStyle(
+                                    fontSize: 100,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                SizedBox(height: 20),
+                                // Alert text
+                                Text(
+                                  'sending_emergency_alert'.tr,
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                SizedBox(height: 10),
+                                Text(
+                                  'to_department'.tr.replaceAll(
+                                    '@department',
+                                    selectedAlertType.name,
+                                  ),
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.white.withOpacity(0.8),
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                if (Get.find<SosController>()
+                                    .selectedInstituteName
+                                    .value
+                                    .isNotEmpty)
+                                  Text(
+                                    Get.find<SosController>()
+                                        .selectedInstituteName
+                                        .value,
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue[300],
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // Slide to cancel widget
+                        Padding(
+                          padding: EdgeInsets.only(bottom: 50),
+                          child: SlideToCancelWidget(
+                            onCancel: () async {
+                              isCancelled = true;
+                              countdownTimer?.cancel();
+                              await sosController.stopCountdownSound();
+                              Navigator.of(context).pop(false); // Don't send
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ) ??
+        false; // Default to false if dialog is dismissed
+  }
+
+  // NEW FLOW: Send final alert
+  Future<void> _sendSosAlert(
+    BuildContext context,
+    SosController sosController,
+    Map<String, dynamic> sosData,
+  ) async {
+    if (!context.mounted) return;
+
+    _showProgressDialog(context, sosController);
+    await sosController.sendFinalAlert(sosData);
+
+    // Close progress dialog
+    if (context.mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
     }
+
+    // Show success dialog
+    if (context.mounted) {
+      _showSuccessDialog(context, sosController);
+    }
+  }
+
+  String _getIconPath(String? iconValue) {
+    if (iconValue == null || iconValue.isEmpty) {
+      return '';
+    }
+
+    final normalized = iconValue
+        .toLowerCase()
+        .replaceAll('_', ' ')
+        .replaceAll('-', ' ')
+        .trim();
+
+    final Map<String, String> iconMap = {
+      'ambulance': 'Ambulance',
+      'animal station': 'Animal Station',
+      'electricity station': 'Electricity Station',
+      'fire station': 'Fire Station',
+      'flood & landslide': 'Flood & Landslide',
+      'flood and landslide': 'Flood & Landslide',
+      'infra station': 'Infra Station',
+      'infrastructure station': 'Infra Station',
+      'vehicle accident': 'Vehicle Accident',
+      'women harassment': 'Women Harassment',
+    };
+
+    if (iconMap.containsKey(normalized)) {
+      return 'assets/images/alert/${iconMap[normalized]!}.png';
+    }
+
+    for (var entry in iconMap.entries) {
+      if (entry.key.contains(normalized) || normalized.contains(entry.key)) {
+        return 'assets/images/alert/${entry.value}.png';
+      }
+    }
+
+    final capitalized = iconValue
+        .split(' ')
+        .map(
+          (word) => word.isEmpty
+              ? ''
+              : word[0].toUpperCase() + word.substring(1).toLowerCase(),
+        )
+        .join(' ');
+    return 'assets/images/alert/$capitalized.png';
   }
 
   void _showErrorDialog(
@@ -481,7 +812,7 @@ class SosFab extends StatelessWidget {
               Icon(Icons.error_outline, color: Colors.red, size: 28),
               SizedBox(width: 12),
               Text(
-                'Error',
+                'error'.tr,
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
             ],
@@ -497,8 +828,8 @@ class SosFab extends StatelessWidget {
                 foregroundColor: Colors.red,
                 padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
-              child: const Text(
-                'OK',
+              child: Text(
+                'ok'.tr,
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
@@ -513,8 +844,8 @@ class SosFab extends StatelessWidget {
                   foregroundColor: Colors.blue,
                   padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 ),
-                child: const Text(
-                  'Settings',
+                child: Text(
+                  'settings'.tr,
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -524,22 +855,71 @@ class SosFab extends StatelessWidget {
     );
   }
 
-  IconData _getAlertTypeIcon(String alertTypeName) {
-    switch (alertTypeName.toLowerCase()) {
-      case 'medical':
-        return Icons.local_hospital;
-      case 'fire':
-        return Icons.local_fire_department;
-      case 'police':
-        return Icons.local_police;
-      case 'accident':
-        return Icons.car_crash;
-      case 'natural disaster':
-        return Icons.warning;
-      case 'security':
-        return Icons.security;
-      default:
-        return Icons.emergency;
-    }
+  void _showSuccessDialog(BuildContext context, SosController sosController) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green, size: 28),
+              SizedBox(width: 12),
+              Flexible(
+                child: Text(
+                  'alert_sent_successfully'.tr,
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                'sent_successfully_to'.tr,
+                style: TextStyle(fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 8),
+              if (sosController.selectedInstituteName.value.isNotEmpty)
+                Text(
+                  sosController.selectedInstituteName.value,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+            ],
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                sosController.resetProgress();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                'ok'.tr,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }

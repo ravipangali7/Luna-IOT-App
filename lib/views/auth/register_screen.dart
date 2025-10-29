@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:luna_iot/app/app_theme.dart';
 import 'package:luna_iot/controllers/auth_controller.dart';
+import 'package:luna_iot/widgets/language_switch_widget.dart';
 import 'package:luna_iot/widgets/loading_widget.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -71,7 +72,7 @@ class RegisterScreenState extends State<RegisterScreen> {
   Future<void> _handleResendOTP() async {
     final success = await _authController.resendOTP(_phoneController.text);
     if (success) {
-      Get.snackbar('Success', 'OTP resent successfully');
+      Get.snackbar('success'.tr, 'otp_resent_successfully'.tr);
     }
   }
 
@@ -128,7 +129,9 @@ class RegisterScreenState extends State<RegisterScreen> {
                             children: [
                               const SizedBox(height: 10),
                               Text(
-                                _isOtpSent ? 'Verify OTP' : 'Create Account',
+                                _isOtpSent
+                                    ? 'verify_otp'.tr
+                                    : 'create_account'.tr,
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 16,
@@ -139,7 +142,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                               if (_isOtpSent) ...[
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Enter the OTP sent to ${_phoneController.text}',
+                                  '${'otp_sent_to'.tr} ${_phoneController.text}',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 12,
@@ -157,7 +160,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                                     contentPadding: EdgeInsets.symmetric(
                                       vertical: 20,
                                     ),
-                                    labelText: 'Full Name',
+                                    labelText: 'full_name'.tr,
                                     prefixIcon: Icon(
                                       Icons.person,
                                       color: AppTheme.subTitleColor,
@@ -165,7 +168,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                                   ),
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
-                                      return 'Please enter your full name';
+                                      return 'please_enter_full_name'.tr;
                                     }
                                     return null;
                                   },
@@ -180,7 +183,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                                     contentPadding: EdgeInsets.symmetric(
                                       vertical: 20,
                                     ),
-                                    labelText: 'Phone Number',
+                                    labelText: 'phone_number'.tr,
                                     prefixIcon: Icon(
                                       Icons.phone,
                                       color: AppTheme.subTitleColor,
@@ -188,7 +191,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                                   ),
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
-                                      return 'Please enter your phone number';
+                                      return 'please_enter_phone'.tr;
                                     }
                                     return null;
                                   },
@@ -203,7 +206,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                                     contentPadding: EdgeInsets.symmetric(
                                       vertical: 20,
                                     ),
-                                    labelText: 'Password',
+                                    labelText: 'password'.tr,
                                     prefixIcon: Icon(
                                       Icons.lock,
                                       color: AppTheme.subTitleColor,
@@ -224,10 +227,10 @@ class RegisterScreenState extends State<RegisterScreen> {
                                   ),
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
-                                      return 'Please enter your password';
+                                      return 'please_enter_password'.tr;
                                     }
                                     if (value.length < 6) {
-                                      return 'Password must be at least 6 characters';
+                                      return 'password_min_length'.tr;
                                     }
                                     return null;
                                   },
@@ -242,7 +245,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                                     contentPadding: EdgeInsets.symmetric(
                                       vertical: 20,
                                     ),
-                                    labelText: 'Confirm Password',
+                                    labelText: 'confirm_password'.tr,
                                     prefixIcon: Icon(
                                       Icons.lock_outline,
                                       color: AppTheme.subTitleColor,
@@ -264,10 +267,10 @@ class RegisterScreenState extends State<RegisterScreen> {
                                   ),
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
-                                      return 'Please confirm your password';
+                                      return 'please_confirm_password'.tr;
                                     }
                                     if (value != _passwordController.text) {
-                                      return 'Passwords do not match';
+                                      return 'password_mismatch'.tr;
                                     }
                                     return null;
                                   },
@@ -296,7 +299,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                                           });
                                         },
                                         child: Text(
-                                          'By signing up you agree to our terms and privacy policy',
+                                          'agree_terms_privacy'.tr,
                                           style: TextStyle(
                                             color: AppTheme.subTitleColor,
                                             fontSize: 14,
@@ -337,7 +340,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                                             child: LoadingWidget(size: 30),
                                           )
                                         : Text(
-                                            'Send OTP',
+                                            'send_otp'.tr,
                                             style: TextStyle(
                                               color: Colors.white,
                                               fontSize: 16,
@@ -353,7 +356,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                                   Padding(
                                     padding: const EdgeInsets.only(top: 8.0),
                                     child: Text(
-                                      'Please agree to terms and privacy policy to continue',
+                                      'please_agree_terms'.tr,
                                       style: TextStyle(
                                         color: Colors.red.shade600,
                                         fontSize: 12,
@@ -370,7 +373,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                                     contentPadding: EdgeInsets.symmetric(
                                       vertical: 20,
                                     ),
-                                    labelText: 'OTP',
+                                    labelText: 'otp'.tr,
                                     prefixIcon: Icon(
                                       Icons.security,
                                       color: AppTheme.primaryColor,
@@ -379,10 +382,10 @@ class RegisterScreenState extends State<RegisterScreen> {
                                   ),
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
-                                      return 'Please enter OTP';
+                                      return 'please_enter_otp'.tr;
                                     }
                                     if (value.length != 6) {
-                                      return 'OTP must be 6 digits';
+                                      return 'otp_must_be_6_digits'.tr;
                                     }
                                     return null;
                                   },
@@ -411,7 +414,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                                             child: LoadingWidget(size: 30),
                                           )
                                         : Text(
-                                            'Verify & Register',
+                                            'verify_register'.tr,
                                             style: TextStyle(
                                               color: Colors.white,
                                               fontSize: 16,
@@ -427,7 +430,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Text(
-                                      "Didn't receive OTP? ",
+                                      'didnt_receive_otp'.tr,
                                       style: TextStyle(
                                         color: AppTheme.subTitleColor,
                                       ),
@@ -440,8 +443,8 @@ class RegisterScreenState extends State<RegisterScreen> {
                                             : null,
                                         child: Text(
                                           _authController.canResendOtp.value
-                                              ? 'Resend'
-                                              : 'Resend in ${_authController.countdown.value}s',
+                                              ? 'resend'.tr
+                                              : '${'resend_in'.tr} ${_authController.countdown.value}s',
                                           style: TextStyle(
                                             color: AppTheme.primaryColor,
                                             fontWeight: FontWeight.bold,
@@ -457,7 +460,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                                 TextButton(
                                   onPressed: _goBackToRegistration,
                                   child: Text(
-                                    'Back to Registration',
+                                    'back_to_registration'.tr,
                                     style: TextStyle(
                                       color: AppTheme.subTitleColor,
                                       fontWeight: FontWeight.w500,
@@ -472,7 +475,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Text(
-                                    "Already have an account? ",
+                                    'already_have_account'.tr,
                                     style: TextStyle(
                                       color: AppTheme.subTitleColor,
                                     ),
@@ -480,7 +483,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                                   TextButton(
                                     onPressed: () => Get.back(),
                                     child: Text(
-                                      'Login',
+                                      'login'.tr,
                                       style: TextStyle(
                                         color: AppTheme.primaryColor,
                                         fontWeight: FontWeight.bold,

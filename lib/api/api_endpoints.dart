@@ -119,4 +119,10 @@ class ApiEndpoints {
   static const String getAllAlertTypes = '/api/alert-system/alert-type';
   static const String createAlertHistory =
       '/api/alert-system/alert-history/create/';
+
+  // Alert Devices - Django device endpoints
+  static const String getAlertDevices = '/api/device/alert-devices';
+
+  // Password verification endpoint
+  static const String verifyPassword = '/api/core/auth/verify-password';
 }
