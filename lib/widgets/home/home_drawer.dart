@@ -641,7 +641,7 @@ class _HomeDrawerState extends State<HomeDrawer> {
                         icon: Icons.directions_bus,
                         title: 'school_vehicle'.tr,
                         subtitle: 'track_school_vehicles'.tr,
-                        route: AppRoutes.vehicle,
+                        route: AppRoutes.schoolVehicleIndex,
                         color: Colors.brown,
                       ),
                       _buildMenuItem(

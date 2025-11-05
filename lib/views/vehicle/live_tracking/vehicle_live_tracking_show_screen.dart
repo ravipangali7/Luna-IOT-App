@@ -25,9 +25,14 @@ import 'package:luna_iot/widgets/simple_marquee_widget.dart';
 import 'package:luna_iot/widgets/vehicle/share_track_modal.dart';
 
 class VehicleLiveTrackingShowScreen extends StatefulWidget {
-  const VehicleLiveTrackingShowScreen({super.key, required this.imei});
+  const VehicleLiveTrackingShowScreen({
+    super.key,
+    required this.imei,
+    this.fromSchoolVehicle = false,
+  });
 
   final String imei;
+  final bool fromSchoolVehicle;
 
   @override
   State<VehicleLiveTrackingShowScreen> createState() =>
@@ -87,6 +92,20 @@ class _VehicleLiveTrackingShowScreenState
   Timer? _lastUpdateTimer;
 
   bool get isWeb => kIsWeb;
+
+  // Check if accessed from school vehicle screen
+  bool get _isFromSchoolVehicle {
+    // First check widget parameter
+    if (widget.fromSchoolVehicle) {
+      return true;
+    }
+    // Fallback: check Get.arguments
+    final arguments = Get.arguments;
+    if (arguments is Map && arguments['fromSchoolVehicle'] == true) {
+      return true;
+    }
+    return false;
+  }
 
   @override
   void initState() {
@@ -967,34 +986,35 @@ class _VehicleLiveTrackingShowScreenState
                         ),
                       ),
 
-                      // History Button
-                      InkWell(
-                        onTap: () => Get.toNamed(
-                          AppRoutes.vehicleHistoryShow,
-                          arguments: vehicle,
-                        ),
-                        child: Container(
-                          width: 45,
-                          height: 45,
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryColor,
-                            borderRadius: BorderRadius.circular(300),
-                            boxShadow: [
-                              BoxShadow(
-                                offset: const Offset(0, 0),
-                                spreadRadius: 1,
-                                blurRadius: 15,
-                                color: Colors.black12,
-                              ),
-                            ],
+                      // History Button - Hide if from school vehicle screen
+                      if (!_isFromSchoolVehicle)
+                        InkWell(
+                          onTap: () => Get.toNamed(
+                            AppRoutes.vehicleHistoryShow,
+                            arguments: vehicle,
                           ),
-                          child: const Icon(
-                            Icons.history,
-                            size: 25,
-                            color: Colors.white,
+                          child: Container(
+                            width: 45,
+                            height: 45,
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor,
+                              borderRadius: BorderRadius.circular(300),
+                              boxShadow: [
+                                BoxShadow(
+                                  offset: const Offset(0, 0),
+                                  spreadRadius: 1,
+                                  blurRadius: 15,
+                                  color: Colors.black12,
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.history,
+                              size: 25,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
-                      ),
 
                       // Weather Button
                       InkWell(
@@ -1044,41 +1064,42 @@ class _VehicleLiveTrackingShowScreenState
                         ),
                       ),
 
-                      // Share Track Button
-                      InkWell(
-                        onTap: () {
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                            builder: (context) => ShareTrackModal(
-                              imei: widget.imei,
-                              vehicleNo: vehicle.vehicleNo ?? 'Unknown',
-                            ),
-                          );
-                        },
-                        child: Container(
-                          width: 45,
-                          height: 45,
-                          decoration: BoxDecoration(
-                            color: Colors.purple.shade600,
-                            borderRadius: BorderRadius.circular(300),
-                            boxShadow: [
-                              BoxShadow(
-                                offset: const Offset(0, 0),
-                                spreadRadius: 1,
-                                blurRadius: 15,
-                                color: Colors.black12,
+                      // Share Track Button - Hide if from school vehicle screen
+                      if (!_isFromSchoolVehicle)
+                        InkWell(
+                          onTap: () {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (context) => ShareTrackModal(
+                                imei: widget.imei,
+                                vehicleNo: vehicle.vehicleNo ?? 'Unknown',
                               ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.share,
-                            size: 25,
-                            color: Colors.white,
+                            );
+                          },
+                          child: Container(
+                            width: 45,
+                            height: 45,
+                            decoration: BoxDecoration(
+                              color: Colors.purple.shade600,
+                              borderRadius: BorderRadius.circular(300),
+                              boxShadow: [
+                                BoxShadow(
+                                  offset: const Offset(0, 0),
+                                  spreadRadius: 1,
+                                  blurRadius: 15,
+                                  color: Colors.black12,
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.share,
+                              size: 25,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ),

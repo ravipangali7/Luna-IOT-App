@@ -125,4 +125,8 @@ class ApiEndpoints {
 
   // Password verification endpoint
   static const String verifyPassword = '/api/core/auth/verify-password';
+
+  // School - Django school endpoints
+  static const String getMySchoolVehicles = '/api/school/school-parents/my-vehicles';
+  static const String updateMySchoolLocation = '/api/school/school-parents/my-location/';
 }

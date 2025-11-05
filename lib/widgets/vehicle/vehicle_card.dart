@@ -14,6 +14,8 @@ import 'package:luna_iot/utils/time_ago.dart';
 import 'package:luna_iot/utils/vehicle_image_state.dart';
 import 'package:luna_iot/utils/vehicle_utils.dart';
 import 'package:luna_iot/widgets/vehicle/vehicle_card_bottom_sheet.dart';
+import 'package:luna_iot/widgets/vehicle/school_vehicle_card_bottom_sheet.dart';
+import 'package:luna_iot/app/app_routes.dart';
 import 'package:luna_iot/widgets/simple_marquee_widget.dart';
 
 class VehicleCard extends StatelessWidget {
@@ -707,11 +709,23 @@ class VehicleCard extends StatelessWidget {
     Vehicle vehicle,
     String? vehicleState,
   ) {
+    // Check if we're on the school vehicle screen
+    final bool isSchoolVehicleScreen = Get.currentRoute == AppRoutes.schoolVehicleIndex;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
+        // Use school vehicle bottom sheet if on school vehicle screen
+        if (isSchoolVehicleScreen) {
+          return SchoolVehicleCardBottomSheet(
+            vehicle: vehicle,
+            vehicleState: vehicleState ?? '',
+          );
+        }
+
+        // Otherwise use regular bottom sheet
         try {
           final relayController = Get.find<RelayController>();
           return VehicleCardBottomSheet(

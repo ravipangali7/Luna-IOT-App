@@ -140,10 +140,8 @@ class HomeAdminSection extends StatelessWidget {
 
           const SizedBox(height: 10),
 
-          // Section Title
-          // This section is visible only on Android (not on iOS)
           if (Theme.of(context).platform == TargetPlatform.android) ...[
-            HomeFeatureSectionTitle(title: 'track_vehicles'.tr),
+            HomeFeatureSectionTitle(title: 'track_public'.tr),
             GridView.count(
               crossAxisCount: 3,
               crossAxisSpacing: 7,
@@ -158,16 +156,16 @@ class HomeAdminSection extends StatelessWidget {
                   route: AppRoutes.vehicleHistoryIndex,
                 ),
                 HomeFeatureCard(
+                  title: 'school_vehicle'.tr,
+                  subtitle: 'track_school_vehicles'.tr,
+                  icon: Icons.directions_bus,
+                  route: AppRoutes.schoolVehicleIndex,
+                ),
+                HomeFeatureCard(
                   title: 'garbage_vehicle'.tr,
                   subtitle: 'track_garbage_vehicles'.tr,
                   icon: Icons.recycling,
                   route: AppRoutes.vehicleReportIndex,
-                ),
-                HomeFeatureCard(
-                  title: 'school_vehicle'.tr,
-                  subtitle: 'track_school_vehicles'.tr,
-                  icon: Icons.directions_bus,
-                  route: AppRoutes.vehicle,
                 ),
                 HomeFeatureCard(
                   title: 'flight_ticket'.tr,

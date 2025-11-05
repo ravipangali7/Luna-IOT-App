@@ -115,16 +115,16 @@ class HomeCustomerSection extends StatelessWidget {
                   route: AppRoutes.vehicleHistoryIndex,
                 ),
                 HomeFeatureCard(
+                  title: 'school_vehicle'.tr,
+                  subtitle: 'track_school_vehicles'.tr,
+                  icon: Icons.directions_bus,
+                  route: AppRoutes.schoolVehicleIndex,
+                ),
+                HomeFeatureCard(
                   title: 'garbage_vehicle'.tr,
                   subtitle: 'track_garbage_vehicles'.tr,
                   icon: Icons.recycling,
                   route: AppRoutes.vehicleReportIndex,
-                ),
-                HomeFeatureCard(
-                  title: 'school_vehicle'.tr,
-                  subtitle: 'track_school_vehicles'.tr,
-                  icon: Icons.directions_bus,
-                  route: AppRoutes.vehicle,
                 ),
                 HomeFeatureCard(
                   title: 'flight_ticket'.tr,

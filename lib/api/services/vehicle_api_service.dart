@@ -400,4 +400,105 @@ class VehicleApiService {
       throw Exception('Network error: ${e.message}');
     }
   }
+
+  // Get my school vehicles with pagination
+  // Update school parent location
+  Future<Map<String, dynamic>> updateMySchoolLocation({
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      final response = await _apiClient.dio.put(
+        ApiEndpoints.updateMySchoolLocation,
+        data: {
+          'latitude': latitude,
+          'longitude': longitude,
+        },
+      );
+
+      // Django response format: {success: true, message: '...', data: {...}}
+      if (response.data['success'] == true) {
+        return response.data['data'] ?? {};
+      }
+      throw Exception(
+        'Failed to update location: ${response.data['message'] ?? 'Unknown error'}',
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 400) {
+        final errorMessage = e.response?.data['message'] ?? 'Bad Request';
+        throw Exception(errorMessage);
+      }
+      throw Exception('Failed to update location: ${e.message}');
+    }
+  }
+
+  Future<PaginatedResponse<Vehicle>> getMySchoolVehiclesPaginated({
+    int page = 1,
+    int pageSize = 25,
+    String? search,
+    String? filter,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{
+        'page': page,
+        'page_size': pageSize,
+      };
+
+      // Add search parameter if provided
+      if (search != null && search.isNotEmpty) {
+        queryParams['search'] = search;
+      }
+
+      // Add filter parameter if provided
+      if (filter != null && filter.isNotEmpty && filter != 'All') {
+        queryParams['filter'] = filter;
+      }
+
+      print(
+        'School Vehicle API - Requesting paginated vehicles with params: $queryParams',
+      );
+
+      final response = await _apiClient.dio.get(
+        ApiEndpoints.getMySchoolVehicles,
+        queryParameters: queryParams,
+      );
+
+      print('School Vehicle API - Response status: ${response.statusCode}');
+      print('School Vehicle API - Response data keys: ${response.data.keys.toList()}');
+      if (response.data['data'] != null) {
+        print(
+          'School Vehicle API - Data keys: ${response.data['data'].keys.toList()}',
+        );
+        if (response.data['data']['vehicles'] != null) {
+          print(
+            'School Vehicle API - Vehicles count: ${response.data['data']['vehicles'].length}',
+          );
+        }
+        if (response.data['data']['pagination'] != null) {
+          print(
+            'School Vehicle API - Pagination data: ${response.data['data']['pagination']}',
+          );
+          print(
+            'School Vehicle API - Pagination keys: ${response.data['data']['pagination'].keys.toList()}',
+          );
+        }
+      }
+
+      // Django response format: {success: true, message: '...', data: [...], pagination: {...}}
+      if (response.data['success'] == true) {
+        return PaginatedResponse.fromJson(
+          response.data,
+          (json) => Vehicle.fromJson(json),
+        );
+      }
+      throw Exception(
+        'Failed to get school vehicles: ${response.data['message'] ?? 'Unknown error'}',
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        throw Exception('School vehicles endpoint not available');
+      }
+      throw Exception('Network error: ${e.message}');
+    }
+  }
 }

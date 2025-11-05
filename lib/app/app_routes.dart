@@ -52,6 +52,7 @@ import 'package:luna_iot/views/vehicle/report/vehicle_report_show_screen.dart';
 import 'package:luna_iot/views/vehicle/vehicle_create_screen.dart';
 import 'package:luna_iot/views/vehicle/vehicle_edit_screen.dart';
 import 'package:luna_iot/views/vehicle/vehicle_index_screen.dart';
+import 'package:luna_iot/views/school/school_vehicle_index_screen.dart';
 import 'package:luna_iot/views/splash_screen.dart';
 import 'package:luna_iot/views/vehicle_tag/vehicle_tag_screen.dart';
 import 'package:luna_iot/views/sos/sos_screen.dart';
@@ -95,6 +96,7 @@ class AppRoutes {
   static const String vehicleReportIndex = '/vehicle/report';
   static const String vehicleReportShow = '/vehicle/report/:imei';
   static const String vehicleAccess = '/vehicle/access';
+  static const String schoolVehicleIndex = '/school/vehicles';
 
   // User Routes
   static const String user = '/user';
@@ -234,6 +236,12 @@ class AppRoutes {
       middlewares: [AuthMiddleware()],
     ),
     GetPage(
+      name: schoolVehicleIndex,
+      page: () => SchoolVehicleIndexScreen(),
+      binding: VehicleBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
       name: vehicleCreate,
       page: () => VehicleCreateScreen(),
       binding: VehicleBinding(),
@@ -256,7 +264,15 @@ class AppRoutes {
       page: () {
         final imei = Get.parameters['imei'] ?? '';
         print('Route parameter IMEI: $imei');
-        return VehicleLiveTrackingShowScreen(imei: imei);
+        // Check if fromSchoolVehicle is passed in arguments
+        final arguments = Get.arguments;
+        final fromSchoolVehicle = arguments is Map
+            ? arguments['fromSchoolVehicle'] == true
+            : false;
+        return VehicleLiveTrackingShowScreen(
+          imei: imei,
+          fromSchoolVehicle: fromSchoolVehicle,
+        );
       },
       middlewares: [AuthMiddleware()],
     ),

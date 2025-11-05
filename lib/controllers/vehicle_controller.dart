@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:luna_iot/api/services/history_api_service.dart';
 import 'package:luna_iot/api/services/user_api_service.dart';
+import 'package:luna_iot/app/app_routes.dart';
 import 'package:luna_iot/models/history_model.dart';
 import 'package:luna_iot/models/user_model.dart';
 import 'package:luna_iot/models/vehicle_model.dart';
@@ -111,7 +112,17 @@ class VehicleController extends GetxController {
       _socketService = Get.put(SocketService());
     }
 
-    loadVehiclesPaginated(); // Use paginated loading by default
+    // Check if we're on the school vehicle route - if so, skip auto-load
+    // The school vehicle screen will load its own filtered vehicles
+    final currentRoute = Get.currentRoute;
+    final isSchoolVehicleRoute = currentRoute == AppRoutes.schoolVehicleIndex;
+    
+    if (!isSchoolVehicleRoute) {
+      loadVehiclesPaginated(); // Use paginated loading by default
+    } else {
+      debugPrint('VehicleController: Skipping auto-load on school vehicle route');
+    }
+    
     getAvailableVehicles();
     _setupSocketListeners();
 
@@ -206,6 +217,59 @@ class VehicleController extends GetxController {
     }
   }
 
+  // Load school vehicles with pagination (for school parents)
+  Future<void> loadSchoolVehiclesPaginated({
+    int? page,
+    int? pageSize,
+    String? search,
+    String? filter,
+  }) async {
+    try {
+      paginationLoading.value = true;
+
+      final targetPage = page ?? currentPage.value;
+      debugPrint(
+        'Loading school vehicles - Page: $targetPage, PageSize: ${pageSize ?? 25}, Search: ${search ?? searchQuery.value}, Filter: ${filter ?? selectedFilter.value}',
+      );
+
+      // Use school vehicles API endpoint
+      final paginatedResponse = await _vehicleApiService.getMySchoolVehiclesPaginated(
+        page: targetPage,
+        pageSize: pageSize ?? 25,
+        search: search ?? searchQuery.value,
+        filter: filter ?? selectedFilter.value,
+      );
+
+      // Update vehicles and pagination data
+      vehicles.value = paginatedResponse.data;
+      currentPage.value = paginatedResponse.pagination.currentPage;
+      totalPages.value = paginatedResponse.pagination.totalPages;
+      totalCount.value = paginatedResponse.pagination.count;
+      hasNextPage.value = paginatedResponse.pagination.hasNext;
+      hasPreviousPage.value = paginatedResponse.pagination.hasPrevious;
+
+      // Join rooms for newly loaded vehicles
+      _joinVehicleRooms();
+
+      debugPrint(
+        'School vehicles pagination updated - Current: ${currentPage.value}, Total: ${totalPages.value}, Count: ${totalCount.value}, HasNext: ${hasNextPage.value}, HasPrevious: ${hasPreviousPage.value}',
+      );
+
+      // Update filtered vehicles for UI
+      filteredVehicles.assignAll(vehicles);
+
+      // Load filter counts from server (fallback to client-side calculation)
+      await _loadFilterCounts();
+    } catch (e) {
+      debugPrint('Error loading school vehicles: ${e.toString()}');
+      Get.snackbar('Error', 'Failed to load school vehicles');
+      vehicles.value = [];
+      filteredVehicles.value = [];
+    } finally {
+      paginationLoading.value = false;
+    }
+  }
+
   // Go to next page
   Future<void> nextPage() async {
     debugPrint(
@@ -290,6 +354,37 @@ class VehicleController extends GetxController {
     }
   }
 
+  // Filter school vehicles by state
+  void setFilterForSchool(String filter) {
+    selectedFilter.value = filter;
+    currentPage.value = 1; // Reset to first page when filtering
+    loadSchoolVehiclesPaginated(); // Load with new filter
+  }
+
+  // Go to next page for school vehicles
+  Future<void> nextPageForSchool() async {
+    debugPrint(
+      'Next page clicked (school vehicles). Current page: ${currentPage.value}, Has next: ${hasNextPage.value}',
+    );
+    if (hasNextPage.value) {
+      await loadSchoolVehiclesPaginated(page: currentPage.value + 1);
+    } else {
+      debugPrint('Cannot go to next page - hasNextPage is false');
+    }
+  }
+
+  // Go to previous page for school vehicles
+  Future<void> previousPageForSchool() async {
+    debugPrint(
+      'Previous page clicked (school vehicles). Current page: ${currentPage.value}, Has previous: ${hasPreviousPage.value}',
+    );
+    if (hasPreviousPage.value) {
+      await loadSchoolVehiclesPaginated(page: currentPage.value - 1);
+    } else {
+      debugPrint('Cannot go to previous page - hasPreviousPage is false');
+    }
+  }
+
   void _applyFilter() {
     // If we're in search mode, don't apply client-side filtering
     // as search results are already filtered by the server
@@ -363,6 +458,13 @@ class VehicleController extends GetxController {
     }
   }
 
+  // Update search query for school vehicles
+  void updateSearchQueryForSchool(String query) async {
+    searchQuery.value = query;
+    currentPage.value = 1; // Reset to first page when searching
+    await loadSchoolVehiclesPaginated(search: query);
+  }
+
   // Perform search using dedicated search API
   Future<void> _performSearch(String query, int page) async {
     try {
@@ -415,6 +517,16 @@ class VehicleController extends GetxController {
     currentPage.value = 1; // Reset to first page when clearing filters
     isInSearchMode.value = false; // Exit search mode
     loadVehiclesPaginated(); // Load with cleared filters
+  }
+
+  // Clear all filters for school vehicles
+  void clearAllFiltersForSchool() {
+    searchQuery.value = '';
+    currentFilters.clear();
+    selectedFilter.value = 'All';
+    currentPage.value = 1; // Reset to first page when clearing filters
+    isInSearchMode.value = false; // Exit search mode
+    loadSchoolVehiclesPaginated(); // Load with cleared filters
   }
 
   // Setup socket listeners for real-time updates
