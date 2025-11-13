@@ -60,6 +60,18 @@ class VehicleCard extends StatelessWidget {
     return null;
   }
 
+  // Helper function to safely convert int/string to bool
+  bool? _toBool(dynamic value) {
+    if (value == null) return null;
+    if (value is bool) return value;
+    if (value is int) return value == 1;
+    if (value is String) {
+      final lowerValue = value.toLowerCase();
+      return lowerValue == 'true' || lowerValue == '1';
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Obx(() {
@@ -118,15 +130,17 @@ class VehicleCard extends StatelessWidget {
             statusData?['battery'] ?? givenVehicle.latestStatus?.battery ?? 0,
         signal: statusData?['signal'] ?? givenVehicle.latestStatus?.signal ?? 0,
         charging:
-            statusData?['charging'] ??
+            _toBool(statusData?['charging']) ??
             givenVehicle.latestStatus?.charging ??
             false,
         ignition:
-            statusData?['ignition'] ??
+            _toBool(statusData?['ignition']) ??
             givenVehicle.latestStatus?.ignition ??
             false,
         relay:
-            statusData?['relay'] ?? givenVehicle.latestStatus?.relay ?? false,
+            _toBool(statusData?['relay']) ??
+            givenVehicle.latestStatus?.relay ??
+            false,
         createdAt: statusCreatedAt,
         updatedAt: statusUpdatedAt,
       );

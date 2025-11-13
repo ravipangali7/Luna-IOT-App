@@ -63,6 +63,10 @@ import 'package:luna_iot/views/admin/alert/alert_history_screen.dart';
 import 'package:luna_iot/views/admin/alert/buzzer_index_screen.dart';
 import 'package:luna_iot/views/admin/alert/sos_switch_index_screen.dart';
 import 'package:luna_iot/bindings/profile_binding.dart';
+import 'package:luna_iot/bindings/luna_tag_binding.dart';
+import 'package:luna_iot/views/luna_tag/luna_tag_index_screen.dart';
+import 'package:luna_iot/views/luna_tag/luna_tag_show_screen.dart';
+import 'package:luna_iot/views/luna_tag/luna_tag_form_screen.dart';
 
 class AppRoutes {
   static const String splash = '/splash';
@@ -137,6 +141,12 @@ class AppRoutes {
   static const String evCharge = '/ev-charge';
   static const String profile = '/profile';
   static const String editProfile = '/profile/edit';
+  
+  // Luna Tag Routes
+  static const String lunaTag = '/luna-tag';
+  static const String lunaTagCreate = '/luna-tag/create';
+  static const String lunaTagEdit = '/luna-tag/edit/:id';
+  static const String lunaTagShow = '/luna-tag/:publicKey';
 
   // ########### ROUTES ###########
   static List<GetPage> routes = [
@@ -419,6 +429,38 @@ class AppRoutes {
     GetPage(
       name: vehicleTag,
       page: () => const VehicleTagScreen(),
+      middlewares: [AuthMiddleware()],
+    ),
+    // ---- Luna Tag Routes ----
+    GetPage(
+      name: lunaTag,
+      page: () => const LunaTagIndexScreen(),
+      binding: LunaTagBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: lunaTagCreate,
+      page: () => const LunaTagFormScreen(),
+      binding: LunaTagBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: lunaTagEdit,
+      page: () {
+        final idStr = Get.parameters['id'] ?? '';
+        final id = int.tryParse(idStr);
+        return LunaTagFormScreen(tagId: id);
+      },
+      binding: LunaTagBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: lunaTagShow,
+      page: () {
+        final publicKey = Get.parameters['publicKey'] ?? '';
+        return LunaTagShowScreen(publicKey: publicKey);
+      },
+      binding: LunaTagBinding(),
       middlewares: [AuthMiddleware()],
     ),
     GetPage(

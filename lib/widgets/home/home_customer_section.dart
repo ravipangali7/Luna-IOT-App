@@ -65,6 +65,30 @@ class HomeCustomerSection extends StatelessWidget {
 
           const SizedBox(height: 10),
 
+          // Luna Tag Section (separate like Alert System)
+          HomeFeatureSectionTitle(title: 'Luna Tag'),
+          GridView.count(
+            crossAxisCount: 3,
+            crossAxisSpacing: 7,
+            mainAxisSpacing: 7,
+            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            children: [
+              HomeFeatureCard(
+                title: 'Luna Tag',
+                subtitle: 'manage_your_luna_tags'.tr,
+                icon: Icons.generating_tokens,
+                route: AppRoutes.lunaTag,
+              ),
+              HomeFeatureCard(
+                title: 'Add Luna Tag',
+                subtitle: 'add_new_luna_tag'.tr,
+                icon: Icons.add_circle_outline,
+                route: AppRoutes.lunaTagCreate,
+              ),
+            ],
+          ),
+
           // Alert System Section
           HomeFeatureSectionTitle(title: 'alert_system'.tr),
           GridView.count(

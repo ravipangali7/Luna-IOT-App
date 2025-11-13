@@ -107,6 +107,30 @@ class HomeAdminSection extends StatelessWidget {
 
           const SizedBox(height: 10),
 
+          // Luna Tag Section (separate like Alert System)
+          HomeFeatureSectionTitle(title: 'Luna Tag'),
+          GridView.count(
+            crossAxisCount: 3,
+            crossAxisSpacing: 7,
+            mainAxisSpacing: 7,
+            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            children: [
+              HomeFeatureCard(
+                title: 'Luna Tag',
+                subtitle: 'Manage Luna Tags',
+                icon: Icons.generating_tokens,
+                route: AppRoutes.lunaTag,
+              ),
+              HomeFeatureCard(
+                title: 'Add Luna Tag',
+                subtitle: 'Add New Luna Tag',
+                icon: Icons.add_circle_outline,
+                route: AppRoutes.lunaTagCreate,
+              ),
+            ],
+          ),
+
           // Alert System Section
           HomeFeatureSectionTitle(title: 'alert_system'.tr),
           GridView.count(

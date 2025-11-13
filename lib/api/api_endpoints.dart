@@ -129,4 +129,23 @@ class ApiEndpoints {
   // School - Django school endpoints
   static const String getMySchoolVehicles = '/api/school/school-parents/my-vehicles';
   static const String updateMySchoolLocation = '/api/school/school-parents/my-location/';
+
+  // Luna Tag - Django device endpoints
+  // User Luna Tag management (role-aware list, create/update/delete)
+  static const String getUserLunaTags = '/api/device/user-luna-tag';
+  static const String createUserLunaTag = '/api/device/user-luna-tag/create';
+  static const String updateUserLunaTag = '/api/device/user-luna-tag/update/:id';
+  static const String deleteUserLunaTag = '/api/device/user-luna-tag/delete/:id';
+
+  // Admin Luna Tag management (super admin only)
+  static const String getLunaTags = '/api/device/luna-tag';
+  static const String createLunaTag = '/api/device/luna-tag/create';
+  static const String updateLunaTag = '/api/device/luna-tag/update/:id';
+  static const String deleteLunaTag = '/api/device/luna-tag/delete/:id';
+
+  // Luna Tag latest data by publicKey
+  static const String getLunaTagLatestData = '/api/device/luna-tag-data/:publicKey';
+  
+  // Luna Tag data by date range for playback
+  static const String getLunaTagDataByDateRange = '/api/device/luna-tag-data/date-range/:publicKey';
 }
