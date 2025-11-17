@@ -94,7 +94,10 @@ class VehicleCard extends StatelessWidget {
       vehicle.ownershipType = givenVehicle.ownershipType;
       vehicle.userVehicle = givenVehicle.userVehicle;
       vehicle.isActive = givenVehicle.isActive; // Copy the isActive field
+      vehicle.isRelay = givenVehicle.isRelay; // Copy the isRelay field
       vehicle.device = givenVehicle.device; // Copy the device field - FIXED!
+      vehicle.expireDate =
+          givenVehicle.expireDate; // Copy the expireDate field - FIXED!
 
       // Vehicle Status Data
       DateTime? statusCreatedAt;
@@ -233,7 +236,11 @@ class VehicleCard extends StatelessWidget {
         // Update the cached state
         _lastVehicleState[imei] = vehicleState;
       }
-      final bool isInactive = !vehicle.isVehicleActive;
+      // Check if vehicle is expired - use vehicle's isExpired getter which has improved parsing
+      final bool isExpired = vehicle.isExpired;
+
+      // Check if vehicle is inactive or expired
+      final bool isInactive = !vehicle.isVehicleActive || isExpired;
 
       return Padding(
         padding: const EdgeInsets.only(bottom: 10),
@@ -258,7 +265,32 @@ class VehicleCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  // Inactive Badge
+                  // Expired Badge - Show if expired (like ownership/power status)
+                  if (isExpired)
+                    Container(
+                      margin: EdgeInsets.only(left: 5),
+                      padding: EdgeInsets.symmetric(
+                        vertical: 2,
+                        horizontal: 12,
+                      ),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade600,
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        'EXPIRED',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 8,
+                        ),
+                      ),
+                    ),
+
+                  // Inactive Badge - Show if inactive (always show when inactive, including when expired)
                   if (isInactive)
                     Container(
                       margin: EdgeInsets.only(left: 5),
@@ -337,6 +369,67 @@ class VehicleCard extends StatelessWidget {
                           fontSize: 8,
                         ),
                       ),
+                    ),
+
+                  // Expiration Badge - Show for active vehicles with expiration status
+                  if (!isInactive && !isExpired)
+                    Builder(
+                      builder: (context) {
+                        final expirationStatus = vehicle.getExpirationStatus();
+                        debugPrint(
+                          'Building EXPIRE SOON badge - expirationStatus: $expirationStatus',
+                        );
+
+                        if (expirationStatus == null) {
+                          debugPrint(
+                            'expirationStatus is null, not showing badge',
+                          );
+                          return SizedBox();
+                        }
+
+                        Color badgeColor;
+                        String badgeText;
+
+                        if (expirationStatus == 'week') {
+                          badgeColor = Colors.red.shade600;
+                          badgeText = 'EXPIRE SOON';
+                          debugPrint('Showing red EXPIRE SOON badge (week)');
+                        } else if (expirationStatus == 'month') {
+                          badgeColor = Colors.yellow.shade900;
+                          badgeText = 'EXPIRE SOON';
+                          debugPrint(
+                            'Showing yellow EXPIRE SOON badge (month)',
+                          );
+                        } else {
+                          debugPrint(
+                            'expirationStatus is "$expirationStatus", not showing badge',
+                          );
+                          return SizedBox();
+                        }
+
+                        return Container(
+                          margin: EdgeInsets.only(left: 5),
+                          padding: EdgeInsets.symmetric(
+                            vertical: 2,
+                            horizontal: 12,
+                          ),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: badgeColor,
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            badgeText,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 8,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                 ],
               ),
@@ -465,19 +558,26 @@ class VehicleCard extends StatelessWidget {
                                 ),
                               ),
 
-                              // Battery, Signal and Satellite
+                              // Battery, Signal, Satellite and Relay
                               Row(
-                                spacing: 8,
+                                spacing: 5,
                                 children: [
                                   VehicleService.getSatellite(
                                     value:
                                         vehicle.latestLocation?.satellite ?? 0,
+                                    size: 14,
                                   ),
                                   VehicleService.getBattery(
                                     value: vehicle.latestStatus?.battery ?? 0,
+                                    size: 14,
                                   ),
                                   VehicleService.getSignal(
                                     value: vehicle.latestStatus?.signal ?? 0,
+                                    size: 14,
+                                  ),
+                                  VehicleService.getRelay(
+                                    value: vehicle.latestStatus?.relay,
+                                    size: 14,
                                   ),
                                 ],
                               ),
@@ -724,7 +824,8 @@ class VehicleCard extends StatelessWidget {
     String? vehicleState,
   ) {
     // Check if we're on the school vehicle screen
-    final bool isSchoolVehicleScreen = Get.currentRoute == AppRoutes.schoolVehicleIndex;
+    final bool isSchoolVehicleScreen =
+        Get.currentRoute == AppRoutes.schoolVehicleIndex;
 
     showModalBottomSheet(
       context: context,

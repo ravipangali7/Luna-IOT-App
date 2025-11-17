@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:luna_iot/models/device_model.dart';
 import 'package:luna_iot/models/location_model.dart';
 import 'package:luna_iot/models/status_model.dart';
@@ -14,6 +15,7 @@ class Vehicle {
   double? minimumFuel;
   String? expireDate;
   bool? isActive;
+  bool? isRelay;
   DateTime? createdAt;
   DateTime? updatedAt;
   Device? device;
@@ -39,6 +41,7 @@ class Vehicle {
     this.minimumFuel,
     this.expireDate,
     this.isActive,
+    this.isRelay,
     this.createdAt,
     this.updatedAt,
     this.device,
@@ -51,6 +54,22 @@ class Vehicle {
   });
 
   factory Vehicle.fromJson(Map<String, dynamic> json) {
+    // DEBUG: Log is_relay parsing
+    final rawIsRelay = json['is_relay'];
+    final hasIsRelayField = json.containsKey('is_relay');
+    final parsedIsRelay = hasIsRelayField ? _parseBool(json['is_relay']) : null;
+    debugPrint('=== VEHICLE PARSING DEBUG (IMEI: ${json['imei']}) ===');
+    debugPrint('is_relay field exists: $hasIsRelayField');
+    debugPrint('Raw is_relay value: $rawIsRelay (type: ${rawIsRelay.runtimeType})');
+    debugPrint('Parsed isRelay value: $parsedIsRelay (type: ${parsedIsRelay.runtimeType})');
+    
+    // DEBUG: Log expireDate parsing
+    final rawExpireDate = json['expireDate'];
+    final hasExpireDateField = json.containsKey('expireDate');
+    debugPrint('expireDate field exists: $hasExpireDateField');
+    debugPrint('Raw expireDate value: $rawExpireDate (type: ${rawExpireDate?.runtimeType})');
+    debugPrint('=== END VEHICLE PARSING DEBUG ===');
+    
     return Vehicle(
       id: json['id'],
       imei: json['imei'] ?? '',
@@ -62,7 +81,10 @@ class Vehicle {
       speedLimit: _parseInt(json['speedLimit']),
       minimumFuel: _parseDouble(json['minimumFuel']),
       expireDate: json['expireDate'],
-      isActive: json['is_active'] ?? true,
+      isActive: json['is_active'] != null ? (_parseBool(json['is_active']) ?? true) : true,
+      // Parse is_relay - handle missing field, null, boolean, integer (1/0), and string cases
+      // If field is missing, set to null. If present, parse it (can be null, true, or false)
+      isRelay: parsedIsRelay,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : null,
@@ -109,6 +131,19 @@ class Vehicle {
       } catch (e) {
         return null;
       }
+    }
+    return null;
+  }
+
+  static bool? _parseBool(dynamic value) {
+    if (value == null) return null;
+    if (value is bool) return value;
+    if (value is int) return value == 1;
+    if (value is String) {
+      final lower = value.toLowerCase().trim();
+      if (lower == 'true' || lower == '1') return true;
+      if (lower == 'false' || lower == '0') return false;
+      return null;
     }
     return null;
   }
@@ -179,6 +214,7 @@ class Vehicle {
       'minimumFuel': minimumFuel,
       'expireDate': expireDate,
       'is_active': isActive,
+      'is_relay': isRelay,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
       'device': device?.toJson(),
@@ -203,6 +239,7 @@ class Vehicle {
     double? minimumFuel,
     String? expireDate,
     bool? isActive,
+    bool? isRelay,
     DateTime? createdAt,
     DateTime? updatedAt,
     Device? device,
@@ -225,6 +262,7 @@ class Vehicle {
       minimumFuel: minimumFuel ?? this.minimumFuel,
       expireDate: expireDate ?? this.expireDate,
       isActive: isActive ?? this.isActive,
+      isRelay: isRelay ?? this.isRelay,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       device: device ?? this.device,
@@ -265,5 +303,139 @@ class Vehicle {
   bool hasPermission(String permission) {
     if (hasAllAccess) return true;
     return userVehicle?[permission] == true;
+  }
+
+  // Helper method to parse ISO date string (handles with/without timezone)
+  static DateTime? _parseISODate(String? dateString) {
+    if (dateString == null || dateString.isEmpty) {
+      return null;
+    }
+
+    try {
+      // Try parsing as-is first (handles most ISO formats)
+      DateTime parsedDate = DateTime.parse(dateString);
+      
+      // If the date is in UTC or has timezone, convert to local
+      // Otherwise, use as-is
+      return parsedDate;
+    } catch (e) {
+      // If standard parsing fails, try to handle edge cases
+      try {
+        // Remove timezone info if present and try again
+        String cleanedDate = dateString.split('+').first.split('Z').first.trim();
+        // Ensure we have at least date part
+        if (cleanedDate.length >= 10) {
+          return DateTime.parse(cleanedDate);
+        }
+      } catch (e2) {
+        // If all parsing fails, return null
+        return null;
+      }
+    }
+    return null;
+  }
+
+  // Get expiration status
+  // Returns: 'expired', 'week', 'month', or null
+  String? getExpirationStatus() {
+    debugPrint('=== EXPIRATION STATUS DEBUG (Vehicle: ${name ?? imei}) ===');
+    debugPrint('expireDate value: $expireDate');
+    debugPrint('expireDate type: ${expireDate.runtimeType}');
+    debugPrint('expireDate is null: ${expireDate == null}');
+    debugPrint('expireDate is empty: ${expireDate?.isEmpty ?? true}');
+    
+    if (expireDate == null || expireDate!.isEmpty) {
+      debugPrint('expireDate is null or empty, returning null');
+      debugPrint('=== END EXPIRATION STATUS DEBUG ===');
+      return null;
+    }
+
+    try {
+      // Parse expireDate string to DateTime using improved parser
+      final expireDateTime = _parseISODate(expireDate);
+      debugPrint('Parsed expireDateTime: $expireDateTime');
+      
+      if (expireDateTime == null) {
+        debugPrint('Failed to parse expireDate, returning null');
+        debugPrint('=== END EXPIRATION STATUS DEBUG ===');
+        return null;
+      }
+
+      // Compare dates at day level (ignore time)
+      final expireDateOnly = DateTime(expireDateTime.year, expireDateTime.month, expireDateTime.day);
+      final now = DateTime.now();
+      final nowDateOnly = DateTime(now.year, now.month, now.day);
+      final difference = expireDateOnly.difference(nowDateOnly);
+      final daysUntilExpiration = difference.inDays;
+
+      debugPrint('expireDateOnly: $expireDateOnly');
+      debugPrint('nowDateOnly: $nowDateOnly');
+      debugPrint('daysUntilExpiration: $daysUntilExpiration');
+
+      // If expiration date is today or in the past, it's expired
+      String? status;
+      if (daysUntilExpiration <= 0) {
+        status = 'expired';
+      } else if (daysUntilExpiration <= 7) {
+        status = 'week';
+      } else if (daysUntilExpiration <= 30) {
+        status = 'month';
+      } else {
+        status = null;
+      }
+      
+      debugPrint('Expiration status result: $status');
+      debugPrint('=== END EXPIRATION STATUS DEBUG ===');
+      return status;
+    } catch (e) {
+      // If parsing fails, return null
+      debugPrint('Error parsing expiration date: $e');
+      debugPrint('=== END EXPIRATION STATUS DEBUG ===');
+      return null;
+    }
+  }
+
+  // Check if vehicle is expired
+  // More robust check that compares dates at day level
+  bool get isExpired {
+    debugPrint('=== IS EXPIRED CHECK (Vehicle: ${name ?? imei}) ===');
+    debugPrint('expireDate value: $expireDate');
+    
+    if (expireDate == null || expireDate!.isEmpty) {
+      debugPrint('expireDate is null or empty, returning false');
+      debugPrint('=== END IS EXPIRED CHECK ===');
+      return false;
+    }
+
+    try {
+      // Parse expireDate string to DateTime using improved parser
+      final expireDateTime = _parseISODate(expireDate);
+      debugPrint('Parsed expireDateTime: $expireDateTime');
+      
+      if (expireDateTime == null) {
+        debugPrint('Failed to parse expireDate, returning false');
+        debugPrint('=== END IS EXPIRED CHECK ===');
+        return false;
+      }
+
+      // Compare dates at day level (ignore time)
+      final expireDateOnly = DateTime(expireDateTime.year, expireDateTime.month, expireDateTime.day);
+      final now = DateTime.now();
+      final nowDateOnly = DateTime(now.year, now.month, now.day);
+      
+      debugPrint('expireDateOnly: $expireDateOnly');
+      debugPrint('nowDateOnly: $nowDateOnly');
+      
+      // Vehicle is expired if expiration date is today or before today
+      final isExpiredResult = expireDateOnly.isBefore(nowDateOnly) || expireDateOnly.isAtSameMomentAs(nowDateOnly);
+      debugPrint('isExpired result: $isExpiredResult');
+      debugPrint('=== END IS EXPIRED CHECK ===');
+      return isExpiredResult;
+    } catch (e) {
+      // If parsing fails, return false
+      debugPrint('Error checking expiration: $e');
+      debugPrint('=== END IS EXPIRED CHECK ===');
+      return false;
+    }
   }
 }

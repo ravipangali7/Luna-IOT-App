@@ -85,6 +85,15 @@ class ApiEndpoints {
   static const String updatePopup = '/api/shared/popup/update/:id';
   static const String deletePopup = '/api/shared/popup/delete/:id';
 
+  // Banner endpoints - Django shared
+  static const String getActiveBanners = '/api/shared/banner/active';
+  static const String getAllBanners = '/api/shared/banner/all';
+  static const String getBannerById = '/api/shared/banner/:id';
+  static const String createBanner = '/api/shared/banner/create';
+  static const String updateBanner = '/api/shared/banner/update/:id';
+  static const String deleteBanner = '/api/shared/banner/delete/:id';
+  static const String incrementBannerClick = '/api/shared/banner/click/:id';
+
   // Blood Donation - Django health endpoints
   static const String getAllBloodDonations = '/api/health/blood-donation';
   static const String getBloodDonationById = '/api/health/blood-donation/:id';

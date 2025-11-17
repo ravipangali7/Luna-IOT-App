@@ -170,46 +170,18 @@ class VehicleCardBottomSheet extends StatelessWidget {
                             return false;
                           }
                         })();
-                        bool relayAllowed = false;
-                        try {
-                          final auth = Get.find<AuthController>();
-                          final int? currentUserId = auth.currentUser.value?.id;
-
-                          // Prefer relation matching the logged-in user from userVehicles[]
-                          if (currentUserId != null &&
-                              vehicle.userVehicles is List) {
-                            final List<Map<String, dynamic>> rels =
-                                List<Map<String, dynamic>>.from(
-                                  vehicle.userVehicles!,
-                                );
-                            final Map<String, dynamic> match = rels.firstWhere((
-                              uv,
-                            ) {
-                              final dynamic uid = uv['userId'] ?? uv['user_id'];
-                              return uid != null &&
-                                  int.tryParse(uid.toString()) == currentUserId;
-                            }, orElse: () => {});
-                            if (match.isNotEmpty) {
-                              final dynamic r = match['relay'];
-                              relayAllowed =
-                                  (r == true ||
-                                  r == 1 ||
-                                  (r is String && r.toLowerCase() == 'true'));
-                            }
-                          }
-
-                          // Fallback to single userVehicle
-                          if (!relayAllowed &&
-                              vehicle.userVehicle is Map<String, dynamic>) {
-                            relayAllowed =
-                                ((vehicle.userVehicle
-                                    as Map<String, dynamic>)['relay'] ==
-                                true);
-                          }
-                        } catch (_) {}
-
-                        final bool canControlRelay =
-                            isSuperAdmin || relayAllowed;
+                        // Check if relay is enabled - explicitly check for true (null and false both mean disabled)
+                        // DEBUG: Log permission check
+                        debugPrint('=== RELAY PERMISSION CHECK (Top Row Icon) ===');
+                        debugPrint('Vehicle IMEI: ${vehicle.imei}');
+                        debugPrint('Vehicle name: ${vehicle.name}');
+                        debugPrint('vehicle.isRelay: ${vehicle.isRelay} (type: ${vehicle.isRelay.runtimeType})');
+                        debugPrint('isSuperAdmin: $isSuperAdmin');
+                        final bool relayEnabled = vehicle.isRelay == true;
+                        debugPrint('relayEnabled (vehicle.isRelay == true): $relayEnabled');
+                        final bool canControlRelay = isSuperAdmin || relayEnabled;
+                        debugPrint('canControlRelay (isSuperAdmin || relayEnabled): $canControlRelay');
+                        debugPrint('=== END RELAY PERMISSION CHECK ===');
 
                         return BottomSheetTopRowIcon(
                           callback: () {
@@ -218,10 +190,13 @@ class VehicleCardBottomSheet extends StatelessWidget {
                                 context: context,
                                 builder: (context) => AlertDialog(
                                   title: Row(
+                                    mainAxisSize: MainAxisSize.min,
                                     children: const [
                                       Icon(Icons.info, color: Colors.orange),
                                       SizedBox(width: 8),
-                                      Text('Engine Service Disabled'),
+                                      Flexible(
+                                        child: Text('Engine Service Disabled'),
+                                      ),
                                     ],
                                   ),
                                   content: const Text(
@@ -495,46 +470,21 @@ class VehicleCardBottomSheet extends StatelessWidget {
     BuildContext context,
     RelayController relayController,
   ) {
-    // Permission gate: if not super admin and user_vehicle.relay is false for CURRENT user, show disabled message
+    // Permission gate: if not super admin and vehicle.isRelay is false, show disabled message
     try {
       final auth = Get.find<AuthController>();
       final bool isSuperAdmin = auth.isSuperAdmin;
-      bool relayAllowed = false;
-      final int? currentUserId = auth.currentUser.value?.id;
-
-      if (currentUserId != null && vehicle.userVehicles is List) {
-        final List<Map<String, dynamic>> rels = List<Map<String, dynamic>>.from(
-          vehicle.userVehicles ?? const [],
-        );
-        final Map<String, dynamic> match = rels.firstWhere((uv) {
-          final dynamic uidDirect = uv['userId'] ?? uv['user_id'];
-          final dynamic uidNested = (uv['user'] is Map)
-              ? (uv['user'] as Map)['id']
-              : null;
-          final int? parsedDirect = uidDirect != null
-              ? int.tryParse(uidDirect.toString())
-              : null;
-          final int? parsedNested = uidNested != null
-              ? int.tryParse(uidNested.toString())
-              : null;
-          return parsedDirect == currentUserId || parsedNested == currentUserId;
-        }, orElse: () => {});
-        if (match.isNotEmpty) {
-          relayAllowed = match['relay'] == true;
-        }
-      }
-
-      if (!relayAllowed && vehicle.userVehicle is Map<String, dynamic>) {
-        final Map<String, dynamic> uv =
-            vehicle.userVehicle as Map<String, dynamic>;
-        final dynamic r1 = uv['relay'];
-        final dynamic r2 = (uv['permissions'] is Map)
-            ? (uv['permissions'] as Map)['relay']
-            : null;
-        final dynamic r = r1 ?? r2;
-        relayAllowed =
-            (r == true || r == 1 || (r is String && r.toLowerCase() == 'true'));
-      }
+      // Check if relay is enabled - explicitly check for true (null and false both mean disabled)
+      // DEBUG: Log permission check
+      debugPrint('=== RELAY PERMISSION CHECK (_showRelayControlDialog) ===');
+      debugPrint('Vehicle IMEI: ${vehicle.imei}');
+      debugPrint('Vehicle name: ${vehicle.name}');
+      debugPrint('vehicle.isRelay: ${vehicle.isRelay} (type: ${vehicle.isRelay.runtimeType})');
+      debugPrint('isSuperAdmin: $isSuperAdmin');
+      final bool relayAllowed = vehicle.isRelay == true;
+      debugPrint('relayAllowed (vehicle.isRelay == true): $relayAllowed');
+      debugPrint('!isSuperAdmin && !relayAllowed: ${!isSuperAdmin && !relayAllowed}');
+      debugPrint('=== END RELAY PERMISSION CHECK ===');
 
       if (!isSuperAdmin && !relayAllowed) {
         showDialog(
@@ -659,38 +609,16 @@ class RelayControlModal extends StatelessWidget {
         return false;
       }
     })();
-    bool relayAllowed = false;
-    try {
-      final auth = Get.find<AuthController>();
-      final int? currentUserId = auth.currentUser.value?.id;
-
-      if (currentUserId != null && vehicle.userVehicles is List) {
-        final List<Map<String, dynamic>> rels = List<Map<String, dynamic>>.from(
-          vehicle.userVehicles ?? const [],
-        );
-        final Map<String, dynamic> match = rels.firstWhere((uv) {
-          final dynamic uidDirect = uv['userId'] ?? uv['user_id'];
-          final dynamic uidNested = (uv['user'] is Map)
-              ? (uv['user'] as Map)['id']
-              : null;
-          final int? parsedDirect = uidDirect != null
-              ? int.tryParse(uidDirect.toString())
-              : null;
-          final int? parsedNested = uidNested != null
-              ? int.tryParse(uidNested.toString())
-              : null;
-          return parsedDirect == currentUserId || parsedNested == currentUserId;
-        }, orElse: () => {});
-        if (match.isNotEmpty) {
-          relayAllowed = match['relay'] == true;
-        }
-      }
-
-      if (!relayAllowed && vehicle.userVehicle is Map<String, dynamic>) {
-        relayAllowed =
-            ((vehicle.userVehicle as Map<String, dynamic>)['relay'] == true);
-      }
-    } catch (_) {}
+    // Check if relay is enabled - explicitly check for true (null and false both mean disabled)
+    // DEBUG: Log permission check
+    debugPrint('=== RELAY PERMISSION CHECK (RelayControlModal) ===');
+    debugPrint('Vehicle IMEI: ${vehicle.imei}');
+    debugPrint('Vehicle name: ${vehicle.name}');
+    debugPrint('vehicle.isRelay: ${vehicle.isRelay} (type: ${vehicle.isRelay.runtimeType})');
+    debugPrint('isSuperAdmin: $isSuperAdmin');
+    final bool relayAllowed = vehicle.isRelay == true;
+    debugPrint('relayAllowed (vehicle.isRelay == true): $relayAllowed');
+    debugPrint('=== END RELAY PERMISSION CHECK ===');
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

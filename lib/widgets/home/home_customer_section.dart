@@ -4,6 +4,7 @@ import 'package:luna_iot/app/app_routes.dart';
 import 'package:luna_iot/widgets/home/home_feature_card.dart';
 import 'package:luna_iot/widgets/home/home_feature_section_title.dart';
 import 'package:luna_iot/widgets/role_based_widget.dart';
+import 'package:luna_iot/widgets/home/banner_carousel_widget.dart';
 
 class HomeCustomerSection extends StatelessWidget {
   const HomeCustomerSection({super.key});
@@ -88,6 +89,8 @@ class HomeCustomerSection extends StatelessWidget {
               ),
             ],
           ),
+          // Banner Carousel
+          const BannerCarouselWidget(),
 
           // Alert System Section
           HomeFeatureSectionTitle(title: 'alert_system'.tr),
