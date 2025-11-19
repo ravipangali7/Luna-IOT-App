@@ -437,11 +437,11 @@ class _SosScreenState extends State<SosScreen> {
 
   // Show final countdown with sound
   Future<bool> _showFinalCountdownWithSound(AlertType selectedAlertType) async {
-    int countdown = 10;
+    int countdown = 5;
     Timer? countdownTimer;
     bool isCancelled = false;
 
-    // Play sound BEFORE showing dialog (for initial count 10)
+    // Play sound BEFORE showing dialog (for initial count 5)
     await sosController.playCountdownBeep();
 
     return await showDialog<bool>(
@@ -466,9 +466,11 @@ class _SosScreenState extends State<SosScreen> {
                         // Still counting down, just update UI
                         setState(() {});
                       } else {
-                        // Reached 0, close dialog
+                        // Reached 0, stop sound and close dialog
                         timer.cancel();
-                        Navigator.of(context).pop(true); // Send alert
+                        sosController.stopCountdownSound().then((_) {
+                          Navigator.of(context).pop(true); // Send alert
+                        });
                       }
                     },
                   );

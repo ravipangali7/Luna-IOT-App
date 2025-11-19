@@ -3,6 +3,7 @@ class AlertDevice {
   final String imei;
   final String phone;
   final String type;
+  final String? title;
   final int battery;
   final int signal;
   final bool ignition;
@@ -18,6 +19,7 @@ class AlertDevice {
     required this.imei,
     required this.phone,
     required this.type,
+    this.title,
     required this.battery,
     required this.signal,
     required this.ignition,
@@ -35,6 +37,7 @@ class AlertDevice {
       imei: json['imei'] ?? '',
       phone: json['phone'] ?? '',
       type: json['type'] ?? '',
+      title: json['title'] as String?,
       battery: json['battery'] ?? 0,
       signal: json['signal'] ?? 0,
       ignition: json['ignition'] ?? false,
@@ -57,6 +60,7 @@ class AlertDevice {
       'imei': imei,
       'phone': phone,
       'type': type,
+      'title': title,
       'battery': battery,
       'signal': signal,
       'ignition': ignition,
@@ -70,6 +74,10 @@ class AlertDevice {
   }
 
   String get deviceName {
+    // Return title if available, otherwise fallback to default names
+    if (title != null && title!.isNotEmpty) {
+      return title!;
+    }
     switch (type.toLowerCase()) {
       case 'buzzer':
         return 'Siren';

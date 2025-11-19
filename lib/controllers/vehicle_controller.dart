@@ -170,6 +170,21 @@ class VehicleController extends GetxController {
         filter: filter ?? selectedFilter.value,
       );
 
+      // DEBUG: Log API response for is_relay
+      debugPrint('=== VEHICLE API RESPONSE DEBUG ===');
+      debugPrint('Total vehicles received: ${paginatedResponse.data.length}');
+      if (paginatedResponse.data.isNotEmpty) {
+        final firstVehicle = paginatedResponse.data.first;
+        debugPrint('First vehicle IMEI: ${firstVehicle.imei}');
+        debugPrint('First vehicle isRelay value: ${firstVehicle.isRelay}');
+        debugPrint('First vehicle isRelay type: ${firstVehicle.isRelay.runtimeType}');
+      }
+      // Log is_relay for all vehicles
+      for (var vehicle in paginatedResponse.data) {
+        debugPrint('Vehicle ${vehicle.imei} (${vehicle.name}): isRelay = ${vehicle.isRelay} (type: ${vehicle.isRelay.runtimeType})');
+      }
+      debugPrint('=== END API RESPONSE DEBUG ===');
+
       // Update vehicles and pagination data
       vehicles.value = paginatedResponse.data;
       currentPage.value = paginatedResponse.pagination.currentPage;
@@ -475,6 +490,15 @@ class VehicleController extends GetxController {
         page: page,
         pageSize: pageSize.value,
       );
+
+      // DEBUG: Log search API response for is_relay
+      debugPrint('=== SEARCH API RESPONSE DEBUG ===');
+      debugPrint('Search query: $query');
+      debugPrint('Total vehicles found: ${searchResponse.data.length}');
+      for (var vehicle in searchResponse.data) {
+        debugPrint('Vehicle ${vehicle.imei} (${vehicle.name}): isRelay = ${vehicle.isRelay} (type: ${vehicle.isRelay.runtimeType})');
+      }
+      debugPrint('=== END SEARCH API RESPONSE DEBUG ===');
 
       // Update vehicles with search results
       vehicles.value = searchResponse.data;

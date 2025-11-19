@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:luna_iot/app/app_routes.dart';
 import 'package:luna_iot/widgets/home/home_feature_card.dart';
 import 'package:luna_iot/widgets/home/home_feature_section_title.dart';
+import 'package:luna_iot/widgets/home/banner_carousel_widget.dart';
 
 class HomeAdminSection extends StatelessWidget {
   const HomeAdminSection({super.key});
@@ -106,6 +107,33 @@ class HomeAdminSection extends StatelessWidget {
           ),
 
           const SizedBox(height: 10),
+
+          // Luna Tag Section (separate like Alert System)
+          HomeFeatureSectionTitle(title: 'Luna Tag'),
+          GridView.count(
+            crossAxisCount: 3,
+            crossAxisSpacing: 7,
+            mainAxisSpacing: 7,
+            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            children: [
+              HomeFeatureCard(
+                title: 'Luna Tag',
+                subtitle: 'Manage Luna Tags',
+                icon: Icons.generating_tokens,
+                route: AppRoutes.lunaTag,
+              ),
+              HomeFeatureCard(
+                title: 'Add Luna Tag',
+                subtitle: 'Add New Luna Tag',
+                icon: Icons.add_circle_outline,
+                route: AppRoutes.lunaTagCreate,
+              ),
+            ],
+          ),
+
+          // Banner Carousel
+          const BannerCarouselWidget(),
 
           // Alert System Section
           HomeFeatureSectionTitle(title: 'alert_system'.tr),

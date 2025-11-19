@@ -209,4 +209,15 @@ class VehicleService {
       return Icon(Icons.gps_off, size: size, color: Colors.grey);
     }
   }
+
+  // Get Relay
+  static getRelay({required bool? value, double size = 16}) {
+    if (value == true) {
+      return Icon(Icons.power, size: size, color: Colors.green);
+    } else if (value == false) {
+      return Icon(Icons.power_off, size: size, color: Colors.grey);
+    } else {
+      return Icon(Icons.power_off, size: size, color: Colors.grey);
+    }
+  }
 }

@@ -130,7 +130,7 @@ class AlertDeviceCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          device.deviceName,
+                          device.title ?? device.deviceName,
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
