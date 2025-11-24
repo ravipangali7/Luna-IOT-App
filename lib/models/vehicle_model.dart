@@ -16,6 +16,8 @@ class Vehicle {
   String? expireDate;
   bool? isActive;
   bool? isRelay;
+  int? servicingDistancePeriod;
+  String? numberPlatePhoto;
   DateTime? createdAt;
   DateTime? updatedAt;
   Device? device;
@@ -42,6 +44,8 @@ class Vehicle {
     this.expireDate,
     this.isActive,
     this.isRelay,
+    this.servicingDistancePeriod,
+    this.numberPlatePhoto,
     this.createdAt,
     this.updatedAt,
     this.device,
@@ -85,6 +89,8 @@ class Vehicle {
       // Parse is_relay - handle missing field, null, boolean, integer (1/0), and string cases
       // If field is missing, set to null. If present, parse it (can be null, true, or false)
       isRelay: parsedIsRelay,
+      servicingDistancePeriod: _parseInt(json['servicing_distance_period']),
+      numberPlatePhoto: json['number_plate_photo'],
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : null,
@@ -215,6 +221,8 @@ class Vehicle {
       'expireDate': expireDate,
       'is_active': isActive,
       'is_relay': isRelay,
+      'servicing_distance_period': servicingDistancePeriod,
+      'number_plate_photo': numberPlatePhoto,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
       'device': device?.toJson(),
@@ -240,6 +248,8 @@ class Vehicle {
     String? expireDate,
     bool? isActive,
     bool? isRelay,
+    int? servicingDistancePeriod,
+    String? numberPlatePhoto,
     DateTime? createdAt,
     DateTime? updatedAt,
     Device? device,
@@ -263,6 +273,8 @@ class Vehicle {
       expireDate: expireDate ?? this.expireDate,
       isActive: isActive ?? this.isActive,
       isRelay: isRelay ?? this.isRelay,
+      servicingDistancePeriod: servicingDistancePeriod ?? this.servicingDistancePeriod,
+      numberPlatePhoto: numberPlatePhoto ?? this.numberPlatePhoto,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       device: device ?? this.device,

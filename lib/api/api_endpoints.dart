@@ -157,4 +157,40 @@ class ApiEndpoints {
   
   // Luna Tag data by date range for playback
   static const String getLunaTagDataByDateRange = '/api/device/luna-tag-data/date-range/:publicKey';
+
+  // Fleet Management - Django fleet endpoints
+  // Vehicle Servicing
+  static const String getVehicleServicings = '/api/fleet/vehicle/:imei/servicing';
+  static const String getAllOwnedVehicleServicings = '/api/fleet/servicing/all-owned';
+  static const String createVehicleServicing = '/api/fleet/vehicle/:imei/servicing/create';
+  static const String updateVehicleServicing = '/api/fleet/vehicle/:imei/servicing/:servicingId';
+  static const String deleteVehicleServicing = '/api/fleet/vehicle/:imei/servicing/:servicingId/delete';
+  static const String checkServicingThreshold = '/api/fleet/vehicle/:imei/servicing/threshold';
+  
+  // Vehicle Expenses
+  static const String getVehicleExpenses = '/api/fleet/vehicle/:imei/expenses';
+  static const String getAllOwnedVehicleExpenses = '/api/fleet/expenses/all-owned';
+  static const String createVehicleExpense = '/api/fleet/vehicle/:imei/expenses/create';
+  static const String updateVehicleExpense = '/api/fleet/vehicle/:imei/expenses/:expenseId';
+  static const String deleteVehicleExpense = '/api/fleet/vehicle/:imei/expenses/:expenseId/delete';
+  
+  // Vehicle Documents
+  static const String getVehicleDocuments = '/api/fleet/vehicle/:imei/documents';
+  static const String getAllOwnedVehicleDocuments = '/api/fleet/documents/all-owned';
+  static const String createVehicleDocument = '/api/fleet/vehicle/:imei/documents/create';
+  static const String updateVehicleDocument = '/api/fleet/vehicle/:imei/documents/:documentId';
+  static const String deleteVehicleDocument = '/api/fleet/vehicle/:imei/documents/:documentId/delete';
+  static const String renewVehicleDocument = '/api/fleet/vehicle/:imei/documents/:documentId/renew';
+  static const String checkDocumentRenewalThreshold = '/api/fleet/vehicle/:imei/documents/:documentId/renewal-threshold';
+  
+  // Vehicle Energy Cost
+  static const String getVehicleEnergyCosts = '/api/fleet/vehicle/:imei/energy-cost';
+  static const String getAllOwnedVehicleEnergyCosts = '/api/fleet/energy-cost/all-owned';
+  static const String createVehicleEnergyCost = '/api/fleet/vehicle/:imei/energy-cost/create';
+  static const String updateVehicleEnergyCost = '/api/fleet/vehicle/:imei/energy-cost/:energyCostId';
+  static const String deleteVehicleEnergyCost = '/api/fleet/vehicle/:imei/energy-cost/:energyCostId/delete';
+  
+  // Fleet Report
+  static const String getVehicleFleetReport = '/api/fleet/vehicle/:imei/report';
+  static const String getAllVehiclesFleetReport = '/api/fleet/reports/all';
 }

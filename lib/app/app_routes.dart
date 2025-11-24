@@ -67,6 +67,20 @@ import 'package:luna_iot/bindings/luna_tag_binding.dart';
 import 'package:luna_iot/views/luna_tag/luna_tag_index_screen.dart';
 import 'package:luna_iot/views/luna_tag/luna_tag_show_screen.dart';
 import 'package:luna_iot/views/luna_tag/luna_tag_form_screen.dart';
+import 'package:luna_iot/views/fleet_management/fleet_management_screen.dart';
+import 'package:luna_iot/views/fleet_management/servicing/servicing_index_screen.dart';
+import 'package:luna_iot/views/fleet_management/servicing/servicing_create_screen.dart';
+import 'package:luna_iot/views/fleet_management/servicing/servicing_edit_screen.dart';
+import 'package:luna_iot/views/fleet_management/expenses/expenses_index_screen.dart';
+import 'package:luna_iot/views/fleet_management/expenses/expenses_create_screen.dart';
+import 'package:luna_iot/views/fleet_management/expenses/expenses_edit_screen.dart';
+import 'package:luna_iot/views/fleet_management/energy_cost/energy_cost_index_screen.dart';
+import 'package:luna_iot/views/fleet_management/energy_cost/energy_cost_create_screen.dart';
+import 'package:luna_iot/views/fleet_management/energy_cost/energy_cost_edit_screen.dart';
+import 'package:luna_iot/views/fleet_management/documents/documents_index_screen.dart';
+import 'package:luna_iot/views/fleet_management/documents/documents_create_screen.dart';
+import 'package:luna_iot/views/fleet_management/documents/documents_edit_screen.dart';
+import 'package:luna_iot/views/fleet_management/report/fleet_report_screen.dart';
 
 class AppRoutes {
   static const String splash = '/splash';
@@ -101,6 +115,20 @@ class AppRoutes {
   static const String vehicleReportShow = '/vehicle/report/:imei';
   static const String vehicleAccess = '/vehicle/access';
   static const String schoolVehicleIndex = '/school/vehicles';
+  static const String fleetManagement = '/fleet-management';
+  static const String fleetManagementServicing = '/fleet-management/servicing';
+  static const String fleetManagementServicingCreate = '/fleet-management/servicing/create';
+  static const String fleetManagementServicingEdit = '/fleet-management/servicing/edit';
+  static const String fleetManagementExpenses = '/fleet-management/expenses';
+  static const String fleetManagementExpensesCreate = '/fleet-management/expenses/create';
+  static const String fleetManagementExpensesEdit = '/fleet-management/expenses/edit';
+  static const String fleetManagementEnergyCost = '/fleet-management/energy-cost';
+  static const String fleetManagementEnergyCostCreate = '/fleet-management/energy-cost/create';
+  static const String fleetManagementEnergyCostEdit = '/fleet-management/energy-cost/edit';
+  static const String fleetManagementDocuments = '/fleet-management/documents';
+  static const String fleetManagementDocumentsCreate = '/fleet-management/documents/create';
+  static const String fleetManagementDocumentsEdit = '/fleet-management/documents/edit';
+  static const String fleetManagementReports = '/fleet-management/reports';
 
   // User Routes
   static const String user = '/user';
@@ -311,6 +339,90 @@ class AppRoutes {
     GetPage(
       name: vehicleAccess,
       page: () => VehicleAccessScreen(),
+      binding: VehicleBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: fleetManagement,
+      page: () => FleetManagementScreen(),
+      binding: VehicleBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: fleetManagementServicing,
+      page: () => ServicingIndexScreen(),
+      binding: VehicleBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: fleetManagementServicingCreate,
+      page: () => ServicingCreateScreen(),
+      binding: VehicleBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: fleetManagementServicingEdit,
+      page: () => ServicingEditScreen(servicing: Get.arguments),
+      binding: VehicleBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: fleetManagementExpenses,
+      page: () => ExpensesIndexScreen(),
+      binding: VehicleBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: fleetManagementExpensesCreate,
+      page: () => ExpensesCreateScreen(),
+      binding: VehicleBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: fleetManagementExpensesEdit,
+      page: () => ExpensesEditScreen(expense: Get.arguments),
+      binding: VehicleBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: fleetManagementEnergyCost,
+      page: () => EnergyCostIndexScreen(),
+      binding: VehicleBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: fleetManagementEnergyCostCreate,
+      page: () => EnergyCostCreateScreen(),
+      binding: VehicleBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: fleetManagementEnergyCostEdit,
+      page: () => EnergyCostEditScreen(energyCost: Get.arguments),
+      binding: VehicleBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: fleetManagementDocuments,
+      page: () => DocumentsIndexScreen(),
+      binding: VehicleBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: fleetManagementDocumentsCreate,
+      page: () => DocumentsCreateScreen(),
+      binding: VehicleBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: fleetManagementDocumentsEdit,
+      page: () => DocumentsEditScreen(document: Get.arguments),
+      binding: VehicleBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: fleetManagementReports,
+      page: () => FleetReportScreen(),
       binding: VehicleBinding(),
       middlewares: [AuthMiddleware()],
     ),
