@@ -168,54 +168,52 @@ class HomeAdminSection extends StatelessWidget {
 
           const SizedBox(height: 10),
 
-          if (Theme.of(context).platform == TargetPlatform.android) ...[
-            HomeFeatureSectionTitle(title: 'track_public'.tr),
-            GridView.count(
-              crossAxisCount: 3,
-              crossAxisSpacing: 7,
-              mainAxisSpacing: 7,
-              physics: const NeverScrollableScrollPhysics(),
-              shrinkWrap: true,
-              children: [
-                HomeFeatureCard(
-                  title: 'public_vehicle'.tr,
-                  subtitle: 'track_public_vehicles'.tr,
-                  icon: Icons.directions_train_outlined,
-                  route: AppRoutes.vehicleHistoryIndex,
-                ),
-                HomeFeatureCard(
-                  title: 'school_vehicle'.tr,
-                  subtitle: 'track_school_vehicles'.tr,
-                  icon: Icons.directions_bus,
-                  route: AppRoutes.schoolVehicleIndex,
-                ),
-                HomeFeatureCard(
-                  title: 'garbage_vehicle'.tr,
-                  subtitle: 'track_garbage_vehicles'.tr,
-                  icon: Icons.recycling,
-                  route: AppRoutes.vehicleReportIndex,
-                ),
-                HomeFeatureCard(
-                  title: 'flight_ticket'.tr,
-                  subtitle: 'book_your_flight'.tr,
-                  icon: Icons.flight,
-                  route: AppRoutes.vehicle,
-                ),
-                HomeFeatureCard(
-                  title: 'bus_ticket'.tr,
-                  subtitle: 'book_your_bus'.tr,
-                  icon: Icons.directions_bus,
-                  route: AppRoutes.vehicle,
-                ),
-                HomeFeatureCard(
-                  title: 'hotel_booking'.tr,
-                  subtitle: 'book_your_hotel'.tr,
-                  icon: Icons.hotel,
-                  route: AppRoutes.vehicle,
-                ),
-              ],
-            ),
-          ],
+          HomeFeatureSectionTitle(title: 'track_public'.tr),
+          GridView.count(
+            crossAxisCount: 3,
+            crossAxisSpacing: 7,
+            mainAxisSpacing: 7,
+            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            children: [
+              HomeFeatureCard(
+                title: 'public_vehicle'.tr,
+                subtitle: 'track_public_vehicles'.tr,
+                icon: Icons.directions_train_outlined,
+                route: AppRoutes.vehicleHistoryIndex,
+              ),
+              HomeFeatureCard(
+                title: 'school_vehicle'.tr,
+                subtitle: 'track_school_vehicles'.tr,
+                icon: Icons.directions_bus,
+                route: AppRoutes.schoolVehicleIndex,
+              ),
+              HomeFeatureCard(
+                title: 'garbage_vehicle'.tr,
+                subtitle: 'track_garbage_vehicles'.tr,
+                icon: Icons.recycling,
+                route: AppRoutes.vehicleReportIndex,
+              ),
+              HomeFeatureCard(
+                title: 'flight_ticket'.tr,
+                subtitle: 'book_your_flight'.tr,
+                icon: Icons.flight,
+                route: AppRoutes.vehicle,
+              ),
+              HomeFeatureCard(
+                title: 'bus_ticket'.tr,
+                subtitle: 'book_your_bus'.tr,
+                icon: Icons.directions_bus,
+                route: AppRoutes.vehicle,
+              ),
+              HomeFeatureCard(
+                title: 'hotel_booking'.tr,
+                subtitle: 'book_your_hotel'.tr,
+                icon: Icons.hotel,
+                route: AppRoutes.vehicle,
+              ),
+            ],
+          ),
         ],
       ),
     );
