@@ -347,7 +347,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _buildFeatureItem(
           title: 'public_vehicle'.tr,
           icon: Icons.directions_train_outlined,
-          route: AppRoutes.vehicleHistoryIndex,
+          route: AppRoutes.publicVehicleIndex,
         ),
         _buildFeatureItem(
           title: 'school_vehicle'.tr,
@@ -357,22 +357,25 @@ class _HomeScreenState extends State<HomeScreen> {
         _buildFeatureItem(
           title: 'garbage_vehicle'.tr,
           icon: Icons.recycling,
-          route: AppRoutes.vehicleReportIndex,
+          route: AppRoutes.garbageIndex,
         ),
         _buildFeatureItem(
           title: 'flight_ticket'.tr,
           icon: Icons.flight,
-          route: AppRoutes.vehicle,
+          route: AppRoutes.home,
+          onTap: () {}, // Disabled - no action on tap
         ),
         _buildFeatureItem(
           title: 'bus_ticket'.tr,
-          icon: Icons.directions_bus,
-          route: AppRoutes.vehicle,
+          icon: Icons.confirmation_num,
+          route: AppRoutes.home,
+          onTap: () {}, // Disabled - no action on tap
         ),
         _buildFeatureItem(
           title: 'hotel_booking'.tr,
           icon: Icons.hotel,
-          route: AppRoutes.vehicle,
+          route: AppRoutes.home,
+          onTap: () {}, // Disabled - no action on tap
         ),
       ]);
     }

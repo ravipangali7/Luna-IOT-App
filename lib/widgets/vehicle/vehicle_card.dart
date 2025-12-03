@@ -494,18 +494,14 @@ class VehicleCard extends StatelessWidget {
                             SizedBox(height: 2),
 
                             // Vehicle No.
-                            SizedBox(
-                              width: 100,
-                              child: Text(
-                                vehicle.vehicleNo ?? '',
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                                maxLines: 1,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppTheme.titleColor,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                            SimpleMarqueeText(
+                              text: vehicle.vehicleNo ?? '',
+                              scrollAxisExtent: 100.0,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.titleColor,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ],

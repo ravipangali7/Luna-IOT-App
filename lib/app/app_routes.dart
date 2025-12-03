@@ -13,6 +13,8 @@ import 'package:luna_iot/bindings/vehicle_binding.dart';
 import 'package:luna_iot/bindings/alert_history_binding.dart';
 import 'package:luna_iot/bindings/buzzer_binding.dart';
 import 'package:luna_iot/bindings/sos_switch_binding.dart';
+import 'package:luna_iot/bindings/garbage_binding.dart';
+import 'package:luna_iot/bindings/public_vehicle_binding.dart';
 import 'package:luna_iot/middleware/auth_middleware.dart';
 import 'package:luna_iot/views/admin/device/device_assignment_screen.dart';
 import 'package:luna_iot/views/admin/device/device_create_screen.dart';
@@ -53,6 +55,8 @@ import 'package:luna_iot/views/vehicle/vehicle_create_screen.dart';
 import 'package:luna_iot/views/vehicle/vehicle_edit_screen.dart';
 import 'package:luna_iot/views/vehicle/vehicle_index_screen.dart';
 import 'package:luna_iot/views/school/school_vehicle_index_screen.dart';
+import 'package:luna_iot/views/garbage/garbage_index_screen.dart';
+import 'package:luna_iot/views/public_vehicle/public_vehicle_index_screen.dart';
 import 'package:luna_iot/views/splash_screen.dart';
 import 'package:luna_iot/views/vehicle_tag/vehicle_tag_screen.dart';
 import 'package:luna_iot/views/sos/sos_screen.dart';
@@ -115,6 +119,8 @@ class AppRoutes {
   static const String vehicleReportShow = '/vehicle/report/:imei';
   static const String vehicleAccess = '/vehicle/access';
   static const String schoolVehicleIndex = '/school/vehicles';
+  static const String garbageIndex = '/garbage';
+  static const String publicVehicleIndex = '/public-vehicle';
   static const String fleetManagement = '/fleet-management';
   static const String fleetManagementServicing = '/fleet-management/servicing';
   static const String fleetManagementServicingCreate = '/fleet-management/servicing/create';
@@ -277,6 +283,18 @@ class AppRoutes {
       name: schoolVehicleIndex,
       page: () => SchoolVehicleIndexScreen(),
       binding: VehicleBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: garbageIndex,
+      page: () => const GarbageIndexScreen(),
+      binding: GarbageBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: publicVehicleIndex,
+      page: () => const PublicVehicleIndexScreen(),
+      binding: PublicVehicleBinding(),
       middlewares: [AuthMiddleware()],
     ),
     GetPage(
