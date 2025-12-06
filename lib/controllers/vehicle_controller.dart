@@ -40,6 +40,11 @@ class VehicleController extends GetxController {
   // Store total count from initial load
   final RxInt _totalVehicleCount = 0.obs;
 
+  // Filter count caching and optimization
+  List<Vehicle>? _cachedVehiclesForCounts;
+  bool _isLoadingFilterCounts = false;
+  Timer? _filterDebounceTimer;
+
   // NEW: Vehicle Access Assignment
   final RxList<Vehicle> availableVehicles = <Vehicle>[].obs;
   final RxList<Vehicle> selectedVehicles = <Vehicle>[].obs;
@@ -119,6 +124,7 @@ class VehicleController extends GetxController {
     
     if (!isSchoolVehicleRoute) {
       loadVehiclesPaginated(); // Use paginated loading by default
+      // Filter counts will be calculated immediately in loadVehiclesPaginated
     } else {
       debugPrint('VehicleController: Skipping auto-load on school vehicle route');
     }
@@ -203,8 +209,9 @@ class VehicleController extends GetxController {
       // Update filtered vehicles for UI
       filteredVehicles.assignAll(vehicles);
 
-      // Load filter counts from server
-      await _loadFilterCounts();
+      // Calculate immediate counts from current vehicles, then load complete counts in background
+      _calculateImmediateFilterCounts();
+      _loadFilterCounts(); // Load complete counts in background (non-blocking)
     } catch (e) {
       debugPrint(
         'Pagination endpoint failed, falling back to regular endpoint: $e',
@@ -273,8 +280,9 @@ class VehicleController extends GetxController {
       // Update filtered vehicles for UI
       filteredVehicles.assignAll(vehicles);
 
-      // Load filter counts from server (fallback to client-side calculation)
-      await _loadFilterCounts();
+      // Calculate immediate counts from current vehicles, then load complete counts in background
+      _calculateImmediateFilterCounts();
+      _loadFilterCounts(); // Load complete counts in background (non-blocking)
     } catch (e) {
       debugPrint('Error loading school vehicles: ${e.toString()}');
       Get.snackbar('Error', 'Failed to load school vehicles');
@@ -355,11 +363,16 @@ class VehicleController extends GetxController {
     return;
   }
 
-  // Filter vehicles by state
+  // Filter vehicles by state (immediate application)
   void setFilter(String filter) {
+    // Cancel previous debounce timer if any
+    _filterDebounceTimer?.cancel();
+    
+    // Update selected filter immediately
     selectedFilter.value = filter;
     currentPage.value = 1; // Reset to first page when filtering
 
+    // Apply filter immediately without debounce
     if (_allVehicles.isNotEmpty) {
       // Use client-side filtering and pagination
       _applyClientSideFilteringAndPagination();
@@ -626,49 +639,198 @@ class VehicleController extends GetxController {
     }
   }
 
-  // Load filter counts from server
-  Future<void> _loadFilterCounts() async {
-    try {
-      final counts = await _vehicleApiService.getVehicleFilterCounts();
-      filterCounts.value = counts;
-    } catch (e) {
-      debugPrint('Error loading filter counts: $e');
-      // Fallback to client-side counts if server doesn't support it
-      _calculateClientSideFilterCounts();
+  // Calculate immediate filter counts from current vehicles (for instant display)
+  void _calculateImmediateFilterCounts() {
+    if (vehicles.isEmpty && totalCount.value == 0) {
+      return; // No vehicles to count
     }
-  }
 
-  // Calculate filter counts from current vehicles (fallback)
-  void _calculateClientSideFilterCounts() {
     final counts = <String, int>{};
+    
+    // Use totalCount for 'All' if available
+    counts['All'] = totalCount.value > 0 ? totalCount.value : vehicles.length;
+    
+    // Calculate counts from current vehicles list
+    int inactiveCount = 0;
+    int stoppedCount = 0;
+    int idleCount = 0;
+    int runningCount = 0;
+    int overspeedCount = 0;
+    int noDataCount = 0;
 
-    for (final filter in VehicleController.filterOptions) {
-      if (filter == 'All') {
-        counts[filter] = totalCount.value;
-      } else {
-        counts[filter] = vehicles.where((vehicle) {
-          final state = VehicleService.getState(vehicle);
-          switch (filter) {
-            case 'Inactive':
-              return state == VehicleService.inactive;
-            case 'Stopped':
-              return state == VehicleService.stopped;
-            case 'Idle':
-              return state == VehicleService.idle;
-            case 'Running':
-              return state == VehicleService.running;
-            case 'Overspeed':
-              return state == VehicleService.overspeed;
-            case 'No Data':
-              return state == VehicleService.noData;
-            default:
-              return false;
-          }
-        }).length;
+    for (final vehicle in vehicles) {
+      final state = VehicleService.getState(vehicle);
+      switch (state) {
+        case VehicleService.inactive:
+          inactiveCount++;
+          break;
+        case VehicleService.stopped:
+          stoppedCount++;
+          break;
+        case VehicleService.idle:
+          idleCount++;
+          break;
+        case VehicleService.running:
+          runningCount++;
+          break;
+        case VehicleService.overspeed:
+          overspeedCount++;
+          break;
+        case VehicleService.noData:
+          noDataCount++;
+          break;
       }
     }
 
+    // If we have pagination, scale the counts proportionally
+    if (totalCount.value > vehicles.length && vehicles.isNotEmpty) {
+      final scaleFactor = totalCount.value / vehicles.length;
+      inactiveCount = (inactiveCount * scaleFactor).round();
+      stoppedCount = (stoppedCount * scaleFactor).round();
+      idleCount = (idleCount * scaleFactor).round();
+      runningCount = (runningCount * scaleFactor).round();
+      overspeedCount = (overspeedCount * scaleFactor).round();
+      noDataCount = (noDataCount * scaleFactor).round();
+    }
+
+    counts['Inactive'] = inactiveCount;
+    counts['Stopped'] = stoppedCount;
+    counts['Idle'] = idleCount;
+    counts['Running'] = runningCount;
+    counts['Overspeed'] = overspeedCount;
+    counts['No Data'] = noDataCount;
+
+    // Update filter counts immediately (will be refined by complete calculation)
     filterCounts.value = counts;
+    debugPrint('Immediate filter counts calculated from current vehicles: $counts');
+  }
+
+  // Load filter counts from server (non-blocking, runs in background)
+  void _loadFilterCounts() {
+    // Prevent multiple simultaneous calls
+    if (_isLoadingFilterCounts) {
+      return;
+    }
+
+    // If we already have valid cached counts and vehicles haven't changed, skip
+    if (filterCounts.isNotEmpty && 
+        filterCounts.keys.length >= VehicleController.filterOptions.length - 1 &&
+        _cachedVehiclesForCounts != null &&
+        _cachedVehiclesForCounts!.length == totalCount.value &&
+        totalCount.value > 0) {
+      debugPrint('Using cached filter counts');
+      return;
+    }
+
+    _isLoadingFilterCounts = true;
+    _loadFilterCountsInternal();
+  }
+
+  // Internal method to actually load filter counts
+  Future<void> _loadFilterCountsInternal() async {
+    try {
+      final counts = await _vehicleApiService.getVehicleFilterCounts();
+      // Check if counts are valid (not empty and has all filter options)
+      if (counts.isNotEmpty && counts.keys.length >= VehicleController.filterOptions.length - 1) {
+        filterCounts.value = counts;
+        _isLoadingFilterCounts = false;
+        return;
+      }
+      // If counts are empty or incomplete, fall through to client-side calculation
+      debugPrint('Filter counts from server are empty or incomplete, using client-side calculation');
+    } catch (e) {
+      debugPrint('Error loading filter counts: $e');
+      // Fallback to client-side counts if server doesn't support it
+    }
+    // Always calculate client-side counts as fallback or when server counts are incomplete
+    await _calculateClientSideFilterCounts();
+    _isLoadingFilterCounts = false;
+  }
+
+  // Calculate filter counts from all vehicles (fallback, optimized)
+  Future<void> _calculateClientSideFilterCounts() async {
+    final counts = <String, int>{};
+    List<Vehicle> vehiclesToCount;
+
+    // Check if we can use cached vehicles
+    if (_cachedVehiclesForCounts != null && 
+        _cachedVehiclesForCounts!.length == totalCount.value &&
+        totalCount.value > 0) {
+      vehiclesToCount = _cachedVehiclesForCounts!;
+      debugPrint('Using cached vehicles for filter count calculation: ${vehiclesToCount.length} vehicles');
+    } else if (_allVehicles.isNotEmpty) {
+      // Use _allVehicles if available (client-side pagination scenario)
+      vehiclesToCount = _allVehicles.toList();
+      _cachedVehiclesForCounts = vehiclesToCount;
+      debugPrint('Using _allVehicles for filter count calculation: ${vehiclesToCount.length} vehicles');
+    } else {
+      // Only load all vehicles if we don't have them and totalCount suggests we need them
+      if (totalCount.value > vehicles.length) {
+        try {
+          debugPrint('Loading all vehicles for filter count calculation...');
+          vehiclesToCount = await _vehicleApiService.getAllVehicles();
+          _cachedVehiclesForCounts = vehiclesToCount;
+          debugPrint('Loaded ${vehiclesToCount.length} vehicles for filter count calculation');
+        } catch (e) {
+          debugPrint('Error loading all vehicles for filter counts: $e');
+          // Fallback to current paginated vehicles if loading all fails
+          vehiclesToCount = vehicles.toList();
+          _cachedVehiclesForCounts = vehiclesToCount;
+          debugPrint('Using current paginated vehicles for filter count calculation: ${vehiclesToCount.length} vehicles');
+        }
+      } else {
+        // Use current vehicles if totalCount matches (we have all vehicles already)
+        vehiclesToCount = vehicles.toList();
+        _cachedVehiclesForCounts = vehiclesToCount;
+        debugPrint('Using current vehicles for filter count calculation: ${vehiclesToCount.length} vehicles');
+      }
+    }
+
+    // Calculate counts for each filter (optimized single pass)
+    int allCount = totalCount.value > 0 ? totalCount.value : vehiclesToCount.length;
+    int inactiveCount = 0;
+    int stoppedCount = 0;
+    int idleCount = 0;
+    int runningCount = 0;
+    int overspeedCount = 0;
+    int noDataCount = 0;
+
+    // Single pass through vehicles to count all states
+    for (final vehicle in vehiclesToCount) {
+      final state = VehicleService.getState(vehicle);
+      switch (state) {
+        case VehicleService.inactive:
+          inactiveCount++;
+          break;
+        case VehicleService.stopped:
+          stoppedCount++;
+          break;
+        case VehicleService.idle:
+          idleCount++;
+          break;
+        case VehicleService.running:
+          runningCount++;
+          break;
+        case VehicleService.overspeed:
+          overspeedCount++;
+          break;
+        case VehicleService.noData:
+          noDataCount++;
+          break;
+      }
+    }
+
+    // Build counts map
+    counts['All'] = allCount;
+    counts['Inactive'] = inactiveCount;
+    counts['Stopped'] = stoppedCount;
+    counts['Idle'] = idleCount;
+    counts['Running'] = runningCount;
+    counts['Overspeed'] = overspeedCount;
+    counts['No Data'] = noDataCount;
+
+    filterCounts.value = counts;
+    debugPrint('Filter counts calculated: $counts');
   }
 
   // Get vehicle count for each filter
@@ -1100,6 +1262,9 @@ class VehicleController extends GetxController {
 
   @override
   void onClose() {
+    // Cancel debounce timer
+    _filterDebounceTimer?.cancel();
+    
     // Leave all vehicle rooms
     for (var vehicle in vehicles) {
       _socketService.leaveVehicleRoom(vehicle.imei);
