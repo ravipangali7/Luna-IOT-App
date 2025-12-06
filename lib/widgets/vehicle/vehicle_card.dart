@@ -881,9 +881,9 @@ class StatsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 65,
-      height: 80,
-      padding: EdgeInsets.all(10),
+      width: 50,
+      height: 50,
+      padding: EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: color.withOpacity(0.09),
         borderRadius: BorderRadius.circular(3),

@@ -4,6 +4,7 @@ import 'package:luna_iot/api/api_client.dart';
 import 'package:luna_iot/api/api_endpoints.dart';
 import 'package:luna_iot/models/vehicle_model.dart';
 import 'package:luna_iot/models/location_model.dart';
+import 'package:luna_iot/models/status_model.dart';
 
 class PublicVehicleApiService {
   final ApiClient _apiClient;
@@ -99,9 +100,13 @@ class PublicVehicleApiService {
             
             final vehicleJson = vehicleData['vehicle'] as Map<String, dynamic>;
             final locationJson = vehicleData['location'] as Map<String, dynamic>?;
+            final statusJson = vehicleData['status'] as Map<String, dynamic>?;
+            final publicVehicleJson = vehicleData['public_vehicle'] as Map<String, dynamic>?;
             
             debugPrint('  Vehicle JSON: $vehicleJson');
             debugPrint('  Location JSON: $locationJson');
+            debugPrint('  Status JSON: $statusJson');
+            debugPrint('  Public Vehicle JSON: $publicVehicleJson');
             
             // Parse vehicle
             final vehicle = Vehicle.fromJson(vehicleJson);
@@ -119,11 +124,22 @@ class PublicVehicleApiService {
               debugPrint('  Location is NULL');
             }
             
+            // Parse status if available
+            if (statusJson != null) {
+              debugPrint('  Parsing status...');
+              final status = Status.fromJson(statusJson);
+              vehicle.latestStatus = status;
+              debugPrint('  Status parsed - Ignition: ${status.ignition}, Battery: ${status.battery}');
+            } else {
+              debugPrint('  Status is NULL');
+            }
+            
             // Add to result with institute data
             result.add({
               'institute': institute,
               'vehicle': vehicle,
               'location': location,
+              'public_vehicle': publicVehicleJson,
             });
             debugPrint('  Added to result list');
           }

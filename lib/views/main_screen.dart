@@ -20,6 +20,14 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    
+    // Reset to home screen when MainScreen is created
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (Get.isRegistered<MainScreenController>()) {
+        Get.find<MainScreenController>().changeIndex(0);
+      }
+    });
+    
     // Show popups after main screen is loaded
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showPopupsIfNeeded();

@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:luna_iot/api/api_client.dart';
 import 'package:luna_iot/api/services/auth_api_service.dart';
 import 'package:luna_iot/api/services/biometric_api_service.dart';
+import 'package:luna_iot/controllers/main_screen_controller.dart';
 import 'package:luna_iot/models/user_model.dart';
 import 'package:luna_iot/services/auth_storage_service.dart';
 import 'package:luna_iot/services/biometric_service.dart';
@@ -333,6 +334,16 @@ class AuthController extends GetxController {
       await AuthStorageService.removeAuth();
       isLoggedIn.value = false;
       currentUser.value = null;
+      
+      // Reset navigation to home before logout
+      try {
+        if (Get.isRegistered<MainScreenController>()) {
+          Get.find<MainScreenController>().changeIndex(0);
+        }
+      } catch (e) {
+        // MainScreenController might not be registered, ignore
+      }
+      
       Get.offAllNamed('/login');
     }
   }

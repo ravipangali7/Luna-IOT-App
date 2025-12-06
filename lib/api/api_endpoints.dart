@@ -209,4 +209,9 @@ class ApiEndpoints {
   // Fleet Report
   static const String getVehicleFleetReport = '/api/fleet/vehicle/:imei/report';
   static const String getAllVehiclesFleetReport = '/api/fleet/reports/all';
+
+  // Vehicle Tag - Django vehicle_tag endpoints
+  static const String getAllVehicleTags = '/api/vehicle-tag/';
+  static const String getVehicleTagByVtid = '/api/vehicle-tag/:vtid';
+  static const String assignVehicleTagByVtid = '/api/vehicle-tag/assign/:vtid/';
 }

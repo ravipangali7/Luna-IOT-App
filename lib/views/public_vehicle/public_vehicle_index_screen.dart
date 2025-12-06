@@ -17,7 +17,8 @@ class PublicVehicleIndexScreen extends StatefulWidget {
   const PublicVehicleIndexScreen({super.key});
 
   @override
-  State<PublicVehicleIndexScreen> createState() => _PublicVehicleIndexScreenState();
+  State<PublicVehicleIndexScreen> createState() =>
+      _PublicVehicleIndexScreenState();
 }
 
 class _PublicVehicleIndexScreenState extends State<PublicVehicleIndexScreen> {
@@ -26,7 +27,7 @@ class _PublicVehicleIndexScreenState extends State<PublicVehicleIndexScreen> {
   bool _isLoading = true;
   bool _isLoadingVehicles = false;
   String? _errorMessage;
-  
+
   List<Map<String, dynamic>> _publicVehiclesData = [];
   Set<Marker> _markers = {};
   Set<String> _subscribedImeis = {}; // Track subscribed vehicles by IMEI
@@ -64,7 +65,8 @@ class _PublicVehicleIndexScreenState extends State<PublicVehicleIndexScreen> {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         setState(() {
-          _errorMessage = 'Location services are disabled. Please enable them in settings.';
+          _errorMessage =
+              'Location services are disabled. Please enable them in settings.';
           _isLoading = false;
         });
         Get.snackbar(
@@ -103,7 +105,8 @@ class _PublicVehicleIndexScreenState extends State<PublicVehicleIndexScreen> {
 
       if (permission == LocationPermission.deniedForever) {
         setState(() {
-          _errorMessage = 'Location permissions are permanently denied. Please enable in settings.';
+          _errorMessage =
+              'Location permissions are permanently denied. Please enable in settings.';
           _isLoading = false;
         });
         Get.snackbar(
@@ -165,18 +168,19 @@ class _PublicVehicleIndexScreenState extends State<PublicVehicleIndexScreen> {
 
     try {
       final publicVehicleApiService = Get.find<PublicVehicleApiService>();
-      final vehiclesData = await publicVehicleApiService.getPublicVehiclesWithLocations();
+      final vehiclesData = await publicVehicleApiService
+          .getPublicVehiclesWithLocations();
 
       debugPrint('=== PUBLIC VEHICLES DATA ===');
       debugPrint('Total vehicles data received: ${vehiclesData.length}');
-      
+
       for (int i = 0; i < vehiclesData.length; i++) {
         final data = vehiclesData[i];
         debugPrint('--- Vehicle Data $i ---');
         debugPrint('Institute: ${data['institute']}');
         debugPrint('Vehicle: ${data['vehicle']}');
         debugPrint('Location: ${data['location']}');
-        
+
         final vehicle = data['vehicle'] as Vehicle;
         final location = data['location'] as Location?;
         debugPrint('Vehicle IMEI: ${vehicle.imei}');
@@ -218,7 +222,7 @@ class _PublicVehicleIndexScreenState extends State<PublicVehicleIndexScreen> {
   Future<void> _updateMarkers() async {
     debugPrint('=== UPDATE MARKERS START ===');
     debugPrint('Total vehicles data: ${_publicVehiclesData.length}');
-    
+
     final Set<Marker> newMarkers = {};
     int markersCreated = 0;
     int skippedNoLocation = 0;
@@ -226,14 +230,14 @@ class _PublicVehicleIndexScreenState extends State<PublicVehicleIndexScreen> {
     for (int i = 0; i < _publicVehiclesData.length; i++) {
       final vehicleData = _publicVehiclesData[i];
       debugPrint('--- Processing vehicle $i ---');
-      
+
       final vehicle = vehicleData['vehicle'] as Vehicle;
       final location = vehicleData['location'] as Location?;
 
       debugPrint('Vehicle IMEI: ${vehicle.imei}');
       debugPrint('Vehicle Name: ${vehicle.name}');
       debugPrint('Location object: $location');
-      
+
       if (location == null) {
         debugPrint('Location is NULL - skipping marker');
         skippedNoLocation++;
@@ -246,7 +250,7 @@ class _PublicVehicleIndexScreenState extends State<PublicVehicleIndexScreen> {
       if (location.latitude != null && location.longitude != null) {
         final lat = location.latitude!;
         final lng = location.longitude!;
-        
+
         debugPrint('Creating marker at: $lat, $lng');
 
         // Get vehicle state for marker icon
@@ -256,7 +260,7 @@ class _PublicVehicleIndexScreenState extends State<PublicVehicleIndexScreen> {
         tempVehicle.vehicleNo = vehicle.vehicleNo;
         tempVehicle.vehicleType = vehicle.vehicleType;
         tempVehicle.latestLocation = location;
-        
+
         // If we have status data, use it; otherwise create minimal status
         if (vehicle.latestStatus != null) {
           tempVehicle.latestStatus = vehicle.latestStatus;
@@ -273,30 +277,32 @@ class _PublicVehicleIndexScreenState extends State<PublicVehicleIndexScreen> {
             updatedAt: location.updatedAt ?? DateTime.now(),
           );
         }
-        
+
         final vehicleState = VehicleService.getState(tempVehicle);
         debugPrint('Vehicle state: $vehicleState');
-        
-        // Get truck image path for map marker (use 'truck' type and 'live' state)
-        final truckImagePath = VehicleService.imagePath(
-          vehicleType: 'truck',
+
+        // Get vehicle image path for map marker (use actual vehicle type and 'live' state)
+        final markerImagePath = VehicleService.imagePath(
+          vehicleType: vehicle.vehicleType ?? 'truck',
           vehicleState: vehicleState,
           imageState: VehicleImageState.live,
         );
-        debugPrint('Truck image path: $truckImagePath');
+        debugPrint('Vehicle image path: $markerImagePath');
 
         // Load custom marker icon
         BitmapDescriptor markerIcon;
         try {
           markerIcon = await BitmapDescriptor.fromAssetImage(
             const ImageConfiguration(size: Size(60, 60)),
-            truckImagePath,
+            markerImagePath,
           );
           debugPrint('Custom marker icon loaded successfully');
         } catch (e) {
           debugPrint('Failed to load custom marker icon: $e, using default');
           // Fallback to default green marker
-          markerIcon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
+          markerIcon = BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueGreen,
+          );
         }
 
         newMarkers.add(
@@ -330,7 +336,7 @@ class _PublicVehicleIndexScreenState extends State<PublicVehicleIndexScreen> {
         _markers = newMarkers;
       });
     }
-    
+
     debugPrint('=== UPDATE MARKERS END ===');
   }
 
@@ -338,7 +344,9 @@ class _PublicVehicleIndexScreenState extends State<PublicVehicleIndexScreen> {
     final institute = vehicleData['institute'] as Map<String, dynamic>;
     final vehicle = vehicleData['vehicle'] as Vehicle;
     final location = vehicleData['location'] as Location?;
-    
+    final publicVehicle =
+        vehicleData['public_vehicle'] as Map<String, dynamic>?;
+
     // Update vehicle with location data for VehicleCard
     if (location != null) {
       vehicle.latestLocation = location;
@@ -346,97 +354,237 @@ class _PublicVehicleIndexScreenState extends State<PublicVehicleIndexScreen> {
 
     Get.bottomSheet(
       Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.9,
+        ),
         padding: const EdgeInsets.all(16),
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Handle bar
-            Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-            ),
 
-            // Institute Details Section
-            _buildInstituteCard(institute),
+              // Institute Details Section
+              _buildInstituteCard(institute),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // Vehicle Card - Use the full VehicleCard widget
-            VehicleCard(
-              givenVehicle: vehicle,
-              isManualCallback: true,
-              callback: () {
-                // This callback is called when vehicle card is tapped
-                // We can handle it if needed, or leave empty
-              },
-            ),
+              // Vehicle Card - Use the full VehicleCard widget
+              VehicleCard(
+                givenVehicle: vehicle,
+                isManualCallback: true,
+                callback: () {
+                  // This callback is called when vehicle card is tapped
+                  // We can handle it if needed, or leave empty
+                },
+              ),
 
-            const SizedBox(height: 16),
+              // Description and Images Section (only for public vehicles)
+              if (publicVehicle != null) ...[
+                const SizedBox(height: 16),
+                _buildPublicVehicleDetails(publicVehicle),
+              ],
 
-            // Action Buttons
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Get.back();
-                      final route = AppRoutes.vehicleLiveTrackingShow
-                          .replaceAll(':imei', vehicle.imei);
-                      Get.toNamed(
-                        route,
-                        arguments: {'public-vehicle': true},
-                      );
-                    },
-                    icon: const Icon(Icons.location_on),
-                    label: const Text('Live Tracking'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      side: BorderSide(color: AppTheme.primaryColor),
+              const SizedBox(height: 16),
+
+              // Action Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Get.back();
+                        final route = AppRoutes.vehicleLiveTrackingShow
+                            .replaceAll(':imei', vehicle.imei);
+                        Get.toNamed(route, arguments: {'public-vehicle': true});
+                      },
+                      icon: const Icon(Icons.location_on),
+                      label: const Text('Live Tracking'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: BorderSide(color: AppTheme.primaryColor),
+                      ),
                     ),
                   ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _isSubscribing
+                          ? null
+                          : () => _handleSetNotify(vehicle),
+                      icon: Icon(
+                        _subscribedImeis.contains(vehicle.imei)
+                            ? Icons.notifications_active
+                            : Icons.notifications,
+                      ),
+                      label: Text(
+                        _subscribedImeis.contains(vehicle.imei)
+                            ? 'Unsubscribe'
+                            : 'Set Notify',
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _subscribedImeis.contains(vehicle.imei)
+                            ? Colors.green
+                            : AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        disabledBackgroundColor: Colors.grey[300],
+                        disabledForegroundColor: Colors.grey[600],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              SizedBox(height: MediaQuery.of(context).padding.bottom),
+            ],
+          ),
+        ),
+      ),
+      isScrollControlled: true,
+    );
+  }
+
+  Widget _buildPublicVehicleDetails(Map<String, dynamic> publicVehicle) {
+    final description = publicVehicle['description'] as String?;
+    final images = publicVehicle['images'] as List<dynamic>? ?? [];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Description Section
+        if (description != null && description.isNotEmpty) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.description,
+                      size: 16,
+                      color: AppTheme.subTitleColor,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Description',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.titleColor,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isSubscribing ? null : () => _handleSetNotify(vehicle),
-                    icon: Icon(
-                      _subscribedImeis.contains(vehicle.imei)
-                          ? Icons.notifications_active
-                          : Icons.notifications,
-                    ),
-                    label: Text(
-                      _subscribedImeis.contains(vehicle.imei)
-                          ? 'Unsubscribe'
-                          : 'Set Notify',
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _subscribedImeis.contains(vehicle.imei)
-                          ? Colors.green
-                          : AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      disabledBackgroundColor: Colors.grey[300],
-                      disabledForegroundColor: Colors.grey[600],
-                    ),
+                const SizedBox(height: 8),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.subTitleColor,
+                    height: 1.4,
                   ),
                 ),
               ],
             ),
+          ),
+          if (images.isNotEmpty) const SizedBox(height: 16),
+        ],
 
-            SizedBox(height: MediaQuery.of(context).padding.bottom),
-          ],
-        ),
-      ),
-      isScrollControlled: true,
+        // Images Section
+        if (images.isNotEmpty) ...[
+          Text(
+            'Images',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.titleColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 150,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: images.length,
+              itemBuilder: (context, index) {
+                final imageData = images[index] as Map<String, dynamic>;
+                final imageUrl = imageData['image'] as String?;
+                final title = imageData['title'] as String?;
+
+                if (imageUrl == null || imageUrl.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+
+                return Container(
+                  margin: EdgeInsets.only(
+                    right: index < images.length - 1 ? 12 : 0,
+                  ),
+                  width: 150,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            imageUrl,
+                            width: 150,
+                            height: 120,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: 150,
+                                height: 120,
+                                color: Colors.grey.shade200,
+                                child: Icon(
+                                  Icons.broken_image,
+                                  color: Colors.grey.shade400,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      if (title != null && title.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.subTitleColor,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -519,14 +667,25 @@ class _PublicVehicleIndexScreenState extends State<PublicVehicleIndexScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Show logo if available, otherwise show icon
+          institute['logo'] != null && institute['logo'].toString().isNotEmpty
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: Image.network(
+                    institute['logo'],
+                    height: 20,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => Icon(
+                      Icons.business,
+                      size: 20,
+                      color: AppTheme.primaryColor,
+                    ),
+                  ),
+                )
+              : Icon(Icons.business, color: AppTheme.primaryColor, size: 20),
+          const SizedBox(width: 8),
           Row(
             children: [
-              Icon(
-                Icons.business,
-                color: AppTheme.primaryColor,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   institute['name'] ?? 'Unknown Institute',
@@ -539,27 +698,22 @@ class _PublicVehicleIndexScreenState extends State<PublicVehicleIndexScreen> {
               ),
             ],
           ),
-          if (institute['phone'] != null && institute['phone'].toString().isNotEmpty) ...[
+          if (institute['phone'] != null &&
+              institute['phone'].toString().isNotEmpty) ...[
             const SizedBox(height: 8),
             Row(
               children: [
-                Icon(
-                  Icons.phone,
-                  size: 16,
-                  color: AppTheme.subTitleColor,
-                ),
+                Icon(Icons.phone, size: 16, color: AppTheme.subTitleColor),
                 const SizedBox(width: 8),
                 Text(
                   institute['phone'],
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppTheme.subTitleColor,
-                  ),
+                  style: TextStyle(fontSize: 14, color: AppTheme.subTitleColor),
                 ),
               ],
             ),
           ],
-          if (institute['address'] != null && institute['address'].toString().isNotEmpty) ...[
+          if (institute['address'] != null &&
+              institute['address'].toString().isNotEmpty) ...[
             const SizedBox(height: 8),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -586,7 +740,6 @@ class _PublicVehicleIndexScreenState extends State<PublicVehicleIndexScreen> {
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -617,97 +770,90 @@ class _PublicVehicleIndexScreenState extends State<PublicVehicleIndexScreen> {
       body: _isLoading
           ? const Center(child: LoadingWidget())
           : _errorMessage != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          color: Colors.red,
-                          size: 64,
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, color: Colors.red, size: 64),
+                    const SizedBox(height: 16),
+                    Text(
+                      _errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppTheme.subTitleColor,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: _getCurrentLocation,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Retry'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : _currentPosition == null
+          ? const Center(child: Text('No location data'))
+          : Stack(
+              children: [
+                GoogleMap(
+                  onMapCreated: (GoogleMapController controller) {
+                    _mapController = controller;
+                    // Move camera to current location
+                    controller.animateCamera(
+                      CameraUpdate.newLatLngZoom(
+                        LatLng(
+                          _currentPosition!.latitude,
+                          _currentPosition!.longitude,
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _errorMessage!,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: AppTheme.subTitleColor,
-                            fontSize: 16,
+                        14.0,
+                      ),
+                    );
+                  },
+                  initialCameraPosition: CameraPosition(
+                    target: LatLng(
+                      _currentPosition!.latitude,
+                      _currentPosition!.longitude,
+                    ),
+                    zoom: 14.0,
+                  ),
+                  markers: _markers,
+                  myLocationEnabled: true,
+                  myLocationButtonEnabled: true,
+                  mapToolbarEnabled: false,
+                  compassEnabled: true,
+                  zoomGesturesEnabled: true,
+                  zoomControlsEnabled: true,
+                  mapType: MapType.normal,
+                ),
+                // Loading overlay for vehicles
+                if (_isLoadingVehicles)
+                  Container(
+                    color: Colors.black.withOpacity(0.3),
+                    child: const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 16),
+                          Text(
+                            'Loading public vehicles...',
+                            style: TextStyle(color: Colors.white, fontSize: 16),
                           ),
-                        ),
-                        const SizedBox(height: 24),
-                        ElevatedButton.icon(
-                          onPressed: _getCurrentLocation,
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Retry'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryColor,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                )
-              : _currentPosition == null
-                  ? const Center(child: Text('No location data'))
-                  : Stack(
-                      children: [
-                        GoogleMap(
-                          onMapCreated: (GoogleMapController controller) {
-                            _mapController = controller;
-                            // Move camera to current location
-                            controller.animateCamera(
-                              CameraUpdate.newLatLngZoom(
-                                LatLng(
-                                  _currentPosition!.latitude,
-                                  _currentPosition!.longitude,
-                                ),
-                                14.0,
-                              ),
-                            );
-                          },
-                          initialCameraPosition: CameraPosition(
-                            target: LatLng(
-                              _currentPosition!.latitude,
-                              _currentPosition!.longitude,
-                            ),
-                            zoom: 14.0,
-                          ),
-                          markers: _markers,
-                          myLocationEnabled: true,
-                          myLocationButtonEnabled: true,
-                          mapToolbarEnabled: false,
-                          compassEnabled: true,
-                          zoomGesturesEnabled: true,
-                          zoomControlsEnabled: true,
-                          mapType: MapType.normal,
-                        ),
-                        // Loading overlay for vehicles
-                        if (_isLoadingVehicles)
-                          Container(
-                            color: Colors.black.withOpacity(0.3),
-                            child: const Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  CircularProgressIndicator(),
-                                  SizedBox(height: 16),
-                                  Text(
-                                    'Loading public vehicles...',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
+              ],
+            ),
     );
   }
 
@@ -717,4 +863,3 @@ class _PublicVehicleIndexScreenState extends State<PublicVehicleIndexScreen> {
     super.dispose();
   }
 }
-

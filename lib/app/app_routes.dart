@@ -59,6 +59,9 @@ import 'package:luna_iot/views/garbage/garbage_index_screen.dart';
 import 'package:luna_iot/views/public_vehicle/public_vehicle_index_screen.dart';
 import 'package:luna_iot/views/splash_screen.dart';
 import 'package:luna_iot/views/vehicle_tag/vehicle_tag_screen.dart';
+import 'package:luna_iot/views/vehicle_tag/vehicle_tag_detail_screen.dart';
+import 'package:luna_iot/views/vehicle_tag/vehicle_tag_edit_screen.dart';
+import 'package:luna_iot/models/vehicle_tag_model.dart';
 import 'package:luna_iot/views/sos/sos_screen.dart';
 import 'package:luna_iot/views/ev_charge/ev_charge_screen.dart';
 import 'package:luna_iot/views/profile/profile_screen.dart';
@@ -68,6 +71,7 @@ import 'package:luna_iot/views/admin/alert/buzzer_index_screen.dart';
 import 'package:luna_iot/views/admin/alert/sos_switch_index_screen.dart';
 import 'package:luna_iot/bindings/profile_binding.dart';
 import 'package:luna_iot/bindings/luna_tag_binding.dart';
+import 'package:luna_iot/bindings/vehicle_tag_binding.dart';
 import 'package:luna_iot/views/luna_tag/luna_tag_index_screen.dart';
 import 'package:luna_iot/views/luna_tag/luna_tag_show_screen.dart';
 import 'package:luna_iot/views/luna_tag/luna_tag_form_screen.dart';
@@ -171,6 +175,8 @@ class AppRoutes {
 
   // Bottom Navigation Routes
   static const String vehicleTag = '/vehicle-tag';
+  static const String vehicleTagDetail = '/vehicle-tag/detail';
+  static const String vehicleTagEdit = '/vehicle-tag/edit';
   static const String sos = '/sos';
   static const String evCharge = '/ev-charge';
   static const String profile = '/profile';
@@ -559,6 +565,22 @@ class AppRoutes {
     GetPage(
       name: vehicleTag,
       page: () => const VehicleTagScreen(),
+      binding: VehicleTagBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: vehicleTagDetail,
+      page: () => const VehicleTagDetailScreen(),
+      binding: VehicleTagBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: vehicleTagEdit,
+      page: () {
+        final tag = Get.arguments as VehicleTag;
+        return VehicleTagEditScreen(tag: tag);
+      },
+      binding: VehicleTagBinding(),
       middlewares: [AuthMiddleware()],
     ),
     // ---- Luna Tag Routes ----

@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:luna_iot/app/app_theme.dart';
 import 'package:luna_iot/controllers/auth_controller.dart';
 import 'package:luna_iot/controllers/language_controller.dart';
+import 'package:luna_iot/controllers/main_screen_controller.dart';
 import 'package:luna_iot/views/main_screen.dart';
 import 'package:luna_iot/widgets/loading_widget.dart';
 
@@ -42,6 +43,10 @@ class LoginScreenState extends State<LoginScreen> {
       );
 
       if (success) {
+        // Reset navigation to home screen
+        if (Get.isRegistered<MainScreenController>()) {
+          Get.find<MainScreenController>().changeIndex(0);
+        }
         Get.offAll(() => MainScreen());
       } else {
         debugPrint('Login failed');
@@ -54,6 +59,10 @@ class LoginScreenState extends State<LoginScreen> {
       final success = await _authController.loginWithBiometric();
 
       if (success) {
+        // Reset navigation to home screen
+        if (Get.isRegistered<MainScreenController>()) {
+          Get.find<MainScreenController>().changeIndex(0);
+        }
         Get.offAll(() => MainScreen());
       }
     } catch (e) {

@@ -127,7 +127,8 @@ class _VehicleLiveTrackingShowScreenState
   }
 
   // Check if should restrict access (school, garbage, or public vehicle)
-  bool get _shouldRestrictAccess => _isFromSchoolVehicle || _isFromGarbageVehicle || _isFromPublicVehicle;
+  bool get _shouldRestrictAccess =>
+      _isFromSchoolVehicle || _isFromGarbageVehicle || _isFromPublicVehicle;
 
   @override
   void initState() {
@@ -208,9 +209,11 @@ class _VehicleLiveTrackingShowScreenState
 
       // Check if this is a garbage vehicle access (from garbage index screen)
       final arguments = Get.arguments;
-      final bool isGarbageAccess = arguments is Map && arguments['garbage'] == true;
-      final bool isPublicVehicleAccess = arguments is Map && arguments['public-vehicle'] == true;
-      
+      final bool isGarbageAccess =
+          arguments is Map && arguments['garbage'] == true;
+      final bool isPublicVehicleAccess =
+          arguments is Map && arguments['public-vehicle'] == true;
+
       final vehicleData = await vehicleApiService.getVehicleByImei(
         widget.imei,
         garbage: isGarbageAccess ? true : null,
@@ -512,7 +515,7 @@ class _VehicleLiveTrackingShowScreenState
           CameraUpdate.newCameraPosition(
             CameraPosition(
               target: interpolatedPosition,
-              zoom: 16.0,
+              zoom: 17.0,
               bearing: _toDouble(newLocation.course),
               tilt: 0.0,
             ),
@@ -534,7 +537,7 @@ class _VehicleLiveTrackingShowScreenState
       CameraUpdate.newCameraPosition(
         CameraPosition(
           target: position,
-          zoom: 16.0,
+          zoom: 17.0,
           bearing: course,
           tilt: 0.0,
         ),
@@ -962,7 +965,7 @@ class _VehicleLiveTrackingShowScreenState
                   mapType: currentMapType,
                   initialCameraPosition: CameraPosition(
                     target: _vehiclePosition!,
-                    zoom: 15.0,
+                    zoom: 17.0,
                     bearing: _mapRotation,
                   ),
                   markers: _markers,

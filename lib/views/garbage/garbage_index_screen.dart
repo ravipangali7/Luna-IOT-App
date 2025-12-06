@@ -277,20 +277,20 @@ class _GarbageIndexScreenState extends State<GarbageIndexScreen> {
         final vehicleState = VehicleService.getState(tempVehicle);
         debugPrint('Vehicle state: $vehicleState');
         
-        // Get truck image path for map marker (use 'truck' type and 'live' state)
-        final truckImagePath = VehicleService.imagePath(
-          vehicleType: 'truck',
+        // Get vehicle image path for map marker (use actual vehicle type and 'live' state)
+        final markerImagePath = VehicleService.imagePath(
+          vehicleType: vehicle.vehicleType ?? 'truck',
           vehicleState: vehicleState,
           imageState: VehicleImageState.live,
         );
-        debugPrint('Truck image path: $truckImagePath');
+        debugPrint('Vehicle image path: $markerImagePath');
 
         // Load custom marker icon
         BitmapDescriptor markerIcon;
         try {
           markerIcon = await BitmapDescriptor.fromAssetImage(
             const ImageConfiguration(size: Size(60, 60)),
-            truckImagePath,
+            markerImagePath,
           );
           debugPrint('Custom marker icon loaded successfully');
         } catch (e) {
@@ -521,11 +521,27 @@ class _GarbageIndexScreenState extends State<GarbageIndexScreen> {
         children: [
           Row(
             children: [
-              Icon(
-                Icons.business,
-                color: AppTheme.primaryColor,
-                size: 20,
-              ),
+              // Show logo if available, otherwise show icon
+              institute['logo'] != null && institute['logo'].toString().isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: Image.network(
+                        institute['logo'],
+                        width: 20,
+                        height: 20,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => Icon(
+                          Icons.business,
+                          size: 20,
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
+                    )
+                  : Icon(
+                      Icons.business,
+                      color: AppTheme.primaryColor,
+                      size: 20,
+                    ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
