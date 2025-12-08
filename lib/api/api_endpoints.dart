@@ -214,4 +214,31 @@ class ApiEndpoints {
   static const String getAllVehicleTags = '/api/vehicle-tag/';
   static const String getVehicleTagByVtid = '/api/vehicle-tag/:vtid';
   static const String assignVehicleTagByVtid = '/api/vehicle-tag/assign/:vtid/';
+
+  // Wallet - Django finance endpoints
+  static const String getWalletByUser = '/api/finance/wallet/user/:userId/';
+  static const String getWalletById = '/api/finance/wallet/:walletId/';
+  static const String topUpWallet = '/api/finance/wallet/:walletId/topup/';
+  static const String getWalletSummary = '/api/finance/wallet/summary/';
+
+  // Transaction - Django finance endpoints
+  static const String getUserTransactions = '/api/finance/transaction/user/:userId/transactions';
+  static const String getTransactionById = '/api/finance/transaction/transaction/:transactionId';
+  static const String getTransactionSummary = '/api/finance/transaction/summary';
+
+  // Due Transaction - Django finance endpoints
+  static const String getMyDueTransactions = '/api/finance/due-transaction/my/';
+  static const String getDueTransactionById = '/api/finance/due-transaction/:id/';
+  static const String payDueTransaction = '/api/finance/due-transaction/:id/pay/';
+  static const String payParticular = '/api/finance/due-transaction/particular/:id/pay/';
+  static const String downloadDueTransactionInvoice = '/api/finance/due-transaction/:id/invoice/';
+  static const String getVehicleRenewalPrice = '/api/finance/due-transaction/vehicle/:vehicleId/price/';
+  static const String createVehicleDueTransaction = '/api/finance/due-transaction/vehicle/:vehicleId/create/';
+
+  // Payment Gateway
+  static const String initiatePayment = '/api/finance/payment/initiate/';
+  static const String paymentCallback = '/api/finance/payment/callback/';
+  static const String validatePayment = '/api/finance/payment/validate/';
+  static const String getPaymentTransactions = '/api/finance/payment/transactions/';
+  static const String getPaymentTransactionById = '/api/finance/payment/transactions/:id/';
 }

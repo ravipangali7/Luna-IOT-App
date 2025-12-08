@@ -198,6 +198,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
 
+              // Finance Section
+              _buildProfileSection(
+                title: 'Finance',
+                children: [
+                  _buildProfileOption(
+                    icon: Icons.account_balance_wallet,
+                    title: 'My Wallet',
+                    subtitle: 'View wallet balance and top up',
+                    onTap: () {
+                      Get.toNamed(AppRoutes.wallet);
+                    },
+                  ),
+                  _buildProfileOption(
+                    icon: Icons.receipt_long,
+                    title: 'Transactions',
+                    subtitle: 'View transaction history',
+                    onTap: () {
+                      Get.toNamed(AppRoutes.transactions);
+                    },
+                  ),
+                  _buildProfileOption(
+                    icon: Icons.payment,
+                    title: 'Due Transactions',
+                    subtitle: 'View and pay due transactions',
+                    onTap: () {
+                      Get.toNamed(AppRoutes.dueTransactions);
+                    },
+                  ),
+                ],
+              ),
+
               // Biometric Authentication Section
               Obx(() {
                 if (authController.isBiometricAvailable.value) {

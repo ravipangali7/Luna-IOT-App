@@ -83,6 +83,7 @@ class VehicleCard extends StatelessWidget {
 
       // Use socket data if available, otherwise use vehicle's existing data
       // Vehicle Data
+      vehicle.id = givenVehicle.id; // Copy the ID field - required for renewal dialog
       vehicle.name = givenVehicle.name;
       vehicle.vehicleNo = givenVehicle.vehicleNo;
       vehicle.vehicleType = givenVehicle.vehicleType;
@@ -247,10 +248,10 @@ class VehicleCard extends StatelessWidget {
         child: InkWell(
           onTap: () {
             if (isInactive) {
-              // Show inactive vehicle modal instead of navigating
+              // Show renewal dialog instead of inactive vehicle modal
               VehicleUtils.showInactiveVehicleModal(
                 vehicle: vehicle,
-                action: 'Live Tracking',
+                action: 'Renewal',
               );
               return;
             }
