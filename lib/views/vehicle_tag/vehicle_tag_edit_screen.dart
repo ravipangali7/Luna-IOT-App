@@ -89,8 +89,8 @@ class _VehicleTagEditScreenState extends State<VehicleTagEditScreen> {
       // Call API to assign and update tag
       await apiService.assignVehicleTagByVtid(widget.tag.vtid, updateData);
 
-      // Navigate back to vehicle tag list first
-      Get.until((route) => route.settings.name == AppRoutes.vehicleTag);
+      // Navigate to vehicle tag index screen (replaces current route to prevent black screen)
+      Get.offNamed(AppRoutes.vehicleTag);
       
       // Show success snackbar
       Get.snackbar(

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:luna_iot/bindings/auth_binding.dart';
 import 'package:luna_iot/bindings/blood_donation_binding.dart';
@@ -15,6 +16,9 @@ import 'package:luna_iot/bindings/buzzer_binding.dart';
 import 'package:luna_iot/bindings/sos_switch_binding.dart';
 import 'package:luna_iot/bindings/garbage_binding.dart';
 import 'package:luna_iot/bindings/public_vehicle_binding.dart';
+import 'package:luna_iot/bindings/wallet_binding.dart';
+import 'package:luna_iot/bindings/transaction_binding.dart';
+import 'package:luna_iot/bindings/due_transaction_binding.dart';
 import 'package:luna_iot/middleware/auth_middleware.dart';
 import 'package:luna_iot/views/admin/device/device_assignment_screen.dart';
 import 'package:luna_iot/views/admin/device/device_create_screen.dart';
@@ -89,6 +93,14 @@ import 'package:luna_iot/views/fleet_management/documents/documents_index_screen
 import 'package:luna_iot/views/fleet_management/documents/documents_create_screen.dart';
 import 'package:luna_iot/views/fleet_management/documents/documents_edit_screen.dart';
 import 'package:luna_iot/views/fleet_management/report/fleet_report_screen.dart';
+import 'package:luna_iot/views/wallet/my_wallet_screen.dart';
+import 'package:luna_iot/views/wallet/wallet_topup_screen.dart';
+import 'package:luna_iot/views/payment/payment_webview_screen.dart';
+import 'package:luna_iot/models/payment_model.dart';
+import 'package:luna_iot/views/transactions/my_transactions_screen.dart';
+import 'package:luna_iot/views/transactions/transaction_detail_screen.dart';
+import 'package:luna_iot/views/due_transactions/my_due_transactions_screen.dart';
+import 'package:luna_iot/views/due_transactions/due_transaction_detail_screen.dart';
 
 class AppRoutes {
   static const String splash = '/splash';
@@ -187,6 +199,21 @@ class AppRoutes {
   static const String lunaTagCreate = '/luna-tag/create';
   static const String lunaTagEdit = '/luna-tag/edit/:id';
   static const String lunaTagShow = '/luna-tag/:publicKey';
+
+  // Wallet Routes
+  static const String wallet = '/wallet';
+  static const String walletTopup = '/wallet/topup';
+
+  // Payment Routes
+  static const String payment = '/payment';
+
+  // Transaction Routes
+  static const String transactions = '/transactions';
+  static const String transactionDetail = '/transactions/:id';
+
+  // Due Transaction Routes
+  static const String dueTransactions = '/due-transactions';
+  static const String dueTransactionDetail = '/due-transactions/:id';
 
   // ########### ROUTES ###########
   static List<GetPage> routes = [
@@ -659,6 +686,149 @@ class AppRoutes {
       name: sosSwitch,
       page: () => const SosSwitchIndexScreen(),
       binding: SosSwitchBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+
+    // ---- Wallet Routes ----
+    GetPage(
+      name: wallet,
+      page: () => const MyWalletScreen(),
+      binding: WalletBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: walletTopup,
+      page: () => const WalletTopupScreen(),
+      binding: WalletBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: payment,
+      page: () {
+        final formData = Get.arguments as PaymentFormData?;
+        if (formData == null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Get.back();
+            Get.snackbar('Error', 'Invalid payment data');
+          });
+          return Scaffold(
+            body: Center(child: Text('Invalid payment data')),
+          );
+        }
+        return PaymentWebviewScreen(formData: formData);
+      },
+      middlewares: [AuthMiddleware()],
+    ),
+
+    // ---- Transaction Routes ----
+    GetPage(
+      name: transactions,
+      page: () => const MyTransactionsScreen(),
+      binding: TransactionBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: transactionDetail,
+      page: () {
+        int? id;
+        
+        // Try to get ID from route parameters first
+        final idStr = Get.parameters['id'];
+        if (idStr != null && idStr.isNotEmpty) {
+          id = int.tryParse(idStr);
+        }
+        
+        // If not in parameters, try to extract from route path
+        if (id == null) {
+          final routePath = Get.currentRoute;
+          // Extract ID from path like /transactions/123
+          final match = RegExp(r'/transactions/(\d+)').firstMatch(routePath);
+          final extractedIdStr = match?.group(1);
+          if (extractedIdStr != null) {
+            id = int.tryParse(extractedIdStr);
+          }
+        }
+        
+        // If still null, check arguments (fallback)
+        if (id == null) {
+          final args = Get.arguments;
+          if (args is int) {
+            id = args;
+          } else if (args != null && args is Map) {
+            final idValue = args['id'];
+            if (idValue != null) {
+              id = idValue is int ? idValue : int.tryParse(idValue.toString());
+            }
+          }
+        }
+        
+        if (id == null || id <= 0) {
+          // Defer navigation and snackbar to after build
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Get.back();
+            Get.snackbar('Error', 'Invalid transaction ID');
+          });
+          return TransactionDetailScreen(transactionId: 0); // Will show error
+        }
+        return TransactionDetailScreen(transactionId: id);
+      },
+      binding: TransactionBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+
+    // ---- Due Transaction Routes ----
+    GetPage(
+      name: dueTransactions,
+      page: () => const MyDueTransactionsScreen(),
+      binding: DueTransactionBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: dueTransactionDetail,
+      page: () {
+        int? id;
+        
+        // Try to get ID from route parameters first
+        final idStr = Get.parameters['id'];
+        if (idStr != null && idStr.isNotEmpty) {
+          id = int.tryParse(idStr);
+        }
+        
+        // If not in parameters, try to extract from route path
+        if (id == null) {
+          final routePath = Get.currentRoute;
+          // Extract ID from path like /due-transactions/123
+          final match = RegExp(r'/due-transactions/(\d+)').firstMatch(routePath);
+          final extractedIdStr = match?.group(1);
+          if (extractedIdStr != null) {
+            id = int.tryParse(extractedIdStr);
+          }
+        }
+        
+        // If still null, check arguments (fallback)
+        if (id == null) {
+          final args = Get.arguments;
+          if (args is int) {
+            id = args;
+          } else if (args != null && args is Map) {
+            final idValue = args['id'];
+            if (idValue != null) {
+              id = idValue is int ? idValue : int.tryParse(idValue.toString());
+            }
+          }
+        }
+        
+        if (id == null || id <= 0) {
+          // Defer navigation and snackbar to after build
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Get.back();
+            Get.snackbar('Error', 'Invalid due transaction ID');
+          });
+          return DueTransactionDetailScreen(dueTransactionId: 0); // Will show error
+        }
+        return DueTransactionDetailScreen(dueTransactionId: id);
+      },
+      binding: DueTransactionBinding(),
       middlewares: [AuthMiddleware()],
     ),
   ];
