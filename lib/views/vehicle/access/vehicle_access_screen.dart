@@ -315,7 +315,7 @@ class VehicleAccessScreen extends GetView<VehicleController> {
                             ),
                           ),
                           subtitle: Text(
-                            'IMEI: ${vehicle.imei}',
+                            'Vehicle No: ${vehicle.vehicleNo ?? vehicle.imei}',
                             style: TextStyle(color: AppTheme.subTitleColor),
                           ),
                           trailing: ElevatedButton(
@@ -406,7 +406,7 @@ class VehicleAccessScreen extends GetView<VehicleController> {
                             ),
                           ),
                           Text(
-                            'IMEI: ${vehicle.imei}',
+                            'Vehicle No: ${vehicle.vehicleNo ?? vehicle.imei}',
                             style: TextStyle(color: AppTheme.subTitleColor),
                           ),
                         ],
@@ -634,9 +634,9 @@ class VehicleAccessScreen extends GetView<VehicleController> {
                 return Container(
                   width: double.infinity,
                   child: Tooltip(
-                    message: '${vehicle.name} (${vehicle.imei})',
+                    message: '${vehicle.name} (${vehicle.vehicleNo ?? vehicle.imei})',
                     child: Text(
-                      '${vehicle.name} (${vehicle.imei.substring(vehicle.imei.length - 4)})',
+                      '${vehicle.name} (${vehicle.vehicleNo ?? (vehicle.imei.length >= 4 ? vehicle.imei.substring(vehicle.imei.length - 4) : vehicle.imei)})',
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),
@@ -648,9 +648,9 @@ class VehicleAccessScreen extends GetView<VehicleController> {
               return DropdownMenuItem(
                 value: vehicle,
                 child: Tooltip(
-                  message: '${vehicle.name} (${vehicle.imei})',
+                  message: '${vehicle.name} (${vehicle.vehicleNo ?? vehicle.imei})',
                   child: Text(
-                    '${vehicle.name} (${vehicle.imei.substring(vehicle.imei.length - 4)})',
+                    '${vehicle.name} (${vehicle.vehicleNo ?? (vehicle.imei.length >= 4 ? vehicle.imei.substring(vehicle.imei.length - 4) : vehicle.imei)})',
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
                   ),

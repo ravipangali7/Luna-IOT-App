@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:luna_iot/api/api_client.dart';
 import 'package:luna_iot/api/services/vehicle_api_service.dart';
 import 'package:luna_iot/app/app_routes.dart';
 import 'package:luna_iot/app/app_theme.dart';
@@ -107,6 +108,28 @@ class _VehicleLiveTrackingShowScreenState
     return false;
   }
 
+  // Check if accessed from garbage vehicle screen
+  bool get _isFromGarbageVehicle {
+    final arguments = Get.arguments;
+    if (arguments is Map && arguments['garbage'] == true) {
+      return true;
+    }
+    return false;
+  }
+
+  // Check if accessed from public vehicle screen
+  bool get _isFromPublicVehicle {
+    final arguments = Get.arguments;
+    if (arguments is Map && arguments['public-vehicle'] == true) {
+      return true;
+    }
+    return false;
+  }
+
+  // Check if should restrict access (school, garbage, or public vehicle)
+  bool get _shouldRestrictAccess =>
+      _isFromSchoolVehicle || _isFromGarbageVehicle || _isFromPublicVehicle;
+
   @override
   void initState() {
     super.initState();
@@ -165,8 +188,36 @@ class _VehicleLiveTrackingShowScreenState
         isLoadingVehicle = true;
       });
 
-      final vehicleData = await Get.find<VehicleApiService>().getVehicleByImei(
+      // Ensure VehicleApiService is available
+      VehicleApiService vehicleApiService;
+      try {
+        vehicleApiService = Get.find<VehicleApiService>();
+      } catch (e) {
+        // If not found, create it
+        try {
+          final apiClient = Get.find<ApiClient>();
+          vehicleApiService = VehicleApiService(apiClient);
+          Get.put(vehicleApiService);
+        } catch (e2) {
+          // If ApiClient also not found, create both
+          final apiClient = ApiClient();
+          Get.put(apiClient);
+          vehicleApiService = VehicleApiService(apiClient);
+          Get.put(vehicleApiService);
+        }
+      }
+
+      // Check if this is a garbage vehicle access (from garbage index screen)
+      final arguments = Get.arguments;
+      final bool isGarbageAccess =
+          arguments is Map && arguments['garbage'] == true;
+      final bool isPublicVehicleAccess =
+          arguments is Map && arguments['public-vehicle'] == true;
+
+      final vehicleData = await vehicleApiService.getVehicleByImei(
         widget.imei,
+        garbage: isGarbageAccess ? true : null,
+        publicVehicle: isPublicVehicleAccess ? true : null,
       );
 
       // Check if vehicle is inactive
@@ -195,7 +246,10 @@ class _VehicleLiveTrackingShowScreenState
       setState(() {
         isLoadingVehicle = false;
       });
-      Get.snackbar('Error', 'Failed to load vehicle data: $e');
+      // Defer snackbar to after build completes
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Get.snackbar('Error', 'Failed to load vehicle data: $e');
+      });
     }
   }
 
@@ -461,7 +515,7 @@ class _VehicleLiveTrackingShowScreenState
           CameraUpdate.newCameraPosition(
             CameraPosition(
               target: interpolatedPosition,
-              zoom: 16.0,
+              zoom: 17.0,
               bearing: _toDouble(newLocation.course),
               tilt: 0.0,
             ),
@@ -483,7 +537,7 @@ class _VehicleLiveTrackingShowScreenState
       CameraUpdate.newCameraPosition(
         CameraPosition(
           target: position,
-          zoom: 16.0,
+          zoom: 17.0,
           bearing: course,
           tilt: 0.0,
         ),
@@ -911,7 +965,7 @@ class _VehicleLiveTrackingShowScreenState
                   mapType: currentMapType,
                   initialCameraPosition: CameraPosition(
                     target: _vehiclePosition!,
-                    zoom: 15.0,
+                    zoom: 17.0,
                     bearing: _mapRotation,
                   ),
                   markers: _markers,
@@ -986,8 +1040,8 @@ class _VehicleLiveTrackingShowScreenState
                         ),
                       ),
 
-                      // History Button - Hide if from school vehicle screen
-                      if (!_isFromSchoolVehicle)
+                      // History Button - Hide if from school or garbage vehicle screen
+                      if (!_shouldRestrictAccess)
                         InkWell(
                           onTap: () => Get.toNamed(
                             AppRoutes.vehicleHistoryShow,
@@ -1064,8 +1118,8 @@ class _VehicleLiveTrackingShowScreenState
                         ),
                       ),
 
-                      // Share Track Button - Hide if from school vehicle screen
-                      if (!_isFromSchoolVehicle)
+                      // Share Track Button - Hide if from school or garbage vehicle screen
+                      if (!_shouldRestrictAccess)
                         InkWell(
                           onTap: () {
                             showModalBottomSheet(

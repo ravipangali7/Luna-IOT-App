@@ -173,10 +173,19 @@ class VehicleApiService {
   }
 
   // Get vehicle by IMEI with complete data
-  Future<Vehicle> getVehicleByImei(String imei) async {
+  Future<Vehicle> getVehicleByImei(String imei, {bool? garbage, bool? publicVehicle}) async {
     try {
+      final queryParameters = <String, dynamic>{};
+      if (garbage == true) {
+        queryParameters['garbage'] = 'true';
+      }
+      if (publicVehicle == true) {
+        queryParameters['public-vehicle'] = 'true';
+      }
+      
       final response = await _apiClient.dio.get(
         ApiEndpoints.getVehicleByImei.replaceAll(':imei', imei),
+        queryParameters: queryParameters.isNotEmpty ? queryParameters : null,
       );
       // Django response format: {success: true, message: '...', data: {...}}
       if (response.data['success'] == true && response.data['data'] != null) {

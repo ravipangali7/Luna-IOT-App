@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:luna_iot/api/services/role_api_service.dart';
 import 'package:luna_iot/api/services/user_api_service.dart';
+import 'package:luna_iot/utils/numeral_utils.dart';
 
 class UserController extends GetxController {
   final UserApiService _userApiService;
@@ -55,11 +56,32 @@ class UserController extends GetxController {
           .toList();
 
       filteredUsers.value = userList.where((user) {
-        // Apply search filter
+        // Apply search filter with numeral normalization
         if (searchQuery.value.isNotEmpty) {
-          final searchText = '${user['name'] ?? ''} ${user['phone'] ?? ''}'
-              .toLowerCase();
-          if (!searchText.contains(searchQuery.value.toLowerCase())) {
+          final userText = '${user['name'] ?? ''} ${user['phone'] ?? ''}';
+          
+          // Get search variants (original, English, Nepali)
+          final searchVariants = getSearchVariants(searchQuery.value);
+          
+          // Normalize user text variants for comparison
+          final userTextVariants = getSearchVariants(userText);
+          final userTextVariantsLower = userTextVariants.map((v) => v.toLowerCase()).toList();
+          
+          // Check if any search variant matches any user text variant
+          bool matches = false;
+          for (final searchVariant in searchVariants) {
+            final searchVariantLower = searchVariant.toLowerCase();
+            // Check normalized variants
+            for (final userVariantLower in userTextVariantsLower) {
+              if (userVariantLower.contains(searchVariantLower)) {
+                matches = true;
+                break;
+              }
+            }
+            if (matches) break;
+          }
+          
+          if (!matches) {
             return false;
           }
         }

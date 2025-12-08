@@ -15,7 +15,6 @@ class VehicleCreateScreen extends StatelessWidget {
   final _vehicleNoController = TextEditingController();
   final _odometerController = TextEditingController();
   final _mileageController = TextEditingController();
-  final _minimumFuelController = TextEditingController();
   final _speedLimitController = TextEditingController();
 
   final RxString selectedVehicleType = 'Car'.obs;
@@ -128,32 +127,12 @@ class VehicleCreateScreen extends StatelessWidget {
                       ],
                     ),
 
-                    // Minimum Fuel & Speed Limit
-                    Row(
-                      children: [
-                        // Minimum Fuel
-                        Expanded(
-                          child: TextFormField(
-                            controller: _minimumFuelController,
-                            decoration: InputDecoration(
-                              labelText: 'minimum_fuel'.tr,
-                            ),
-                          ),
-                        ),
-
-                        // Gap
-                        SizedBox(width: 10),
-
-                        // Speed Limit
-                        Expanded(
-                          child: TextFormField(
-                            controller: _speedLimitController,
-                            decoration: InputDecoration(
-                              labelText: 'speed_limit'.tr,
-                            ),
-                          ),
-                        ),
-                      ],
+                    // Speed Limit
+                    TextFormField(
+                      controller: _speedLimitController,
+                      decoration: InputDecoration(
+                        labelText: 'speed_limit'.tr,
+                      ),
                     ),
 
                     // Submit
@@ -168,7 +147,7 @@ class VehicleCreateScreen extends StatelessWidget {
                               selectedVehicleType.value,
                               double.parse(_odometerController.text),
                               double.parse(_mileageController.text),
-                              double.parse(_minimumFuelController.text),
+                              10.0, // Default minimum fuel value
                               int.parse(_speedLimitController.text),
                             ),
                           },

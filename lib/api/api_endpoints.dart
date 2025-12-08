@@ -139,6 +139,22 @@ class ApiEndpoints {
   static const String getMySchoolVehicles = '/api/school/school-parents/my-vehicles';
   static const String updateMySchoolLocation = '/api/school/school-parents/my-location/';
 
+  // Garbage - Django garbage endpoints
+  static const String getGarbageVehicles = '/api/garbage/garbage-vehicle/vehicles/';
+  static const String getGarbageVehiclesWithLocations = '/api/garbage/garbage-vehicle/with-locations/';
+  static const String subscribeToGarbageVehicle = '/api/garbage/garbage-vehicle/subscribe/';
+  static const String unsubscribeFromGarbageVehicle = '/api/garbage/garbage-vehicle/unsubscribe/';
+  static const String getMyGarbageVehicleSubscriptions = '/api/garbage/garbage-vehicle/my-subscriptions/';
+  static const String updateGarbageVehicleSubscriptionLocation = '/api/garbage/garbage-vehicle/subscription/:subscriptionId/update-location/';
+
+  // Public Vehicle - Django public_vehicle endpoints
+  static const String getPublicVehicles = '/api/public-vehicle/public-vehicle/vehicles/';
+  static const String getPublicVehiclesWithLocations = '/api/public-vehicle/public-vehicle/with-locations/';
+  static const String subscribeToPublicVehicle = '/api/public-vehicle/public-vehicle/subscribe/';
+  static const String unsubscribeFromPublicVehicle = '/api/public-vehicle/public-vehicle/unsubscribe/';
+  static const String getMyPublicVehicleSubscriptions = '/api/public-vehicle/public-vehicle/my-subscriptions/';
+  static const String updatePublicVehicleSubscriptionLocation = '/api/public-vehicle/public-vehicle/subscription/:subscriptionId/update-location/';
+
   // Luna Tag - Django device endpoints
   // User Luna Tag management (role-aware list, create/update/delete)
   static const String getUserLunaTags = '/api/device/user-luna-tag';
@@ -193,4 +209,9 @@ class ApiEndpoints {
   // Fleet Report
   static const String getVehicleFleetReport = '/api/fleet/vehicle/:imei/report';
   static const String getAllVehiclesFleetReport = '/api/fleet/reports/all';
+
+  // Vehicle Tag - Django vehicle_tag endpoints
+  static const String getAllVehicleTags = '/api/vehicle-tag/';
+  static const String getVehicleTagByVtid = '/api/vehicle-tag/:vtid';
+  static const String assignVehicleTagByVtid = '/api/vehicle-tag/assign/:vtid/';
 }

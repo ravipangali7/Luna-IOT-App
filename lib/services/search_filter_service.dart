@@ -1,5 +1,6 @@
 import 'package:luna_iot/models/device_model.dart';
 import 'package:luna_iot/models/vehicle_model.dart';
+import 'package:luna_iot/utils/numeral_utils.dart';
 
 class SearchFilterService {
   // Generic search method
@@ -12,11 +13,34 @@ class SearchFilterService {
   }) {
     List<T> filteredItems = items;
 
-    // Apply search
+    // Apply search with numeral normalization
     if (searchQuery.isNotEmpty) {
+      // Get search variants (original, English, Nepali)
+      final searchVariants = getSearchVariants(searchQuery);
+      
       filteredItems = filteredItems.where((item) {
-        final text = searchableText(item).toLowerCase();
-        return text.contains(searchQuery.toLowerCase());
+        final itemText = searchableText(item);
+        final itemTextLower = itemText.toLowerCase();
+        
+        // Normalize item text variants for comparison
+        final itemTextVariants = getSearchVariants(itemText);
+        final itemTextVariantsLower = itemTextVariants.map((v) => v.toLowerCase()).toList();
+        
+        // Check if any search variant matches any item text variant
+        for (final searchVariant in searchVariants) {
+          final searchVariantLower = searchVariant.toLowerCase();
+          // Check direct match
+          if (itemTextLower.contains(searchVariantLower)) {
+            return true;
+          }
+          // Check normalized variants
+          for (final itemVariantLower in itemTextVariantsLower) {
+            if (itemVariantLower.contains(searchVariantLower)) {
+              return true;
+            }
+          }
+        }
+        return false;
       }).toList();
     }
 
