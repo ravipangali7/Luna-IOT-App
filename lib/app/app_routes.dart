@@ -9,6 +9,7 @@ import 'package:luna_iot/bindings/notification_binding.dart';
 import 'package:luna_iot/bindings/popup_binding.dart';
 import 'package:luna_iot/bindings/role_binding.dart';
 import 'package:luna_iot/bindings/sos_binding.dart';
+import 'package:luna_iot/bindings/smart_community_binding.dart';
 import 'package:luna_iot/bindings/user_binding.dart';
 import 'package:luna_iot/bindings/vehicle_binding.dart';
 import 'package:luna_iot/bindings/alert_history_binding.dart';
@@ -67,6 +68,7 @@ import 'package:luna_iot/views/vehicle_tag/vehicle_tag_detail_screen.dart';
 import 'package:luna_iot/views/vehicle_tag/vehicle_tag_edit_screen.dart';
 import 'package:luna_iot/models/vehicle_tag_model.dart';
 import 'package:luna_iot/views/sos/sos_screen.dart';
+import 'package:luna_iot/views/smart_community/smart_community_alert_screen.dart';
 import 'package:luna_iot/views/ev_charge/ev_charge_screen.dart';
 import 'package:luna_iot/views/profile/profile_screen.dart';
 import 'package:luna_iot/views/profile/edit_profile_screen.dart';
@@ -190,6 +192,7 @@ class AppRoutes {
   static const String vehicleTagDetail = '/vehicle-tag/detail';
   static const String vehicleTagEdit = '/vehicle-tag/edit';
   static const String sos = '/sos';
+  static const String smartCommunity = '/smart-community';
   static const String evCharge = '/ev-charge';
   static const String profile = '/profile';
   static const String editProfile = '/profile/edit';
@@ -646,6 +649,12 @@ class AppRoutes {
       name: sos,
       page: () => const SosScreen(),
       binding: SosBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: smartCommunity,
+      page: () => const SmartCommunityAlertScreen(),
+      binding: SmartCommunityBinding(),
       middlewares: [AuthMiddleware()],
     ),
     GetPage(

@@ -241,4 +241,8 @@ class ApiEndpoints {
   static const String validatePayment = '/api/finance/payment/validate/';
   static const String getPaymentTransactions = '/api/finance/payment/transactions/';
   static const String getPaymentTransactionById = '/api/finance/payment/transactions/:id/';
+
+  // Community Siren - Django community_siren endpoints
+  static const String checkCommunitySirenMemberAccess = '/api/community-siren/community-siren-members/access/';
+  static const String createCommunitySirenHistory = '/api/community-siren/community-siren-history/create/';
 }

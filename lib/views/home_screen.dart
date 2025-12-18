@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:luna_iot/app/app_routes.dart';
 import 'package:luna_iot/app/app_theme.dart';
+import 'package:luna_iot/bindings/smart_community_binding.dart';
 import 'package:luna_iot/controllers/auth_controller.dart';
 import 'package:luna_iot/controllers/navigation_controller.dart';
+import 'package:luna_iot/controllers/smart_community_controller.dart';
 import 'package:luna_iot/widgets/home/home_drawer.dart';
 import 'package:luna_iot/widgets/home/banner_carousel_widget.dart';
 import 'package:luna_iot/widgets/language_switch_widget.dart';
@@ -404,8 +407,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _buildFeatureItem(
           title: 'Smart Community',
           icon: Icons.people,
-          route: AppRoutes.home,
-          onTap: () {}, // Disabled - no action on tap
+          route: AppRoutes.smartCommunity,
+          onTap: _handleSmartCommunityNavigation,
         ),
         _buildFeatureItem(
           title: 'buzzers'.tr,
@@ -496,6 +499,165 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return Column(children: sections);
+  }
+
+  /// Handle Smart Community navigation with location permission check
+  Future<void> _handleSmartCommunityNavigation() async {
+    try {
+      // Ensure SmartCommunityController is available
+      if (!Get.isRegistered<SmartCommunityController>()) {
+        // Initialize binding if not already done
+        final binding = SmartCommunityBinding();
+        binding.dependencies();
+      }
+
+      final controller = Get.find<SmartCommunityController>();
+
+      // Check location permission before navigation
+      await controller.checkLocationPermission();
+
+      // Permission granted, navigate to Smart Community
+      Get.toNamed(AppRoutes.smartCommunity);
+    } catch (e) {
+      if (e is LocationPermissionException) {
+        if (e.openLocationSettings) {
+          // Location services disabled - show dialog to open location settings
+          _showLocationServicesDialog();
+        } else if (e.openAppSettings) {
+          // Permission permanently denied - show dialog to open app settings
+          _showPermissionDeniedDialog();
+        } else {
+          // Permission denied (not permanently) - show error
+          _showLocationPermissionErrorDialog(e.message);
+        }
+      } else {
+        // Other error
+        _showLocationPermissionErrorDialog(e.toString());
+      }
+    }
+  }
+
+  /// Show dialog when location services are disabled
+  void _showLocationServicesDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.location_off, color: Colors.red),
+              const SizedBox(width: 8),
+              Flexible(child: Text('location_services_disabled'.tr)),
+            ],
+          ),
+          content: Text(
+            'location_services_disabled_message'.tr.isNotEmpty
+                ? 'location_services_disabled_message'.tr
+                : 'Location services are currently disabled. Please enable them in settings to use Smart Community features.',
+            style: const TextStyle(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('cancel'.tr),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await Geolocator.openLocationSettings();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: Text(
+                'open_settings'.tr.isNotEmpty
+                    ? 'open_settings'.tr
+                    : 'Open Settings',
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Show dialog when location permission is permanently denied
+  void _showPermissionDeniedDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.block, color: Colors.red),
+              const SizedBox(width: 8),
+              Flexible(child: Text('location_permission_denied'.tr)),
+            ],
+          ),
+          content: Text(
+            'location_permission_permanently_denied_message'.tr.isNotEmpty
+                ? 'location_permission_permanently_denied_message'.tr
+                : 'Location permission is permanently denied. Please enable it in app settings to use Smart Community features.',
+            style: const TextStyle(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('cancel'.tr),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await Geolocator.openAppSettings();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: Text(
+                'open_settings'.tr.isNotEmpty
+                    ? 'open_settings'.tr
+                    : 'Open Settings',
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Show dialog for location permission errors
+  void _showLocationPermissionErrorDialog(String errorMessage) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.error, color: Colors.red),
+              const SizedBox(width: 8),
+              Text('error'.tr),
+            ],
+          ),
+          content: Text(errorMessage),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('ok'.tr),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
