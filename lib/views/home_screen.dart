@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
@@ -502,6 +504,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Handle Smart Community navigation with location permission check
+  /// Only checks location permission on Android, navigates directly for web/iOS
   Future<void> _handleSmartCommunityNavigation() async {
     try {
       // Ensure SmartCommunityController is available
@@ -513,10 +516,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final controller = Get.find<SmartCommunityController>();
 
-      // Check location permission before navigation
-      await controller.checkLocationPermission();
+      // Only check location permission on Android
+      if (!kIsWeb && Platform.isAndroid) {
+        // Check location permission before navigation
+        await controller.checkLocationPermission();
+      }
 
-      // Permission granted, navigate to Smart Community
+      // Navigate to Smart Community
       Get.toNamed(AppRoutes.smartCommunity);
     } catch (e) {
       if (e is LocationPermissionException) {

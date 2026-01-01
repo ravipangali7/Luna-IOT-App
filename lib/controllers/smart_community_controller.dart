@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:luna_iot/api/services/community_siren_api_service.dart';
@@ -105,8 +107,14 @@ class SmartCommunityController extends GetxController {
   }
 
   /// Check location permission and request if needed
+  /// Only checks on Android, returns true immediately for web/iOS
   /// Throws exceptions with specific messages to indicate what action UI should take
   Future<bool> checkLocationPermission() async {
+    // Only check location permission on Android
+    if (kIsWeb || !Platform.isAndroid) {
+      return true;
+    }
+
     try {
       // Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -150,7 +158,16 @@ class SmartCommunityController extends GetxController {
   }
 
   /// Get current location with permission handling
+  /// Only gets location on Android, skips for web/iOS
   Future<void> getCurrentLocation() async {
+    // Only get location on Android
+    if (kIsWeb || !Platform.isAndroid) {
+      // Reset location values for web/iOS
+      currentLatitude.value = 0.0;
+      currentLongitude.value = 0.0;
+      return;
+    }
+
     try {
       // Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -185,15 +202,17 @@ class SmartCommunityController extends GetxController {
   }
 
   /// Create community siren history (SOS alert)
-  /// Location must be obtained before calling this method
+  /// Location is required only on Android, optional for web/iOS
   Future<void> createSosHistory() async {
     try {
       isLoading.value = true;
       errorMessage.value = '';
 
-      // Ensure location is available
-      if (currentLatitude.value == 0.0 || currentLongitude.value == 0.0) {
-        throw Exception('Location is required. Please enable location services.');
+      // Location is required only on Android
+      if (!kIsWeb && Platform.isAndroid) {
+        if (currentLatitude.value == 0.0 || currentLongitude.value == 0.0) {
+          throw Exception('Location is required. Please enable location services.');
+        }
       }
 
       final access = accessData.value;
@@ -211,12 +230,20 @@ class SmartCommunityController extends GetxController {
         throw Exception('Institute not found');
       }
 
+      // Only include location if available (Android) or null for web/iOS
+      final double? latitude = (!kIsWeb && Platform.isAndroid && currentLatitude.value != 0.0)
+          ? currentLatitude.value
+          : null;
+      final double? longitude = (!kIsWeb && Platform.isAndroid && currentLongitude.value != 0.0)
+          ? currentLongitude.value
+          : null;
+
       final history = CommunitySirenHistoryCreate(
         source: 'app',
         name: user.name.isNotEmpty ? user.name : user.phone,
         primaryPhone: user.phone,
-        latitude: currentLatitude.value,
-        longitude: currentLongitude.value,
+        latitude: latitude,
+        longitude: longitude,
         datetime: DateTime.now().toIso8601String(),
         status: 'pending',
         institute: institute.id,

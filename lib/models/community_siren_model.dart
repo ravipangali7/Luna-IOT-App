@@ -205,8 +205,8 @@ class CommunitySirenHistoryCreate {
   final String name;
   final String primaryPhone;
   final String? secondaryPhone;
-  final double latitude;
-  final double longitude;
+  final double? latitude;
+  final double? longitude;
   final String datetime;
   final String? remarks;
   final String status;
@@ -218,8 +218,8 @@ class CommunitySirenHistoryCreate {
     required this.name,
     required this.primaryPhone,
     this.secondaryPhone,
-    required this.latitude,
-    required this.longitude,
+    this.latitude,
+    this.longitude,
     required this.datetime,
     this.remarks,
     required this.status,
@@ -233,8 +233,8 @@ class CommunitySirenHistoryCreate {
       'name': name,
       'primary_phone': primaryPhone,
       if (secondaryPhone != null) 'secondary_phone': secondaryPhone,
-      'latitude': latitude.toString(),
-      'longitude': longitude.toString(),
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
       'datetime': datetime,
       if (remarks != null) 'remarks': remarks,
       'status': status,

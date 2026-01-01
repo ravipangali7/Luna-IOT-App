@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
@@ -516,9 +518,11 @@ class _SmartCommunityAlertScreenState extends State<SmartCommunityAlertScreen> {
     if (!context.mounted) return;
 
     try {
-      // Get location before sending alert
-      await controller.getCurrentLocation();
-      // Create history with location
+      // Get location before sending alert (only on Android)
+      if (!kIsWeb && Platform.isAndroid) {
+        await controller.getCurrentLocation();
+      }
+      // Create history with location (required on Android, optional on web/iOS)
       await controller.createSosHistory();
 
       // Show success dialog
